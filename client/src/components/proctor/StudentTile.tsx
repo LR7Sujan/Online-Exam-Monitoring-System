@@ -47,17 +47,15 @@ export function StudentTile({
   const needsReinstatement = Boolean(session.needs_reinstatement);
 
   // Risk Level Evaluation
-  let riskColor: 'red' | 'amber' | 'green' = 'green';
-  let glowClasses = 'border-emerald/30 shadow-[0_0_20px_rgba(16,185,129,0.08)] hover:border-emerald/60 hover:shadow-[0_0_25px_rgba(16,185,129,0.2)]';
+  let riskColor: 'rose' | 'amber' | 'emerald' = 'emerald';
+  let glowClasses = 'border-border bg-surface/85 hover:border-emerald-500/50 hover:bg-surface shadow-sm hover:shadow-layered-sm';
 
   if (isTerminated || score < minThreshold) {
-    riskColor = 'red';
-    glowClasses = 'border-magenta/50 shadow-[0_0_25px_rgba(244,63,94,0.22)] bg-[#140810]/90 hover:border-magenta hover:shadow-[0_0_35px_rgba(244,63,94,0.4)]';
+    riskColor = 'rose';
+    glowClasses = 'border-rose-500/50 bg-rose-500/5 hover:border-rose-500 hover:bg-rose-500/10 shadow-sm hover:shadow-rose-500/10';
   } else if (score < 85 || Number(session.total_violations) > 0) {
     riskColor = 'amber';
-    glowClasses = 'border-amber/40 shadow-[0_0_20px_rgba(245,158,11,0.15)] bg-[#120F08]/90 hover:border-amber hover:shadow-[0_0_25px_rgba(245,158,11,0.3)]';
-  } else {
-    glowClasses = 'border-cyan/30 shadow-[0_0_20px_rgba(34,211,238,0.08)] bg-[#0C0E1A]/90 hover:border-cyan/60 hover:shadow-[0_0_25px_rgba(34,211,238,0.2)]';
+    glowClasses = 'border-amber-500/40 bg-amber-500/5 hover:border-amber-500 hover:bg-amber-500/10 shadow-sm hover:shadow-amber-500/10';
   }
 
   return (
@@ -68,18 +66,18 @@ export function StudentTile({
       animate={{
         opacity: 1,
         scale: 1,
-        x: isShaking ? [-8, 8, -6, 6, -3, 3, 0] : 0,
+        x: isShaking ? [-6, 6, -4, 4, -2, 2, 0] : 0,
       }}
       transition={{
-        layout: { duration: 0.45, ease: 'easeOut' },
-        x: { duration: 0.4, ease: 'easeInOut' },
+        layout: { duration: 0.4, ease: 'easeOut' },
+        x: { duration: 0.35, ease: 'easeInOut' },
       }}
       onClick={() => onSelect(session.session_id)}
       className={`group relative rounded-2xl border p-4.5 transition-all duration-200 cursor-pointer backdrop-blur-xl ${glowClasses}`}
     >
       {/* Reinstatement Flag Pill */}
       {needsReinstatement && (
-        <div className="absolute -top-2.5 right-4 z-10 flex items-center gap-1 rounded-full border border-amber/60 bg-amber/20 px-2.5 py-0.5 text-[10px] font-mono font-bold text-amber shadow-glow-amber-sm">
+        <div className="absolute -top-2.5 right-4 z-10 flex items-center gap-1 rounded-full border border-amber-500/60 bg-amber-500/20 px-2.5 py-0.5 text-[10px] font-mono font-bold text-amber-500 shadow-sm">
           <RotateCcw className="w-3 h-3 animate-spin" />
           <span>REINSTATEMENT READY</span>
         </div>
@@ -88,31 +86,31 @@ export function StudentTile({
       {/* Top Row: Avatar + Student Meta + Status Pill */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
-          {/* Avatar with Risk Ring & Shared-Element Transition */}
+          {/* Avatar with Risk Ring */}
           <motion.div
             layoutId={`student-avatar-${session.session_id}`}
-            className={`relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl font-mono text-sm font-bold shadow-md ${
-              riskColor === 'red'
-                ? 'border-2 border-magenta bg-magenta/20 text-magenta'
+            className={`relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl font-mono text-sm font-bold shadow-sm ${
+              riskColor === 'rose'
+                ? 'border-2 border-rose-500 bg-rose-500/15 text-rose-500'
                 : riskColor === 'amber'
-                ? 'border-2 border-amber bg-amber/20 text-amber'
-                : 'border-2 border-cyan bg-cyan/20 text-cyan'
+                ? 'border-2 border-amber-500 bg-amber-500/15 text-amber-500'
+                : 'border-2 border-brand/50 bg-brand/10 text-brand'
             }`}
           >
             {getInitials(session.student_name)}
             {session.status === 'IN_PROGRESS' && (
               <span className="absolute -bottom-1 -right-1 flex h-3 w-3">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald opacity-75" />
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald" />
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75" />
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500" />
               </span>
             )}
           </motion.div>
 
           <div className="min-w-0 flex-1">
-            <h4 className="text-sm font-bold text-white truncate group-hover:text-cyan transition-colors">
+            <h4 className="text-sm font-bold text-foreground truncate group-hover:text-brand transition-colors">
               {session.student_name}
             </h4>
-            <p className="text-[11px] font-mono text-slate-400 truncate">
+            <p className="text-[11px] font-mono text-muted-foreground truncate">
               {session.exam_title}
             </p>
           </div>
@@ -122,19 +120,19 @@ export function StudentTile({
       </div>
 
       {/* Middle Row: Mini TrustRing + Violations Badge */}
-      <div className="mt-4 flex items-center justify-between rounded-xl border border-white/5 bg-[#070810]/70 p-2.5">
+      <div className="mt-4 flex items-center justify-between rounded-xl border border-border bg-surface-elevated/70 p-2.5">
         <div className="flex items-center gap-2.5">
           <TrustRing
             score={score}
             minThreshold={minThreshold}
-            size={52}
+            size={48}
             showThresholdMarker={false}
           />
           <div>
-            <div className="font-mono text-xs font-bold text-white">
-              {score}% <span className="text-[10px] font-normal text-slate-400">Trust</span>
+            <div className="font-mono text-xs font-bold text-foreground">
+              {score}% <span className="text-[10px] font-normal text-muted-foreground">Trust</span>
             </div>
-            <div className="text-[10px] font-mono text-slate-400">
+            <div className="text-[10px] font-mono text-muted-foreground">
               Min: {minThreshold}%
             </div>
           </div>
@@ -144,12 +142,12 @@ export function StudentTile({
         <div className="text-right">
           <div className="flex items-center justify-end gap-1 font-mono text-xs font-semibold">
             {Number(session.total_violations) > 0 ? (
-              <span className="flex items-center gap-1 text-magenta">
+              <span className="flex items-center gap-1 text-rose-500">
                 <ShieldAlert className="w-3.5 h-3.5" />
                 {session.total_violations} {Number(session.total_violations) === 1 ? 'violation' : 'violations'}
               </span>
             ) : (
-              <span className="flex items-center gap-1 text-emerald">
+              <span className="flex items-center gap-1 text-emerald-500">
                 <Shield className="w-3.5 h-3.5" />
                 Clean Record
               </span>
@@ -157,7 +155,7 @@ export function StudentTile({
           </div>
 
           {Number(session.pending_violations) > 0 && (
-            <span className="inline-block rounded bg-amber/20 px-1.5 py-0.2 font-mono text-[9px] font-bold text-amber">
+            <span className="inline-block rounded-md bg-amber-500/15 border border-amber-500/30 px-1.5 py-0.2 font-mono text-[9px] font-bold text-amber-500 mt-0.5">
               {session.pending_violations} Pending Review
             </span>
           )}
@@ -165,19 +163,19 @@ export function StudentTile({
       </div>
 
       {/* Bottom Footer: Last Violation Time + Inspect Link */}
-      <div className="mt-3 flex items-center justify-between text-[11px] font-mono text-slate-400 border-t border-white/5 pt-2">
+      <div className="mt-3 flex items-center justify-between text-[11px] font-mono text-muted-foreground border-t border-border/60 pt-2">
         <div className="flex items-center gap-1">
-          <Clock className="w-3 h-3 text-slate-400" />
+          <Clock className="w-3 h-3 text-muted-foreground" />
           <span>
             {session.last_violation_at ? (
-              <span className="text-rose-300">Last: {formatRelativeTime(session.last_violation_at)}</span>
+              <span className="text-rose-500">Last: {formatRelativeTime(session.last_violation_at)}</span>
             ) : (
-              <span className="text-emerald-400">0 Incidents</span>
+              <span className="text-emerald-500">0 Incidents</span>
             )}
           </span>
         </div>
 
-        <span className="flex items-center gap-0.5 text-cyan group-hover:underline text-[11px] font-medium">
+        <span className="flex items-center gap-0.5 text-brand group-hover:underline text-[11px] font-medium">
           Inspect <ArrowUpRight className="w-3 h-3" />
         </span>
       </div>

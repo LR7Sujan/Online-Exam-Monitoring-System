@@ -285,7 +285,10 @@ export function ProctorDashboardPage({ initialTab = 'monitor' }: { initialTab?: 
   };
 
   return (
-    <div className="min-h-screen bg-[#070810] text-slate-100 flex flex-col">
+    <div
+      className="min-h-screen bg-background text-foreground flex flex-col"
+      data-source="vw_ProctorLiveMonitor"
+    >
       {/* 1. EMERGENCY BANNER (full-width top alert) */}
       <EmergencyBanner
         criticalAlert={criticalAlert}
@@ -296,45 +299,45 @@ export function ProctorDashboardPage({ initialTab = 'monitor' }: { initialTab?: 
         }}
       />
 
-      <div className="flex-1 max-w-[1720px] w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
+      <div className="flex-1 max-w-[1600px] w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
         {/* Header Bar with Live Socket Status & Tabs */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-5">
           <div className="space-y-1">
             <div className="flex items-center gap-2.5">
-              <span className="flex h-2.5 w-2.5">
-                <span className="animate-ping absolute inline-flex h-2.5 w-2.5 rounded-full bg-cyan opacity-75" />
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-cyan" />
+              <span className="flex h-2.5 w-2.5 relative">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand opacity-75" />
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-brand" />
               </span>
-              <span className="font-mono text-xs uppercase tracking-widest text-cyan font-bold">
+              <span className="font-mono text-xs uppercase tracking-widest text-brand font-semibold">
                 Orbital Surveillance Core
               </span>
-              <span className="rounded-full bg-white/5 border border-white/10 px-2.5 py-0.5 text-[10px] font-mono text-slate-400">
+              <span className="rounded-full bg-surface border border-border px-2.5 py-0.5 text-[10px] font-mono text-muted-foreground">
                 {socketConnected ? (
-                  <span className="text-emerald flex items-center gap-1">
+                  <span className="text-emerald-500 flex items-center gap-1 font-medium">
                     <CheckCircle2 className="w-3 h-3" /> Socket Connected
                   </span>
                 ) : (
-                  <span className="text-amber flex items-center gap-1">
+                  <span className="text-amber-500 flex items-center gap-1 font-medium">
                     <Radio className="w-3 h-3 animate-pulse" /> Reconnecting
                   </span>
                 )}
               </span>
             </div>
 
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white flex items-center gap-3">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground flex items-center gap-3">
               Proctor Mission Control
             </h1>
           </div>
 
           {/* Mode Switcher: Live Monitor vs Review Queue */}
-          <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-[#0C0E1C] p-1.5 shadow-lg shrink-0">
+          <div className="flex items-center gap-1.5 rounded-2xl border border-border bg-surface p-1 shadow-sm shrink-0">
             <button
               type="button"
               onClick={() => setActiveTab('monitor')}
-              className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-mono font-bold transition-all ${
+              className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-mono font-medium transition-all cursor-pointer ${
                 activeTab === 'monitor'
-                  ? 'bg-cyan text-void shadow-glow-cyan-sm'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-brand text-white shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/40'
               }`}
             >
               <Grid3X3 className="w-4 h-4" />
@@ -344,10 +347,10 @@ export function ProctorDashboardPage({ initialTab = 'monitor' }: { initialTab?: 
             <button
               type="button"
               onClick={() => setActiveTab('queue')}
-              className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-mono font-bold transition-all ${
+              className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-mono font-medium transition-all cursor-pointer ${
                 activeTab === 'queue'
-                  ? 'bg-cyan text-void shadow-glow-cyan-sm'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-brand text-white shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/40'
               }`}
             >
               <ListOrdered className="w-4 h-4" />
@@ -371,13 +374,13 @@ export function ProctorDashboardPage({ initialTab = 'monitor' }: { initialTab?: 
           /* ================================================================ */
           <div className="space-y-5">
             {/* Filter & Search Bar */}
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3.5 rounded-2xl border border-white/10 bg-[#0C0E1C]/90 p-4 backdrop-blur-xl">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3.5 rounded-2xl border border-border bg-surface p-4 shadow-sm">
               <div className="flex items-center gap-2.5 flex-wrap">
                 {/* Exam Filter */}
                 <select
                   value={selectedExamId}
                   onChange={(e) => setSelectedExamId(e.target.value)}
-                  className="rounded-xl border border-white/10 bg-[#070914] px-3.5 py-2 text-xs text-white focus:border-cyan focus:outline-none font-mono"
+                  className="rounded-xl border border-border bg-background px-3.5 py-2 text-xs text-foreground focus:border-brand focus:ring-1 focus:ring-brand focus:outline-none font-mono"
                 >
                   <option value="ALL">All Active Exams ({exams.length})</option>
                   {exams.map((ex) => (
@@ -391,7 +394,7 @@ export function ProctorDashboardPage({ initialTab = 'monitor' }: { initialTab?: 
                 <select
                   value={selectedStatus}
                   onChange={(e) => setSelectedStatus(e.target.value)}
-                  className="rounded-xl border border-white/10 bg-[#070914] px-3.5 py-2 text-xs text-white focus:border-cyan focus:outline-none font-mono"
+                  className="rounded-xl border border-border bg-background px-3.5 py-2 text-xs text-foreground focus:border-brand focus:ring-1 focus:ring-brand focus:outline-none font-mono"
                 >
                   <option value="ALL">All Statuses</option>
                   <option value="IN_PROGRESS">In Progress (Live)</option>
@@ -404,7 +407,7 @@ export function ProctorDashboardPage({ initialTab = 'monitor' }: { initialTab?: 
                 <select
                   value={selectedSeverity}
                   onChange={(e) => setSelectedSeverity(e.target.value)}
-                  className="rounded-xl border border-white/10 bg-[#070914] px-3.5 py-2 text-xs text-white focus:border-cyan focus:outline-none font-mono"
+                  className="rounded-xl border border-border bg-background px-3.5 py-2 text-xs text-foreground focus:border-brand focus:ring-1 focus:ring-brand focus:outline-none font-mono"
                 >
                   <option value="ALL">All Severities</option>
                   <option value="CRITICAL">Critical Risk</option>
@@ -413,20 +416,20 @@ export function ProctorDashboardPage({ initialTab = 'monitor' }: { initialTab?: 
                   <option value="LOW">Low / Clean (≥90%)</option>
                 </select>
 
-                <div className="text-xs font-mono text-slate-400 pl-1">
-                  Showing <strong className="text-white">{displaySessions.length}</strong> candidates
+                <div className="text-xs font-mono text-muted-foreground pl-1">
+                  Showing <strong className="text-foreground">{displaySessions.length}</strong> candidates
                 </div>
               </div>
 
               {/* Search Candidate */}
               <div className="relative w-full lg:w-72">
-                <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <Search className="w-4 h-4 text-muted-foreground absolute left-3.5 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Filter student name or email..."
-                  className="w-full rounded-xl border border-white/10 bg-[#070914] pl-10 pr-3.5 py-2 text-xs text-white placeholder-slate-500 focus:border-cyan focus:outline-none font-mono"
+                  className="w-full rounded-xl border border-border bg-background pl-10 pr-3.5 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:border-brand focus:ring-1 focus:ring-brand focus:outline-none font-mono"
                 />
               </div>
             </div>
@@ -436,10 +439,10 @@ export function ProctorDashboardPage({ initialTab = 'monitor' }: { initialTab?: 
               {/* Student Tiles Grid (2 cols on md, 2 or 3 cols on xl) */}
               <div className="lg:col-span-2 xl:col-span-3">
                 {displaySessions.length === 0 ? (
-                  <div className="rounded-3xl border border-white/10 bg-[#0C0E1C]/90 p-16 text-center space-y-3">
-                    <Shield className="w-10 h-10 text-cyan/30 mx-auto" />
-                    <h3 className="text-base font-bold text-white">No active candidate sessions match</h3>
-                    <p className="text-xs font-mono text-slate-400 max-w-sm mx-auto">
+                  <div className="rounded-3xl border border-border bg-surface p-16 text-center space-y-3">
+                    <Shield className="w-10 h-10 text-brand/40 mx-auto" />
+                    <h3 className="text-base font-bold text-foreground">No active candidate sessions match</h3>
+                    <p className="text-xs font-mono text-muted-foreground max-w-sm mx-auto">
                       Adjust your exam or status filters to view active candidates.
                     </p>
                   </div>

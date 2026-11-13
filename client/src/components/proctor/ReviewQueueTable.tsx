@@ -164,9 +164,9 @@ export function ReviewQueueTable({ onInspectStudent }: ReviewQueueTableProps) {
   }, [filteredLogs, activeRowIndex, reviewMutation]);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" data-source="vw_ViolationAuditReport">
       {/* Top Filter Bar + Search + Keyboard Legend */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 rounded-2xl border border-white/10 bg-[#0C0E1C]/90 p-4">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 rounded-2xl border border-border bg-surface p-4 shadow-sm">
         {/* Review Status Filter Tabs */}
         <div className="flex items-center gap-1.5 flex-wrap">
           {(['PENDING', 'ALL', 'CONFIRMED', 'DISMISSED'] as const).map((st) => (
@@ -177,10 +177,10 @@ export function ReviewQueueTable({ onInspectStudent }: ReviewQueueTableProps) {
                 setReviewFilter(st);
                 setSelectedIds([]);
               }}
-              className={`rounded-xl px-3 py-1.5 text-xs font-mono font-bold transition-all ${
+              className={`rounded-xl px-3 py-1.5 text-xs font-mono font-medium transition-all cursor-pointer ${
                 reviewFilter === st
-                  ? 'bg-cyan text-void shadow-glow-cyan-sm'
-                  : 'bg-white/5 text-slate-300 hover:bg-white/10'
+                  ? 'bg-brand text-white shadow-sm'
+                  : 'bg-surface-elevated text-muted-foreground hover:text-foreground hover:bg-muted/50 border border-border'
               }`}
             >
               {st === 'PENDING' ? 'Pending Audit' : st}
@@ -190,7 +190,7 @@ export function ReviewQueueTable({ onInspectStudent }: ReviewQueueTableProps) {
           <select
             value={severityFilter}
             onChange={(e) => setSeverityFilter(e.target.value)}
-            className="rounded-xl border border-white/10 bg-[#080914] px-3 py-1.5 text-xs text-white focus:outline-none font-mono"
+            className="rounded-xl border border-border bg-background px-3 py-1.5 text-xs text-foreground focus:border-brand focus:ring-1 focus:ring-brand focus:outline-none font-mono"
           >
             <option value="ALL">All Severities</option>
             <option value="CRITICAL">Critical Only</option>
@@ -203,17 +203,17 @@ export function ReviewQueueTable({ onInspectStudent }: ReviewQueueTableProps) {
         {/* Search Input & Keyboard Hint */}
         <div className="flex items-center gap-3">
           <div className="relative w-full sm:w-64">
-            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <Search className="w-3.5 h-3.5 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search candidate, exam, or code..."
-              className="w-full rounded-xl border border-white/10 bg-[#080914] pl-9 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:border-cyan focus:outline-none font-mono"
+              className="w-full rounded-xl border border-border bg-background pl-9 pr-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:border-brand focus:ring-1 focus:ring-brand focus:outline-none font-mono"
             />
           </div>
 
-          <div className="hidden sm:flex items-center gap-1.5 rounded-xl border border-cyan/30 bg-cyan/10 px-3 py-1.5 text-[11px] font-mono text-cyan shadow-glow-cyan-sm shrink-0">
+          <div className="hidden sm:flex items-center gap-1.5 rounded-xl border border-brand/20 bg-brand/5 px-3 py-1.5 text-[11px] font-mono text-brand shadow-sm shrink-0">
             <Keyboard className="w-3.5 h-3.5" />
             <span title="SQL View: vw_ViolationAuditReport">
               <strong>[C]</strong> Confirm • <strong>[D]</strong> Dismiss • <strong>[↑/↓]</strong>
@@ -229,16 +229,16 @@ export function ReviewQueueTable({ onInspectStudent }: ReviewQueueTableProps) {
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="flex items-center justify-between rounded-xl border border-cyan/40 bg-cyan/15 p-3 text-xs font-mono text-white shadow-glow-cyan-sm"
+            className="flex items-center justify-between rounded-xl border border-brand/30 bg-brand/10 p-3 text-xs font-mono text-foreground shadow-sm"
           >
             <div className="flex items-center gap-2">
-              <span className="font-bold text-cyan">{selectedIds.length}</span>
+              <span className="font-bold text-brand">{selectedIds.length}</span>
               <span>incidents selected for bulk adjudication</span>
             </div>
 
             <div className="flex items-center gap-2">
               <NeonButton
-                variant="success"
+                variant="primary"
                 size="sm"
                 isLoading={bulkReviewMutation.isPending}
                 onClick={() =>
@@ -269,10 +269,10 @@ export function ReviewQueueTable({ onInspectStudent }: ReviewQueueTableProps) {
       </AnimatePresence>
 
       {/* Audit Table */}
-      <div className="rounded-2xl border border-white/10 bg-[#0C0E1C]/90 backdrop-blur-xl shadow-2xl overflow-hidden">
+      <div className="rounded-2xl border border-border bg-surface shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs font-mono">
-            <thead className="border-b border-white/10 bg-[#121528] text-[11px] uppercase tracking-wider text-slate-400">
+            <thead className="border-b border-border bg-surface-elevated text-[11px] uppercase tracking-wider text-muted-foreground">
               <tr>
                 <th className="p-3.5 w-10 text-center">
                   <input
@@ -282,7 +282,7 @@ export function ReviewQueueTable({ onInspectStudent }: ReviewQueueTableProps) {
                       selectedIds.length === filteredLogs.length
                     }
                     onChange={handleToggleSelectAll}
-                    className="accent-cyan cursor-pointer"
+                    className="accent-brand cursor-pointer"
                   />
                 </th>
                 <th className="p-3.5">Candidate</th>
@@ -297,11 +297,11 @@ export function ReviewQueueTable({ onInspectStudent }: ReviewQueueTableProps) {
               </tr>
             </thead>
 
-            <tbody className="divide-y divide-white/5">
+            <tbody className="divide-y divide-border">
               {filteredLogs.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="py-16 text-center text-slate-400">
-                    <Shield className="w-8 h-8 mx-auto mb-2 text-cyan/40" />
+                  <td colSpan={10} className="py-16 text-center text-muted-foreground">
+                    <Shield className="w-8 h-8 mx-auto mb-2 text-brand/40" />
                     No violations match the specified queue filters.
                   </td>
                 </tr>
@@ -321,10 +321,10 @@ export function ReviewQueueTable({ onInspectStudent }: ReviewQueueTableProps) {
                       onClick={() => setActiveRowIndex(idx)}
                       className={`transition-colors cursor-pointer ${
                         isFocused
-                          ? 'bg-cyan/15 ring-1 ring-inset ring-cyan/50'
+                          ? 'bg-brand/10 ring-1 ring-inset ring-brand/40'
                           : isSelected
-                          ? 'bg-cyan/5'
-                          : 'hover:bg-white/5'
+                          ? 'bg-brand/5'
+                          : 'hover:bg-muted/40'
                       }`}
                     >
                       <td className="p-3.5 text-center" onClick={(e) => e.stopPropagation()}>
@@ -332,7 +332,7 @@ export function ReviewQueueTable({ onInspectStudent }: ReviewQueueTableProps) {
                           type="checkbox"
                           checked={isSelected}
                           onChange={() => handleToggleRow(log.log_id)}
-                          className="accent-cyan cursor-pointer"
+                          className="accent-brand cursor-pointer"
                         />
                       </td>
 
@@ -344,24 +344,24 @@ export function ReviewQueueTable({ onInspectStudent }: ReviewQueueTableProps) {
                             e.stopPropagation();
                             onInspectStudent?.(log.session_id);
                           }}
-                          className="font-bold text-white hover:text-cyan text-left underline decoration-cyan/30"
+                          className="font-medium text-foreground hover:text-brand text-left underline decoration-brand/30 cursor-pointer"
                         >
                           {log.student_name}
                         </button>
-                        <div className="text-[10px] text-slate-400 truncate max-w-xs">
+                        <div className="text-[10px] text-muted-foreground truncate max-w-xs">
                           {log.student_email}
                         </div>
                       </td>
 
                       {/* Exam */}
-                      <td className="p-3.5 text-slate-300 truncate max-w-xs" title={log.exam_title}>
+                      <td className="p-3.5 text-muted-foreground truncate max-w-xs" title={log.exam_title}>
                         {log.exam_title}
                       </td>
 
                       {/* Violation Code & Label */}
                       <td className="p-3.5">
-                        <span className="font-bold text-white">{log.violation_code}</span>
-                        <div className="text-[10px] text-slate-400 truncate max-w-xs">
+                        <span className="font-medium text-foreground">{log.violation_code}</span>
+                        <div className="text-[10px] text-muted-foreground truncate max-w-xs">
                           {log.violation_label}
                         </div>
                       </td>
@@ -372,25 +372,25 @@ export function ReviewQueueTable({ onInspectStudent }: ReviewQueueTableProps) {
                       </td>
 
                       {/* Penalty */}
-                      <td className="p-3.5 text-center font-bold text-magenta">
+                      <td className="p-3.5 text-center font-bold font-mono text-rose-500">
                         -{log.penalty_applied}
                       </td>
 
                       {/* Trust Score with Animated Restore indicator */}
-                      <td className="p-3.5 text-center">
+                      <td className="p-3.5 text-center font-mono tabular-nums">
                         <motion.span
                           key={trust}
                           animate={
                             animScore
-                              ? { scale: [1, 1.35, 1], color: ['#10B981', '#22D3EE', '#10B981'] }
+                              ? { scale: [1, 1.35, 1], color: ['#10B981', '#6366F1', '#10B981'] }
                               : {}
                           }
                           className={`font-bold ${
                             trust < log.min_trust_score
-                              ? 'text-magenta'
+                              ? 'text-rose-500'
                               : trust < 85
-                              ? 'text-amber'
-                              : 'text-emerald'
+                              ? 'text-amber-500'
+                              : 'text-emerald-500'
                           }`}
                         >
                           {trust}%
@@ -398,7 +398,7 @@ export function ReviewQueueTable({ onInspectStudent }: ReviewQueueTableProps) {
                       </td>
 
                       {/* Timestamp */}
-                      <td className="p-3.5 text-slate-400 text-[11px] whitespace-nowrap">
+                      <td className="p-3.5 text-muted-foreground text-[11px] whitespace-nowrap">
                         {new Date(log.occurred_at).toLocaleString([], {
                           month: 'short',
                           day: 'numeric',
@@ -425,7 +425,7 @@ export function ReviewQueueTable({ onInspectStudent }: ReviewQueueTableProps) {
                                   reviewStatus: 'CONFIRMED',
                                 })
                               }
-                              className="rounded bg-emerald/20 border border-emerald/40 px-2 py-1 text-[10px] font-bold text-emerald hover:bg-emerald/30 transition-colors"
+                              className="rounded-lg bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/25 transition-colors cursor-pointer"
                               title="Confirm Violation (Key: C)"
                             >
                               Confirm [C]
@@ -438,18 +438,18 @@ export function ReviewQueueTable({ onInspectStudent }: ReviewQueueTableProps) {
                                   reviewStatus: 'DISMISSED',
                                 })
                               }
-                              className="rounded bg-white/10 border border-white/20 px-2 py-1 text-[10px] font-bold text-slate-200 hover:bg-white/20 transition-colors"
+                              className="rounded-lg bg-muted border border-border px-2.5 py-1 text-[11px] font-medium text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors cursor-pointer"
                               title="Dismiss & Restore Points via DB trigger (Key: D)"
                             >
                               Dismiss [D]
                             </button>
                           </div>
                         ) : isDismissed ? (
-                          <span className="text-[10px] text-emerald-400 flex items-center justify-end gap-1">
+                          <span className="text-[10px] text-emerald-500 flex items-center justify-end gap-1 font-medium">
                             <RotateCcw className="w-3 h-3" /> Restored
                           </span>
                         ) : (
-                          <span className="text-[10px] text-slate-400">Confirmed</span>
+                          <span className="text-[10px] text-muted-foreground font-medium">Confirmed</span>
                         )}
                       </td>
                     </tr>

@@ -50,21 +50,21 @@ export function LiveFeedSidebar({
   };
 
   return (
-    <div className="flex h-full flex-col rounded-2xl border border-white/10 bg-[#0C0E1A]/95 backdrop-blur-xl shadow-2xl overflow-hidden">
+    <div className="flex h-full flex-col rounded-2xl border border-border bg-surface/90 backdrop-blur-xl shadow-layered-sm overflow-hidden">
       {/* Feed Header */}
-      <div className="flex items-center justify-between border-b border-white/10 bg-[#121526]/80 p-3.5 sm:p-4">
-        <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-magenta/15 border border-magenta/40 text-magenta">
+      <div className="flex items-center justify-between border-b border-border/70 bg-surface-elevated/60 p-3.5 sm:p-4">
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-500 shadow-sm">
             <Radio className="w-4 h-4 animate-pulse" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h3 className="text-xs sm:text-sm font-bold text-white uppercase tracking-wider">
+              <h3 className="text-xs sm:text-sm font-bold text-foreground uppercase tracking-wider">
                 Telemetry Stream
               </h3>
               <LiveDot color="rose" size="sm" pulse />
             </div>
-            <p className="text-[10px] font-mono text-slate-400">
+            <p className="text-[10px] font-mono text-muted-foreground">
               Realtime Violation Ingestion
             </p>
           </div>
@@ -75,10 +75,10 @@ export function LiveFeedSidebar({
           <button
             type="button"
             onClick={handleToggleAudio}
-            className={`p-1.5 rounded-lg border transition-colors ${
+            className={`p-1.5 rounded-lg border transition-colors cursor-pointer ${
               muted
-                ? 'border-white/10 bg-white/5 text-slate-400 hover:text-white'
-                : 'border-cyan/40 bg-cyan/15 text-cyan hover:bg-cyan/25 shadow-glow-cyan-sm'
+                ? 'border-border bg-surface text-muted-foreground hover:text-foreground'
+                : 'border-brand/40 bg-brand/10 text-brand shadow-sm'
             }`}
             title={muted ? 'Unmute Audio Ping' : 'Mute Audio Ping'}
           >
@@ -89,7 +89,7 @@ export function LiveFeedSidebar({
             <button
               type="button"
               onClick={onClearFeed}
-              className="text-[10px] font-mono text-slate-400 hover:text-white px-2 py-1 rounded bg-white/5 hover:bg-white/10 transition-colors"
+              className="text-[10px] font-mono text-muted-foreground hover:text-foreground px-2 py-1 rounded-md bg-surface-elevated hover:bg-muted transition-colors cursor-pointer"
             >
               Clear
             </button>
@@ -98,17 +98,17 @@ export function LiveFeedSidebar({
       </div>
 
       {/* Feed Stream List */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-2.5 divide-y-0 scrollbar-thin scrollbar-thumb-white/10">
+      <div className="flex-1 overflow-y-auto p-3 space-y-2.5 divide-y-0 scrollbar-thin">
         <AnimatePresence initial={false}>
           {items.length === 0 ? (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="py-16 text-center text-xs font-mono text-slate-400 space-y-2"
+              className="py-16 text-center text-xs font-mono text-muted-foreground space-y-2"
             >
-              <Zap className="w-7 h-7 text-cyan/40 mx-auto" />
+              <Zap className="w-7 h-7 text-brand/40 mx-auto" />
               <p>Telemetry stream active.</p>
-              <p className="text-[10px] text-slate-400">
+              <p className="text-[10px] text-muted-foreground">
                 Listening for incoming candidate events...
               </p>
             </motion.div>
@@ -119,49 +119,49 @@ export function LiveFeedSidebar({
                 <motion.div
                   key={item.id}
                   layout
-                  initial={{ opacity: 0, x: 28, scale: 0.95 }}
+                  initial={{ opacity: 0, x: 24, scale: 0.96 }}
                   animate={{ opacity: 1, x: 0, scale: 1 }}
-                  exit={{ opacity: 0, x: -28, scale: 0.95 }}
-                  transition={{ duration: 0.25, ease: 'easeOut' }}
+                  exit={{ opacity: 0, x: -24, scale: 0.96 }}
+                  transition={{ duration: 0.22, ease: 'easeOut' }}
                   className={`group relative rounded-xl border p-3 transition-all ${
                     isCrit
-                      ? 'border-magenta/60 bg-[#180A14]/90 shadow-[0_0_15px_rgba(244,63,94,0.18)]'
-                      : 'border-white/10 bg-[#0F1122]/90 hover:border-white/20'
+                      ? 'border-rose-500/50 bg-rose-500/10 shadow-sm'
+                      : 'border-border bg-surface-elevated/70 hover:border-brand/40'
                   }`}
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <SeverityBadge severity={item.severity as 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'} size="sm" />
-                      <span className="font-mono text-xs font-bold text-white">
+                      <span className="font-mono text-xs font-bold text-foreground">
                         {item.violationCode}
                       </span>
                       {item.penaltyApplied ? (
-                        <span className="font-mono text-[11px] font-bold text-magenta">
+                        <span className="font-mono text-[11px] font-bold text-rose-500">
                           -{item.penaltyApplied} PTS
                         </span>
                       ) : null}
                     </div>
 
-                    <span className="font-mono text-[10px] text-slate-400 shrink-0">
+                    <span className="font-mono text-[10px] text-muted-foreground shrink-0">
                       {formatEventTime(item.occurredAt)}
                     </span>
                   </div>
 
-                  <div className="mt-1.5 flex items-center justify-between text-xs">
+                  <div className="mt-2 flex items-center justify-between text-xs">
                     <div className="min-w-0 pr-2">
-                      <p className="font-semibold text-slate-200 truncate">
+                      <p className="font-semibold text-foreground truncate text-xs">
                         {item.studentName ?? `Candidate #${item.sessionId}`}
                       </p>
                       {typeof item.trustScore === 'number' && (
-                        <p className="text-[10px] font-mono text-slate-400">
+                        <p className="text-[10px] font-mono text-muted-foreground">
                           Trust remaining:{' '}
                           <span
                             className={
                               item.trustScore < 70
-                                ? 'text-magenta font-bold'
+                                ? 'text-rose-500 font-bold'
                                 : item.trustScore < 85
-                                ? 'text-amber font-bold'
-                                : 'text-emerald font-bold'
+                                ? 'text-amber-500 font-bold'
+                                : 'text-emerald-500 font-bold'
                             }
                           >
                             {item.trustScore}%
@@ -174,7 +174,7 @@ export function LiveFeedSidebar({
                     <button
                       type="button"
                       onClick={() => onReviewSession(item.sessionId)}
-                      className="shrink-0 flex items-center gap-1 rounded-lg border border-cyan/40 bg-cyan/10 px-2.5 py-1 text-[11px] font-mono font-semibold text-cyan hover:bg-cyan/20 hover:border-cyan transition-colors shadow-glow-cyan-sm"
+                      className="shrink-0 flex items-center gap-1 rounded-lg border border-brand/40 bg-brand/10 px-2.5 py-1 text-[11px] font-mono font-semibold text-brand hover:bg-brand/20 transition-colors shadow-sm cursor-pointer"
                     >
                       <Eye className="w-3 h-3" />
                       <span>Review</span>
@@ -188,9 +188,9 @@ export function LiveFeedSidebar({
       </div>
 
       {/* Feed Footer */}
-      <div className="border-t border-white/10 bg-[#090A14] p-2.5 text-center text-[10px] font-mono text-slate-400">
-        Socket Room: <span className="text-cyan font-bold">proctors</span> • Latency:{' '}
-        <span className="text-emerald font-bold">&lt;15ms</span>
+      <div className="border-t border-border/70 bg-surface-elevated/40 p-2.5 text-center text-[10px] font-mono text-muted-foreground">
+        Socket Room: <span className="text-brand font-bold">proctors</span> • Latency:{' '}
+        <span className="text-emerald-500 font-bold">&lt;15ms</span>
       </div>
     </div>
   );
