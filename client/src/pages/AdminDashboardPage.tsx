@@ -83,27 +83,27 @@ export function AdminDashboardPage({
   const selectedExamData = examDetailQuery.data;
 
   return (
-    <div className="min-h-screen bg-[#070810] text-slate-100 flex flex-col">
-      <div className="flex-1 max-w-[1720px] w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
+    <div className="min-h-screen bg-background text-foreground flex flex-col">
+      <div className="flex-1 max-w-[1600px] w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
         {/* Top Header & Navigation Tabs */}
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-white/10 pb-5">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-border pb-5">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <span className="flex h-2.5 w-2.5">
-                <span className="animate-ping absolute inline-flex h-2.5 w-2.5 rounded-full bg-violet opacity-75" />
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-violet" />
+              <span className="flex h-2.5 w-2.5 relative">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand opacity-75" />
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-brand" />
               </span>
-              <span className="font-mono text-xs uppercase tracking-widest text-violet-400 font-bold">
+              <span className="font-mono text-xs uppercase tracking-widest text-brand font-semibold">
                 Governance & Intelligence Deck
               </span>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white flex items-center gap-3">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground flex items-center gap-3">
               Administrator Console
             </h1>
           </div>
 
           {/* Navigation Tab Pills */}
-          <div className="flex items-center gap-1.5 rounded-2xl border border-white/10 bg-[#0C0E1C] p-1.5 shadow-lg overflow-x-auto scrollbar-none">
+          <div className="flex items-center gap-1.5 rounded-2xl border border-border bg-surface p-1 shadow-sm overflow-x-auto scrollbar-none">
             {[
               { id: 'overview', label: 'Overview Analytics', icon: BarChart3 },
               { id: 'exams', label: 'Exam Manager', icon: GraduationCap },
@@ -119,10 +119,10 @@ export function AdminDashboardPage({
                   key={t.id}
                   type="button"
                   onClick={() => setActiveTab(t.id as typeof activeTab)}
-                  className={`flex items-center gap-2 rounded-xl px-3.5 py-2 text-xs font-mono font-bold whitespace-nowrap transition-all ${
+                  className={`flex items-center gap-2 rounded-xl px-3.5 py-2 text-xs font-mono font-medium whitespace-nowrap transition-all cursor-pointer ${
                     isActive
-                      ? 'bg-cyan text-void shadow-glow-cyan-sm'
-                      : 'text-slate-400 hover:text-white hover:bg-white/5'
+                      ? 'bg-brand text-white shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-muted/40'
                   }`}
                 >
                   <Icon className="w-3.5 h-3.5" />
@@ -143,13 +143,13 @@ export function AdminDashboardPage({
         {/* ================================================================ */}
         {activeTab === 'exams' && (
           <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-2xl border border-white/10 bg-[#0C0E1C]/90 p-5 backdrop-blur-xl">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-2xl border border-border bg-surface p-5 shadow-sm">
               <div>
-                <h3 className="text-base font-bold text-white flex items-center gap-2">
-                  <GraduationCap className="w-5 h-5 text-cyan" />
+                <h3 className="text-base font-bold text-foreground flex items-center gap-2">
+                  <GraduationCap className="w-5 h-5 text-brand" />
                   <span>Curated Assessment Directory</span>
                 </h3>
-                <p className="text-xs font-mono text-slate-400 mt-0.5">
+                <p className="text-xs font-mono text-muted-foreground mt-0.5">
                   Configure assessment windows, duration, questions, and authoritative integrity thresholds
                 </p>
               </div>
@@ -176,52 +176,52 @@ export function AdminDashboardPage({
                 return (
                   <div
                     key={exam.id}
-                    className={`rounded-2xl border p-5 backdrop-blur-xl transition-all space-y-4 ${
+                    className={`rounded-2xl border p-5 shadow-sm transition-all space-y-4 ${
                       isSelected
-                        ? 'border-cyan bg-[#0E122A] shadow-glow-cyan-sm'
-                        : 'border-white/10 bg-[#0C0E1C]/90 hover:border-white/20'
+                        ? 'border-brand bg-surface-elevated ring-1 ring-brand/30'
+                        : 'border-border bg-surface hover:border-brand/40'
                     }`}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0 flex-1">
-                        <span className="font-mono text-[10px] text-cyan font-semibold">
+                        <span className="font-mono text-[10px] text-brand font-semibold">
                           EXAM #{exam.id}
                         </span>
-                        <h4 className="text-base font-bold text-white truncate" title={exam.title}>
+                        <h4 className="text-base font-bold text-foreground truncate" title={exam.title}>
                           {exam.title}
                         </h4>
                       </div>
                       <span
-                        className={`rounded-full px-2 py-0.5 font-mono text-[10px] font-bold ${
+                        className={`rounded-full px-2.5 py-0.5 font-mono text-[10px] font-semibold ${
                           isPublished
-                            ? 'bg-emerald/15 text-emerald border border-emerald/30'
-                            : 'bg-white/5 text-slate-400 border border-white/10'
+                            ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'
+                            : 'bg-muted text-muted-foreground border border-border'
                         }`}
                       >
                         {isPublished ? 'PUBLISHED' : 'DRAFT'}
                       </span>
                     </div>
 
-                    <p className="text-xs text-slate-400 line-clamp-2 min-h-[32px]">
+                    <p className="text-xs text-muted-foreground line-clamp-2 min-h-[32px]">
                       {exam.description || 'No detailed instructions provided.'}
                     </p>
 
-                    <div className="grid grid-cols-2 gap-2 text-xs font-mono border-t border-b border-white/5 py-2.5 text-slate-300">
+                    <div className="grid grid-cols-2 gap-2 text-xs font-mono border-t border-b border-border py-2.5 text-muted-foreground">
                       <div>
-                        <span className="text-slate-400 text-[10px]">DURATION:</span>
-                        <div className="font-bold text-white">{exam.duration_minutes} mins</div>
+                        <span className="text-muted-foreground text-[10px]">DURATION:</span>
+                        <div className="font-bold text-foreground tabular-nums">{exam.duration_minutes} mins</div>
                       </div>
                       <div>
-                        <span className="text-slate-400 text-[10px]">MIN TRUST:</span>
-                        <div className="font-bold text-magenta">{exam.min_trust_score}%</div>
+                        <span className="text-muted-foreground text-[10px]">MIN TRUST:</span>
+                        <div className="font-bold text-rose-500 tabular-nums">{exam.min_trust_score}%</div>
                       </div>
                       <div>
-                        <span className="text-slate-400 text-[10px]">QUESTIONS:</span>
-                        <div className="font-bold text-cyan">{exam.question_count ?? 20}</div>
+                        <span className="text-muted-foreground text-[10px]">QUESTIONS:</span>
+                        <div className="font-bold text-brand tabular-nums">{exam.question_count ?? 20}</div>
                       </div>
                       <div>
-                        <span className="text-slate-400 text-[10px]">TOTAL MARKS:</span>
-                        <div className="font-bold text-emerald">{exam.total_marks ?? 40}</div>
+                        <span className="text-muted-foreground text-[10px]">TOTAL MARKS:</span>
+                        <div className="font-bold text-emerald-500 tabular-nums">{exam.total_marks ?? 40}</div>
                       </div>
                     </div>
 
@@ -229,10 +229,10 @@ export function AdminDashboardPage({
                       <button
                         type="button"
                         onClick={() => setSelectedExamId(isSelected ? null : exam.id)}
-                        className={`rounded-lg px-3 py-1.5 text-xs font-mono font-bold transition-all ${
+                        className={`rounded-lg px-3 py-1.5 text-xs font-mono font-medium transition-all cursor-pointer ${
                           isSelected
-                            ? 'bg-cyan/20 text-cyan border border-cyan/40'
-                            : 'bg-white/5 text-slate-300 hover:bg-white/10'
+                            ? 'bg-brand/15 text-brand border border-brand/30'
+                            : 'bg-surface-elevated text-muted-foreground hover:text-foreground hover:bg-muted/50 border border-border'
                         }`}
                       >
                         {isSelected ? 'Close Questions' : 'Inspect Questions'}
@@ -245,7 +245,7 @@ export function AdminDashboardPage({
                             setEditingExam(exam);
                             setWizardOpen(true);
                           }}
-                          className="rounded-lg px-2.5 py-1.5 text-xs font-mono font-bold text-slate-300 hover:text-white hover:bg-white/10 transition-colors"
+                          className="rounded-lg px-2.5 py-1.5 text-xs font-mono font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 border border-border transition-colors cursor-pointer"
                         >
                           Edit
                         </button>
@@ -258,10 +258,10 @@ export function AdminDashboardPage({
                               isPublished: !isPublished,
                             })
                           }
-                          className={`rounded-lg px-2.5 py-1.5 text-xs font-mono font-bold transition-colors ${
+                          className={`rounded-lg px-2.5 py-1.5 text-xs font-mono font-medium transition-colors cursor-pointer ${
                             isPublished
-                              ? 'text-rose-400 hover:bg-rose-500/10'
-                              : 'text-emerald hover:bg-emerald/10'
+                              ? 'text-rose-500 hover:bg-rose-500/10 border border-rose-500/20'
+                              : 'text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 border border-emerald-500/20'
                           }`}
                         >
                           {isPublished ? 'Unpublish' : 'Publish'}
@@ -278,21 +278,21 @@ export function AdminDashboardPage({
               <motion.div
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="rounded-2xl border border-cyan/40 bg-[#0C0E1C]/95 p-5 backdrop-blur-xl shadow-2xl space-y-4"
+                className="rounded-2xl border border-brand/30 bg-surface-elevated p-5 shadow-xl space-y-4"
               >
-                <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                <div className="flex items-center justify-between border-b border-border pb-3">
                   <div>
-                    <h4 className="text-sm font-bold text-white font-mono">
+                    <h4 className="text-sm font-bold text-foreground font-mono">
                       Exam Questions: {selectedExamData.exam.title}
                     </h4>
-                    <p className="text-xs font-mono text-slate-400">
+                    <p className="text-xs font-mono text-muted-foreground">
                       {selectedExamData.questions.length} Questions Configured
                     </p>
                   </div>
                   <button
                     type="button"
                     onClick={() => setSelectedExamId(null)}
-                    className="p-1 rounded text-slate-400 hover:text-white"
+                    className="p-1 rounded text-muted-foreground hover:text-foreground cursor-pointer"
                   >
                     Close
                   </button>
@@ -302,26 +302,26 @@ export function AdminDashboardPage({
                   {selectedExamData.questions.map((q, idx) => (
                     <div
                       key={q.id}
-                      className="rounded-xl border border-white/5 bg-[#070914] p-3 text-xs font-mono flex items-start justify-between gap-3"
+                      className="rounded-xl border border-border bg-background p-3 text-xs font-mono flex items-start justify-between gap-3"
                     >
                       <div className="space-y-1 min-w-0 flex-1">
-                        <div className="text-white font-semibold">
-                          <span className="text-cyan font-bold mr-2">Q{idx + 1}.</span>
+                        <div className="text-foreground font-semibold">
+                          <span className="text-brand font-bold mr-2">Q{idx + 1}.</span>
                           {q.question_text}
                         </div>
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] text-slate-400 pt-1">
-                          <div className={q.correct_option === 'A' ? 'text-emerald font-bold' : ''}>A: {q.option_a}</div>
-                          <div className={q.correct_option === 'B' ? 'text-emerald font-bold' : ''}>B: {q.option_b}</div>
-                          <div className={q.correct_option === 'C' ? 'text-emerald font-bold' : ''}>C: {q.option_c}</div>
-                          <div className={q.correct_option === 'D' ? 'text-emerald font-bold' : ''}>D: {q.option_d}</div>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] text-muted-foreground pt-1">
+                          <div className={q.correct_option === 'A' ? 'text-emerald-500 font-bold' : ''}>A: {q.option_a}</div>
+                          <div className={q.correct_option === 'B' ? 'text-emerald-500 font-bold' : ''}>B: {q.option_b}</div>
+                          <div className={q.correct_option === 'C' ? 'text-emerald-500 font-bold' : ''}>C: {q.option_c}</div>
+                          <div className={q.correct_option === 'D' ? 'text-emerald-500 font-bold' : ''}>D: {q.option_d}</div>
                         </div>
                       </div>
 
                       <div className="flex items-center gap-2 shrink-0">
-                        <span className="rounded bg-emerald/20 border border-emerald/40 px-2 py-0.5 text-[10px] font-bold text-emerald">
+                        <span className="rounded bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
                           Key: {q.correct_option ?? 'N/A'}
                         </span>
-                        <span className="text-slate-400 text-[10px]">{q.marks} pts</span>
+                        <span className="text-muted-foreground text-[10px] tabular-nums">{q.marks} pts</span>
                         <button
                           type="button"
                           onClick={() =>
@@ -330,7 +330,7 @@ export function AdminDashboardPage({
                               questionId: q.id,
                             })
                           }
-                          className="p-1 text-slate-400 hover:text-magenta"
+                          className="p-1 text-muted-foreground hover:text-rose-500 cursor-pointer"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -362,27 +362,27 @@ export function AdminDashboardPage({
         {/* 6. DBMS TELEMETRY INSPECTOR */}
         {activeTab === 'db' && (
           <div className="space-y-6 font-mono text-xs">
-            <div className="rounded-2xl border border-white/10 bg-[#0C0E1C]/90 p-5 backdrop-blur-xl">
-              <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                <Database className="w-4 h-4 text-cyan" />
+            <div className="rounded-2xl border border-border bg-surface p-5 shadow-sm">
+              <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+                <Database className="w-4 h-4 text-brand" />
                 <span>Authoritative MySQL DBMS Telemetry (Information Schema)</span>
               </h3>
-              <p className="text-[11px] text-slate-400 mt-0.5">
+              <p className="text-[11px] text-muted-foreground mt-0.5">
                 Live introspection of triggers, stored procedures, SQL views, and physical tables
               </p>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Triggers */}
-              <div className="rounded-2xl border border-white/10 bg-[#0C0E1C]/90 p-5 space-y-3">
-                <h4 className="font-bold text-cyan text-xs uppercase tracking-wider">
+              <div className="rounded-2xl border border-border bg-surface p-5 space-y-3 shadow-sm">
+                <h4 className="font-bold text-brand text-xs uppercase tracking-wider">
                   Active Database Triggers
                 </h4>
                 <div className="space-y-2">
                   {(dbTelemetryQuery.data?.triggers ?? []).map((t, idx) => (
-                    <div key={idx} className="rounded-xl border border-white/5 bg-[#070812] p-2.5 flex items-center justify-between">
-                      <span className="font-bold text-white">{t.TRIGGER_NAME}</span>
-                      <span className="text-[10px] text-magenta font-semibold">
+                    <div key={idx} className="rounded-xl border border-border bg-background p-2.5 flex items-center justify-between">
+                      <span className="font-medium text-foreground">{t.TRIGGER_NAME}</span>
+                      <span className="text-[10px] text-rose-500 font-semibold">
                         {t.ACTION_TIMING} {t.EVENT_MANIPULATION} ON {t.EVENT_OBJECT_TABLE}
                       </span>
                     </div>
@@ -391,15 +391,15 @@ export function AdminDashboardPage({
               </div>
 
               {/* Stored Procedures */}
-              <div className="rounded-2xl border border-white/10 bg-[#0C0E1C]/90 p-5 space-y-3">
-                <h4 className="font-bold text-violet text-xs uppercase tracking-wider">
+              <div className="rounded-2xl border border-border bg-surface p-5 space-y-3 shadow-sm">
+                <h4 className="font-bold text-violet-500 text-xs uppercase tracking-wider">
                   Transactional Stored Procedures
                 </h4>
                 <div className="space-y-2">
                   {(dbTelemetryQuery.data?.routines ?? []).map((r, idx) => (
-                    <div key={idx} className="rounded-xl border border-white/5 bg-[#070812] p-2.5 flex items-center justify-between">
-                      <span className="font-bold text-white">{r.ROUTINE_NAME}</span>
-                      <span className="text-[10px] text-cyan font-semibold">
+                    <div key={idx} className="rounded-xl border border-border bg-background p-2.5 flex items-center justify-between">
+                      <span className="font-medium text-foreground">{r.ROUTINE_NAME}</span>
+                      <span className="text-[10px] text-brand font-semibold">
                         {r.ROUTINE_TYPE}
                       </span>
                     </div>
@@ -408,15 +408,15 @@ export function AdminDashboardPage({
               </div>
 
               {/* Views */}
-              <div className="rounded-2xl border border-white/10 bg-[#0C0E1C]/90 p-5 space-y-3">
-                <h4 className="font-bold text-emerald text-xs uppercase tracking-wider">
+              <div className="rounded-2xl border border-border bg-surface p-5 space-y-3 shadow-sm">
+                <h4 className="font-bold text-emerald-500 text-xs uppercase tracking-wider">
                   Authoritative SQL Views
                 </h4>
                 <div className="space-y-2">
                   {(dbTelemetryQuery.data?.views ?? []).map((v, idx) => (
-                    <div key={idx} className="rounded-xl border border-white/5 bg-[#070812] p-2.5 flex items-center justify-between">
-                      <span className="font-bold text-white">{v.TABLE_NAME}</span>
-                      <span className="text-[10px] text-emerald font-semibold">
+                    <div key={idx} className="rounded-xl border border-border bg-background p-2.5 flex items-center justify-between">
+                      <span className="font-medium text-foreground">{v.TABLE_NAME}</span>
+                      <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">
                         VIEW (UPDATABLE: {v.IS_UPDATABLE})
                       </span>
                     </div>
@@ -425,15 +425,15 @@ export function AdminDashboardPage({
               </div>
 
               {/* Tables */}
-              <div className="rounded-2xl border border-white/10 bg-[#0C0E1C]/90 p-5 space-y-3">
-                <h4 className="font-bold text-amber text-xs uppercase tracking-wider">
+              <div className="rounded-2xl border border-border bg-surface p-5 space-y-3 shadow-sm">
+                <h4 className="font-bold text-amber-500 text-xs uppercase tracking-wider">
                   Physical Storage Tables
                 </h4>
                 <div className="space-y-2">
                   {(dbTelemetryQuery.data?.tables ?? []).map((tb, idx) => (
-                    <div key={idx} className="rounded-xl border border-white/5 bg-[#070812] p-2.5 flex items-center justify-between">
-                      <span className="font-bold text-white">{tb.TABLE_NAME}</span>
-                      <span className="text-[10px] text-slate-400">
+                    <div key={idx} className="rounded-xl border border-border bg-background p-2.5 flex items-center justify-between">
+                      <span className="font-medium text-foreground">{tb.TABLE_NAME}</span>
+                      <span className="text-[10px] text-muted-foreground tabular-nums">
                         ~{tb.TABLE_ROWS} rows ({tb.ENGINE})
                       </span>
                     </div>

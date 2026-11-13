@@ -100,18 +100,18 @@ export function ViolationRulesManager() {
   return (
     <div className="space-y-6">
       {/* 1. TOP HEADER & DATABASE TRIGGER INTEGRITY NOTE */}
-      <div className="rounded-2xl border border-white/10 bg-[#0C0E1C]/90 p-5 backdrop-blur-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="rounded-2xl border border-border bg-surface p-5 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h3 className="text-base font-bold text-white flex items-center gap-2">
-            <Scale className="w-5 h-5 text-cyan" />
+          <h3 className="text-base font-bold text-foreground flex items-center gap-2">
+            <Scale className="w-5 h-5 text-brand" />
             <span>Authoritative Penalty Weight Engine (Violation_Types)</span>
           </h3>
-          <p className="text-xs font-mono text-slate-400 mt-0.5">
-            Database trigger <code className="text-cyan">trg_before_violation_insert</code> dynamically reads these weights on every incident insert.
+          <p className="text-xs font-mono text-muted-foreground mt-0.5">
+            Database trigger <code className="text-brand font-mono">trg_before_violation_insert</code> dynamically reads these weights on every incident insert.
           </p>
         </div>
 
-        <div className="rounded-xl border border-cyan/30 bg-cyan/10 px-3.5 py-2 text-xs font-mono text-cyan shrink-0 flex items-center gap-2">
+        <div className="rounded-xl border border-brand/20 bg-brand/5 px-3.5 py-2 text-xs font-mono text-brand shrink-0 flex items-center gap-2 font-medium">
           <Sparkles className="w-4 h-4" />
           <span>Dynamic DB-Backed Calibration</span>
         </div>
@@ -119,20 +119,20 @@ export function ViolationRulesManager() {
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* 2. EDITABLE PENALTY WEIGHTS TABLE (left 7 cols) */}
-        <div className="lg:col-span-7 rounded-2xl border border-white/10 bg-[#0C0E1C]/90 p-5 backdrop-blur-xl shadow-xl space-y-4">
+        <div className="lg:col-span-7 rounded-2xl border border-border bg-surface p-5 shadow-sm space-y-4">
           <div className="flex items-center justify-between">
-            <h4 className="text-sm font-bold text-white flex items-center gap-2">
-              <Sliders className="w-4 h-4 text-violet" />
+            <h4 className="text-sm font-bold text-foreground flex items-center gap-2">
+              <Sliders className="w-4 h-4 text-violet-500" />
               <span>Configured Penalty Rules</span>
             </h4>
-            <span className="text-[10px] font-mono text-slate-400">
+            <span className="text-[10px] font-mono text-muted-foreground">
               {violationTypes.length} Active Infraction Types
             </span>
           </div>
 
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs font-mono">
-              <thead className="border-b border-white/10 bg-[#121528] text-[11px] uppercase tracking-wider text-slate-400">
+              <thead className="border-b border-border bg-surface-elevated text-[11px] uppercase tracking-wider text-muted-foreground">
                 <tr>
                   <th className="p-3">Infraction Type</th>
                   <th className="p-3">Severity</th>
@@ -140,17 +140,17 @@ export function ViolationRulesManager() {
                   <th className="p-3 text-right">Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5">
+              <tbody className="divide-y divide-border">
                 {violationTypes.map((vt) => {
                   const currentPenalty = editedWeights[vt.id] ?? vt.penalty_points;
                   const isDirty = editedWeights[vt.id] !== undefined && editedWeights[vt.id] !== vt.penalty_points;
                   const isSaved = saveSuccessId === vt.id;
 
                   return (
-                    <tr key={vt.id} className="hover:bg-white/5 transition-colors">
+                    <tr key={vt.id} className="hover:bg-muted/40 transition-colors">
                       <td className="p-3">
-                        <span className="font-bold text-white">{vt.code}</span>
-                        <div className="text-[10px] text-slate-400">{vt.label}</div>
+                        <span className="font-medium text-foreground">{vt.code}</span>
+                        <div className="text-[10px] text-muted-foreground">{vt.label}</div>
                       </td>
 
                       <td className="p-3">
@@ -165,15 +165,15 @@ export function ViolationRulesManager() {
                             max={100}
                             value={currentPenalty}
                             onChange={(e) => handleWeightChange(vt.id, Number(e.target.value))}
-                            className="w-16 rounded-lg border border-white/10 bg-[#070812] p-1.5 text-center text-xs text-white font-bold font-mono focus:border-cyan focus:outline-none"
+                            className="w-16 rounded-lg border border-border bg-background p-1.5 text-center text-xs text-foreground font-bold font-mono focus:border-brand focus:ring-1 focus:ring-brand focus:outline-none"
                           />
-                          <span className="text-slate-400 text-[10px]">pts</span>
+                          <span className="text-muted-foreground text-[10px]">pts</span>
                         </div>
                       </td>
 
                       <td className="p-3 text-right">
                         {isSaved ? (
-                          <span className="text-[11px] font-bold text-emerald flex items-center justify-end gap-1">
+                          <span className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400 flex items-center justify-end gap-1">
                             <CheckCircle2 className="w-3.5 h-3.5" /> Deployed
                           </span>
                         ) : (
@@ -181,10 +181,10 @@ export function ViolationRulesManager() {
                             type="button"
                             disabled={!isDirty || updateMutation.isPending}
                             onClick={() => handleSaveWeight(vt.id, vt.penalty_points)}
-                            className={`rounded-lg px-2.5 py-1 text-[11px] font-bold transition-all ${
+                            className={`rounded-lg px-2.5 py-1 text-[11px] font-medium transition-all ${
                               isDirty
-                                ? 'bg-cyan text-void hover:bg-cyan-300 shadow-glow-cyan-sm'
-                                : 'bg-white/5 text-slate-500 cursor-not-allowed'
+                                ? 'bg-brand text-white hover:opacity-95 shadow-sm cursor-pointer'
+                                : 'bg-muted text-muted-foreground/50 cursor-not-allowed border border-border'
                             }`}
                           >
                             Save
@@ -200,28 +200,28 @@ export function ViolationRulesManager() {
         </div>
 
         {/* 3. LIVE CHEATING SIMULATOR (right 5 cols) */}
-        <div className="lg:col-span-5 rounded-2xl border border-white/10 bg-[#0C0E1C]/90 p-5 backdrop-blur-xl shadow-xl space-y-5">
+        <div className="lg:col-span-5 rounded-2xl border border-border bg-surface p-5 shadow-sm space-y-5">
           <div className="flex items-center justify-between">
             <div>
-              <h4 className="text-sm font-bold text-white flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-cyan" />
+              <h4 className="text-sm font-bold text-foreground flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-brand" />
                 <span>Live Infraction Simulator</span>
               </h4>
-              <p className="text-[11px] font-mono text-slate-400">
+              <p className="text-[11px] font-mono text-muted-foreground">
                 Interactive real-time trust penalty simulator
               </p>
             </div>
             <button
               type="button"
               onClick={handleResetSimulator}
-              className="text-[10px] font-mono text-slate-400 hover:text-white flex items-center gap-1"
+              className="text-[10px] font-mono text-muted-foreground hover:text-foreground flex items-center gap-1 cursor-pointer transition-colors"
             >
               <RotateCcw className="w-3 h-3" /> Reset
             </button>
           </div>
 
           {/* Simulated Score Gauge + Status */}
-          <div className="rounded-xl border border-white/10 bg-[#080914] p-4 flex items-center justify-between gap-4">
+          <div className="rounded-xl border border-border bg-surface-elevated p-4 flex items-center justify-between gap-4">
             <TrustRing
               score={simulatedScore}
               minThreshold={simulatorThreshold}
@@ -231,18 +231,18 @@ export function ViolationRulesManager() {
 
             <div className="flex-1 space-y-1.5 text-xs font-mono">
               <div className="flex justify-between">
-                <span className="text-slate-400">Initial Score:</span>
-                <span className="text-white font-bold">100%</span>
+                <span className="text-muted-foreground">Initial Score:</span>
+                <span className="text-foreground font-bold">100%</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-400">Total Deducted:</span>
-                <span className="text-magenta font-bold">-{totalDeductions} PTS</span>
+                <span className="text-muted-foreground">Total Deducted:</span>
+                <span className="text-rose-500 font-bold">-{totalDeductions} PTS</span>
               </div>
-              <div className="flex justify-between border-t border-white/5 pt-1">
-                <span className="text-slate-400">Resulting Score:</span>
+              <div className="flex justify-between border-t border-border pt-1">
+                <span className="text-muted-foreground">Resulting Score:</span>
                 <span
-                  className={`font-bold ${
-                    isTerminated ? 'text-magenta' : simulatedScore < 85 ? 'text-amber' : 'text-emerald'
+                  className={`font-bold tabular-nums ${
+                    isTerminated ? 'text-rose-500' : simulatedScore < 85 ? 'text-amber-500' : 'text-emerald-500'
                   }`}
                 >
                   {simulatedScore}%
@@ -250,15 +250,15 @@ export function ViolationRulesManager() {
               </div>
               <div className="pt-1 flex items-center justify-between">
                 {isTerminated ? (
-                  <span className="inline-block rounded-full border border-magenta/50 bg-magenta/20 px-2 py-0.5 text-[10px] font-bold text-magenta animate-pulse shadow-glow-magenta-sm">
+                  <span className="inline-block rounded-full border border-rose-500/40 bg-rose-500/15 px-2 py-0.5 text-[10px] font-bold text-rose-500 animate-pulse">
                     TERMINATED_CHEATING
                   </span>
                 ) : (
-                  <span className="inline-block rounded-full border border-emerald/40 bg-emerald/15 px-2 py-0.5 text-[10px] font-bold text-emerald">
+                  <span className="inline-block rounded-full border border-emerald-500/30 bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
                     SESSION ACTIVE
                   </span>
                 )}
-                <div className="flex items-center gap-2 text-[10px] text-slate-400">
+                <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
                   <span>Threshold:</span>
                   <input
                     type="range"
@@ -267,18 +267,18 @@ export function ViolationRulesManager() {
                     step={5}
                     value={simulatorThreshold}
                     onChange={(e) => setSimulatorThreshold(Number(e.target.value))}
-                    className="w-16 accent-cyan cursor-pointer"
+                    className="w-16 accent-brand cursor-pointer"
                   />
-                  <span className="text-cyan font-bold">{simulatorThreshold}%</span>
+                  <span className="text-brand font-bold">{simulatorThreshold}%</span>
                 </div>
               </div>
             </div>
           </div>
 
           {/* Interactive Simulation Summary Statement */}
-          <div className="rounded-xl border border-cyan/30 bg-cyan/5 p-3 text-xs font-mono text-cyan leading-relaxed">
+          <div className="rounded-xl border border-brand/20 bg-brand/5 p-3 text-xs font-mono text-brand leading-relaxed">
             💡 <strong>Live Calibration Preview:</strong>{' '}
-            <span className="text-slate-200">
+            <span className="text-foreground">
               {infractionSummaryParts.length > 0
                 ? `A student with ${infractionSummaryParts.join(' and ')} ends at ${simulatedScore}%.`
                 : 'A student with 0 violations remains at 100% (Clean).'}
@@ -287,7 +287,7 @@ export function ViolationRulesManager() {
 
           {/* Violation Stepper Counters */}
           <div className="space-y-2.5 font-mono text-xs">
-            <label className="block text-slate-300 font-bold text-[11px] uppercase tracking-wider">
+            <label className="block text-foreground font-semibold text-[11px] uppercase tracking-wider">
               Simulate Candidate Violations
             </label>
             {violationTypes.map((vt) => {
@@ -297,26 +297,26 @@ export function ViolationRulesManager() {
               return (
                 <div
                   key={vt.code}
-                  className="flex items-center justify-between rounded-xl border border-white/5 bg-[#070914] p-2.5"
+                  className="flex items-center justify-between rounded-xl border border-border bg-background p-2.5"
                 >
                   <div className="min-w-0 pr-2 truncate">
-                    <span className="font-bold text-white">{vt.code}</span>
-                    <span className="text-[10px] text-magenta ml-1.5">(-{penalty} pts)</span>
+                    <span className="font-medium text-foreground">{vt.code}</span>
+                    <span className="text-[10px] text-rose-500 ml-1.5 font-semibold">(-{penalty} pts)</span>
                   </div>
 
                   <div className="flex items-center gap-2 shrink-0">
                     <button
                       type="button"
                       onClick={() => handleUpdateSimCount(vt.code, -1)}
-                      className="h-7 w-7 rounded-lg border border-white/10 bg-white/5 flex items-center justify-center text-slate-300 hover:bg-white/10"
+                      className="h-7 w-7 rounded-lg border border-border bg-surface flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
                     >
                       <Minus className="w-3.5 h-3.5" />
                     </button>
-                    <span className="w-6 text-center font-bold text-white">{count}</span>
+                    <span className="w-6 text-center font-bold text-foreground tabular-nums">{count}</span>
                     <button
                       type="button"
                       onClick={() => handleUpdateSimCount(vt.code, 1)}
-                      className="h-7 w-7 rounded-lg border border-white/10 bg-white/5 flex items-center justify-center text-slate-300 hover:bg-white/10"
+                      className="h-7 w-7 rounded-lg border border-border bg-surface flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
                     >
                       <Plus className="w-3.5 h-3.5" />
                     </button>

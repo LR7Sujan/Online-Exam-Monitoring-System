@@ -25,9 +25,11 @@ import {
   Tooltip,
   ResponsiveContainer,
   Legend,
+  CartesianGrid,
 } from 'recharts';
 import { StatCard } from '../ui/StatCard';
 import { StatusPill } from '../ui/StatusPill';
+import { useTheme } from '../../context/ThemeContext';
 import { api } from '../../lib/api';
 
 interface DashboardData {
@@ -89,10 +91,24 @@ interface DashboardData {
   }>;
 }
 
-const DONUT_COLORS = ['#F43F5E', '#8B5CF6', '#22D3EE', '#F59E0B', '#10B981', '#38BDF8'];
+// Brand gradient & semantic donut palette
+const DONUT_COLORS = [
+  '#6366F1', // Brand Indigo
+  '#8B5CF6', // Violet
+  '#D946EF', // Fuchsia
+  '#0EA5E9', // Sky (Info)
+  '#F59E0B', // Amber (Caution)
+  '#F43F5E', // Rose (Danger)
+  '#10B981', // Emerald (Safe)
+];
 
 export function AdminOverviewDashboard() {
   const [daysWindow, setDaysWindow] = useState<number>(7);
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === 'dark';
+
+  const axisStroke = isDark ? '#71717A' : '#A1A1AA';
+  const gridStroke = isDark ? '#27272A' : '#E4E4E7';
 
   const query = useQuery({
     queryKey: ['admin-overview-dashboard', daysWindow],
@@ -114,7 +130,7 @@ export function AdminOverviewDashboard() {
     { range: '0-49%', count: Number(data?.trustHistogram?.bucket_0_49 ?? 0), fill: '#F43F5E' },
     { range: '50-69%', count: Number(data?.trustHistogram?.bucket_50_69 ?? 0), fill: '#F59E0B' },
     { range: '70-84%', count: Number(data?.trustHistogram?.bucket_70_84 ?? 0), fill: '#8B5CF6' },
-    { range: '85-99%', count: Number(data?.trustHistogram?.bucket_85_99 ?? 0), fill: '#22D3EE' },
+    { range: '85-99%', count: Number(data?.trustHistogram?.bucket_85_99 ?? 0), fill: '#6366F1' },
     { range: '100%', count: Number(data?.trustHistogram?.bucket_100 ?? 0), fill: '#10B981' },
   ];
 
@@ -136,13 +152,13 @@ export function AdminOverviewDashboard() {
 
   return (
     <div className="space-y-6">
-      {/* 1. TOP KPI CARDS */}
+      {/* 1. TOP KPI CARDS (Bento Row) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           label="Total Curated Exams"
           value={kpis.totalExams}
           accent="cyan"
-          icon={<GraduationCap className="w-5 h-5 text-cyan" />}
+          icon={<GraduationCap className="w-5 h-5 text-sky-500" />}
           changeLabel="proctoring active"
           sparklineData={[1, 2, 2, 3, 4, 4, kpis.totalExams]}
         />
@@ -150,7 +166,7 @@ export function AdminOverviewDashboard() {
           label="Registered Students"
           value={kpis.totalStudents}
           accent="violet"
-          icon={<Users className="w-5 h-5 text-violet" />}
+          icon={<Users className="w-5 h-5 text-violet-500" />}
           changeLabel="biometric verified"
           sparklineData={[40, 45, 52, 55, 58, 60, kpis.totalStudents]}
         />
@@ -158,7 +174,7 @@ export function AdminOverviewDashboard() {
           label="Monitored Sessions"
           value={kpis.totalSessions}
           accent="emerald"
-          icon={<Activity className="w-5 h-5 text-emerald" />}
+          icon={<Activity className="w-5 h-5 text-emerald-500" />}
           changeLabel="audit logged"
           sparklineData={[25, 28, 32, 35, 38, 40, kpis.totalSessions]}
         />
@@ -168,36 +184,36 @@ export function AdminOverviewDashboard() {
           suffix="%"
           decimals={1}
           accent="magenta"
-          icon={<ShieldAlert className="w-5 h-5 text-magenta" />}
+          icon={<ShieldAlert className="w-5 h-5 text-rose-500" />}
           changeLabel="threshold breaches"
           sparklineData={[4.2, 5.0, 6.1, 7.2, 7.0, 7.5, kpis.cheatingRate]}
         />
       </div>
 
-      {/* 2. VIOLATIONS OVER TIME + VIOLATION TYPE DISTRIBUTION */}
+      {/* 2. VIOLATIONS OVER TIME (2/3) + VIOLATION TYPE DISTRIBUTION (1/3) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Area Chart: Violations Over Time with 7/30 Day Toggle */}
-        <div className="lg:col-span-2 rounded-2xl border border-white/10 bg-[#0C0E1C]/90 p-5 backdrop-blur-xl shadow-xl space-y-4">
+        {/* Area Chart: Violations Over Time */}
+        <div className="lg:col-span-2 rounded-2xl border border-border bg-surface p-5 shadow-sm space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                <Clock className="w-4 h-4 text-cyan" />
+              <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+                <Clock className="w-4 h-4 text-brand" />
                 <span>Violations Telemetry Over Time</span>
               </h3>
-              <p className="text-[11px] font-mono text-slate-400">
+              <p className="text-[11px] font-mono text-muted-foreground">
                 Incident velocity across active candidate assessment windows
               </p>
             </div>
 
             {/* 7/30 Day Toggle Button */}
-            <div className="flex items-center gap-1 rounded-xl border border-white/10 bg-[#080914] p-1 font-mono text-xs">
+            <div className="flex items-center gap-1 rounded-xl border border-border bg-surface-elevated p-1 font-mono text-xs">
               <button
                 type="button"
                 onClick={() => setDaysWindow(7)}
-                className={`rounded-lg px-3 py-1 font-bold transition-all ${
+                className={`rounded-lg px-3 py-1 font-medium transition-all cursor-pointer ${
                   daysWindow === 7
-                    ? 'bg-cyan text-void shadow-glow-cyan-sm'
-                    : 'text-slate-400 hover:text-white'
+                    ? 'bg-brand text-white shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
                 7 Days
@@ -205,10 +221,10 @@ export function AdminOverviewDashboard() {
               <button
                 type="button"
                 onClick={() => setDaysWindow(30)}
-                className={`rounded-lg px-3 py-1 font-bold transition-all ${
+                className={`rounded-lg px-3 py-1 font-medium transition-all cursor-pointer ${
                   daysWindow === 30
-                    ? 'bg-cyan text-void shadow-glow-cyan-sm'
-                    : 'text-slate-400 hover:text-white'
+                    ? 'bg-brand text-white shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
                 30 Days
@@ -224,13 +240,14 @@ export function AdminOverviewDashboard() {
               >
                 <defs>
                   <linearGradient id="violationsGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#22D3EE" stopOpacity={0.4} />
-                    <stop offset="95%" stopColor="#22D3EE" stopOpacity={0.0} />
+                    <stop offset="5%" stopColor="#6366F1" stopOpacity={0.4} />
+                    <stop offset="95%" stopColor="#8B5CF6" stopOpacity={0.0} />
                   </linearGradient>
                 </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} opacity={0.5} vertical={false} />
                 <XAxis
                   dataKey="date"
-                  stroke="#475569"
+                  stroke={axisStroke}
                   fontSize={10}
                   tickLine={false}
                   tickFormatter={(val: string) => {
@@ -238,21 +255,21 @@ export function AdminOverviewDashboard() {
                     return `${d.getMonth() + 1}/${d.getDate()}`;
                   }}
                 />
-                <YAxis stroke="#475569" fontSize={10} tickLine={false} />
+                <YAxis stroke={axisStroke} fontSize={10} tickLine={false} />
                 <Tooltip
                   content={({ active, payload }) => {
                     if (active && payload && payload.length) {
                       const item = payload[0].payload;
                       return (
-                        <div className="rounded-xl border border-white/10 bg-[#0B0D1B]/95 p-3 text-xs font-mono shadow-2xl">
-                          <p className="text-white font-bold">{item.date}</p>
-                          <p className="text-cyan font-semibold">
+                        <div className="rounded-xl border border-border bg-surface/98 p-3 text-xs font-mono shadow-xl space-y-1">
+                          <p className="text-foreground font-bold">{item.date}</p>
+                          <p className="text-brand font-semibold">
                             Violations: {item.violation_count}
                           </p>
-                          <p className="text-magenta text-[11px]">
+                          <p className="text-rose-500 text-[11px] font-medium">
                             Points Deducted: -{item.total_penalty} PTS
                           </p>
-                          <p className="text-slate-400 text-[10px]">
+                          <p className="text-muted-foreground text-[10px]">
                             Candidates Impacted: {item.impacted_sessions}
                           </p>
                         </div>
@@ -264,7 +281,7 @@ export function AdminOverviewDashboard() {
                 <Area
                   type="monotone"
                   dataKey="violation_count"
-                  stroke="#22D3EE"
+                  stroke="#6366F1"
                   strokeWidth={2}
                   fill="url(#violationsGrad)"
                 />
@@ -274,13 +291,13 @@ export function AdminOverviewDashboard() {
         </div>
 
         {/* Animated Donut: Violation Type Distribution */}
-        <div className="rounded-2xl border border-white/10 bg-[#0C0E1C]/90 p-5 backdrop-blur-xl shadow-xl space-y-4">
+        <div className="rounded-2xl border border-border bg-surface p-5 shadow-sm space-y-4">
           <div>
-            <h3 className="text-sm font-bold text-white flex items-center gap-2">
-              <PieChartIcon className="w-4 h-4 text-violet" />
+            <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+              <PieChartIcon className="w-4 h-4 text-violet-500" />
               <span>Violation Distribution</span>
             </h3>
-            <p className="text-[11px] font-mono text-slate-400">
+            <p className="text-[11px] font-mono text-muted-foreground">
               Breakdown by infraction category
             </p>
           </div>
@@ -310,9 +327,9 @@ export function AdminOverviewDashboard() {
                     if (active && payload && payload.length) {
                       const item = payload[0].payload;
                       return (
-                        <div className="rounded-xl border border-white/10 bg-[#0B0D1B]/95 p-2.5 text-xs font-mono shadow-xl">
-                          <p className="text-white font-bold">{item.label}</p>
-                          <p className="text-cyan">{item.code}: {item.count} incidents</p>
+                        <div className="rounded-xl border border-border bg-surface/98 p-2.5 text-xs font-mono shadow-xl">
+                          <p className="text-foreground font-bold">{item.label}</p>
+                          <p className="text-brand font-medium">{item.code}: {item.count} incidents</p>
                         </div>
                       );
                     }
@@ -325,7 +342,7 @@ export function AdminOverviewDashboard() {
 
           <div className="space-y-1.5 text-xs font-mono max-h-24 overflow-y-auto scrollbar-thin">
             {(data?.violationDistribution ?? []).map((item, idx) => (
-              <div key={item.code} className="flex items-center justify-between text-slate-300">
+              <div key={item.code} className="flex items-center justify-between text-muted-foreground">
                 <div className="flex items-center gap-2 truncate">
                   <span
                     className="w-2.5 h-2.5 rounded-full shrink-0"
@@ -333,7 +350,7 @@ export function AdminOverviewDashboard() {
                   />
                   <span className="truncate">{item.label}</span>
                 </div>
-                <span className="font-bold text-white pl-2">{item.count}</span>
+                <span className="font-bold text-foreground pl-2">{item.count}</span>
               </div>
             ))}
           </div>
@@ -341,25 +358,25 @@ export function AdminOverviewDashboard() {
       </div>
 
       {/* 3. VIOLATION HEATMAP (hour of day x violation type) FROM vw_ViolationHeatmap */}
-      <div className="rounded-2xl border border-white/10 bg-[#0C0E1C]/90 p-5 backdrop-blur-xl shadow-xl space-y-4">
+      <div className="rounded-2xl border border-border bg-surface p-5 shadow-sm space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-sm font-bold text-white flex items-center gap-2">
-              <Flame className="w-4 h-4 text-amber" />
+            <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+              <Flame className="w-4 h-4 text-amber-500" />
               <span>Circadian Incident Heatmap (vw_ViolationHeatmap)</span>
             </h3>
-            <p className="text-[11px] font-mono text-slate-400">
+            <p className="text-[11px] font-mono text-muted-foreground">
               Aggregated frequency matrix: Hour of Day (0–23) × Infraction Type
             </p>
           </div>
-          <span className="text-[10px] font-mono text-slate-400">SQL View Driven</span>
+          <span className="text-[10px] font-mono text-muted-foreground">SQL View Driven</span>
         </div>
 
         <div className="overflow-x-auto pb-2">
           <div className="min-w-[700px] space-y-1.5 font-mono text-[10px]">
             {/* Hour Headers */}
-            <div className="grid grid-cols-25 gap-1 text-center text-slate-400">
-              <div className="text-left font-bold text-slate-300">TYPE</div>
+            <div className="grid grid-cols-25 gap-1 text-center text-muted-foreground">
+              <div className="text-left font-bold text-foreground">TYPE</div>
               {heatmapHours.map((h) => (
                 <div key={h}>{String(h).padStart(2, '0')}h</div>
               ))}
@@ -367,21 +384,25 @@ export function AdminOverviewDashboard() {
 
             {/* Matrix Rows */}
             {heatmapCodes.length === 0 ? (
-              <div className="py-6 text-center text-slate-400">No heatmap telemetry available.</div>
+              <div className="py-6 text-center text-muted-foreground">No heatmap telemetry available.</div>
             ) : (
               heatmapCodes.map((code) => (
                 <div key={code} className="grid grid-cols-25 gap-1 items-center">
-                  <div className="truncate text-left text-slate-300 font-semibold pr-1" title={code}>
+                  <div className="truncate text-left text-muted-foreground font-semibold pr-1" title={code}>
                     {code}
                   </div>
                   {heatmapHours.map((h) => {
                     const cnt = getHeatmapCount(h, code);
                     const intensity = cnt / maxHeatmapVal;
-                    let bg = 'bg-white/5';
+                    let bg = 'bg-muted/30 dark:bg-muted/20 text-transparent';
                     if (cnt > 0) {
-                      if (intensity > 0.6) bg = 'bg-magenta text-white font-bold shadow-glow-magenta-sm';
-                      else if (intensity > 0.3) bg = 'bg-amber text-void font-bold shadow-glow-amber-sm';
-                      else bg = 'bg-cyan/40 text-white';
+                      if (intensity > 0.6) {
+                        bg = 'bg-rose-500/85 text-white font-bold shadow-sm';
+                      } else if (intensity > 0.3) {
+                        bg = 'bg-amber-500/35 text-amber-700 dark:text-amber-300 font-bold';
+                      } else {
+                        bg = 'bg-brand/25 text-brand font-medium';
+                      }
                     }
                     return (
                       <div
@@ -403,13 +424,13 @@ export function AdminOverviewDashboard() {
       {/* 4. INTEGRITY STATUS PER EXAM (stacked bars) + TRUST SCORE HISTOGRAM */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Stacked Bar Chart: Integrity Status Split Per Exam */}
-        <div className="rounded-2xl border border-white/10 bg-[#0C0E1C]/90 p-5 backdrop-blur-xl shadow-xl space-y-4">
+        <div className="rounded-2xl border border-border bg-surface p-5 shadow-sm space-y-4">
           <div>
-            <h3 className="text-sm font-bold text-white flex items-center gap-2">
-              <Layers className="w-4 h-4 text-emerald" />
+            <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+              <Layers className="w-4 h-4 text-emerald-500" />
               <span>Integrity Status Split by Assessment</span>
             </h3>
-            <p className="text-[11px] font-mono text-slate-400">
+            <p className="text-[11px] font-mono text-muted-foreground">
               Clean vs Flagged vs Disqualified candidates per exam
             </p>
           </div>
@@ -420,24 +441,25 @@ export function AdminOverviewDashboard() {
                 data={data?.integritySplit ?? []}
                 margin={{ top: 10, right: 12, left: -20, bottom: 0 }}
               >
+                <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} opacity={0.5} vertical={false} />
                 <XAxis
                   dataKey="exam_title"
-                  stroke="#475569"
+                  stroke={axisStroke}
                   fontSize={10}
                   tickLine={false}
                   tickFormatter={(t: string) => t.slice(0, 12) + '...'}
                 />
-                <YAxis stroke="#475569" fontSize={10} tickLine={false} />
+                <YAxis stroke={axisStroke} fontSize={10} tickLine={false} />
                 <Tooltip
                   content={({ active, payload }) => {
                     if (active && payload && payload.length) {
                       const item = payload[0].payload;
                       return (
-                        <div className="rounded-xl border border-white/10 bg-[#0B0D1B]/95 p-3 text-xs font-mono shadow-xl space-y-1">
-                          <p className="text-white font-bold">{item.exam_title}</p>
-                          <p className="text-emerald">Clean: {item.clean_count}</p>
-                          <p className="text-amber">Flagged: {item.flagged_count}</p>
-                          <p className="text-magenta">Disqualified: {item.disqualified_count}</p>
+                        <div className="rounded-xl border border-border bg-surface/98 p-3 text-xs font-mono shadow-xl space-y-1">
+                          <p className="text-foreground font-bold">{item.exam_title}</p>
+                          <p className="text-emerald-500 font-medium">Clean: {item.clean_count}</p>
+                          <p className="text-amber-500 font-medium">Flagged: {item.flagged_count}</p>
+                          <p className="text-rose-500 font-medium">Disqualified: {item.disqualified_count}</p>
                         </div>
                       );
                     }
@@ -447,20 +469,20 @@ export function AdminOverviewDashboard() {
                 <Legend wrapperStyle={{ fontSize: 11, fontFamily: 'monospace' }} />
                 <Bar dataKey="clean_count" name="Clean" stackId="a" fill="#10B981" />
                 <Bar dataKey="flagged_count" name="Flagged" stackId="a" fill="#F59E0B" />
-                <Bar dataKey="disqualified_count" name="Disqualified" stackId="a" fill="#F43F5E" />
+                <Bar dataKey="disqualified_count" name="Disqualified" stackId="a" fill="#F43F5E" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
 
         {/* Histogram: Average Trust Score Distribution */}
-        <div className="rounded-2xl border border-white/10 bg-[#0C0E1C]/90 p-5 backdrop-blur-xl shadow-xl space-y-4">
+        <div className="rounded-2xl border border-border bg-surface p-5 shadow-sm space-y-4">
           <div>
-            <h3 className="text-sm font-bold text-white flex items-center gap-2">
-              <BarChart3 className="w-4 h-4 text-cyan" />
+            <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+              <BarChart3 className="w-4 h-4 text-brand" />
               <span>Candidate Trust Score Distribution</span>
             </h3>
-            <p className="text-[11px] font-mono text-slate-400">
+            <p className="text-[11px] font-mono text-muted-foreground">
               Population distribution across integrity tiers
             </p>
           </div>
@@ -471,16 +493,17 @@ export function AdminOverviewDashboard() {
                 data={histogramData}
                 margin={{ top: 10, right: 12, left: -20, bottom: 0 }}
               >
-                <XAxis dataKey="range" stroke="#475569" fontSize={10} tickLine={false} />
-                <YAxis stroke="#475569" fontSize={10} tickLine={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} opacity={0.5} vertical={false} />
+                <XAxis dataKey="range" stroke={axisStroke} fontSize={10} tickLine={false} />
+                <YAxis stroke={axisStroke} fontSize={10} tickLine={false} />
                 <Tooltip
                   content={({ active, payload }) => {
                     if (active && payload && payload.length) {
                       const item = payload[0].payload;
                       return (
-                        <div className="rounded-xl border border-white/10 bg-[#0B0D1B]/95 p-2.5 text-xs font-mono shadow-xl">
-                          <p className="text-white font-bold">Bucket: {item.range}</p>
-                          <p className="text-cyan">{item.count} Candidates</p>
+                        <div className="rounded-xl border border-border bg-surface/98 p-2.5 text-xs font-mono shadow-xl">
+                          <p className="text-foreground font-bold">Bucket: {item.range}</p>
+                          <p className="text-brand font-medium">{item.count} Candidates</p>
                         </div>
                       );
                     }
@@ -499,23 +522,23 @@ export function AdminOverviewDashboard() {
       </div>
 
       {/* 5. TOP 10 MOST-FLAGGED SESSIONS LEADERBOARD */}
-      <div className="rounded-2xl border border-white/10 bg-[#0C0E1C]/90 p-5 backdrop-blur-xl shadow-xl space-y-4">
+      <div className="rounded-2xl border border-border bg-surface p-5 shadow-sm space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-sm font-bold text-white flex items-center gap-2">
-              <Trophy className="w-4 h-4 text-magenta" />
+            <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+              <Trophy className="w-4 h-4 text-rose-500" />
               <span>Top 10 High-Risk Flagged Candidate Leaderboard</span>
             </h3>
-            <p className="text-[11px] font-mono text-slate-400">
+            <p className="text-[11px] font-mono text-muted-foreground">
               Candidate sessions with the highest incident frequencies and lowest integrity ratings
             </p>
           </div>
-          <span className="text-[10px] font-mono text-slate-400">Real-time Ranking</span>
+          <span className="text-[10px] font-mono text-muted-foreground">Real-time Ranking</span>
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs font-mono">
-            <thead className="border-b border-white/10 bg-[#121528] text-[11px] uppercase tracking-wider text-slate-400">
+            <thead className="border-b border-border bg-surface-elevated text-[11px] uppercase tracking-wider text-muted-foreground">
               <tr>
                 <th className="p-3 w-12 text-center">Rank</th>
                 <th className="p-3">Candidate</th>
@@ -526,34 +549,34 @@ export function AdminOverviewDashboard() {
                 <th className="p-3">Last Infraction</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/5">
+            <tbody className="divide-y divide-border">
               {(data?.leaderboard ?? []).map((row, idx) => (
-                <tr key={row.session_id} className="hover:bg-white/5 transition-colors">
-                  <td className="p-3 text-center font-bold text-magenta">
+                <tr key={row.session_id} className="hover:bg-muted/40 transition-colors">
+                  <td className="p-3 text-center font-bold text-rose-500">
                     #{idx + 1}
                   </td>
-                  <td className="p-3 font-semibold text-white">
+                  <td className="p-3 font-medium text-foreground">
                     {row.student_name}
-                    <div className="text-[10px] text-slate-400">{row.student_email}</div>
+                    <div className="text-[10px] text-muted-foreground">{row.student_email}</div>
                   </td>
-                  <td className="p-3 text-slate-300 truncate max-w-xs">{row.exam_title}</td>
-                  <td className="p-3 text-center font-bold">
+                  <td className="p-3 text-muted-foreground truncate max-w-xs">{row.exam_title}</td>
+                  <td className="p-3 text-center font-bold tabular-nums">
                     <span
                       className={
                         row.trust_score < 70
-                          ? 'text-magenta'
+                          ? 'text-rose-500'
                           : row.trust_score < 85
-                          ? 'text-amber'
-                          : 'text-emerald'
+                          ? 'text-amber-500'
+                          : 'text-emerald-500'
                       }
                     >
                       {row.trust_score}%
                     </span>
                   </td>
-                  <td className="p-3 text-center font-bold text-magenta">
+                  <td className="p-3 text-center font-bold font-mono text-rose-500">
                     {row.total_violations}
                     {Number(row.pending_violations) > 0 && (
-                      <span className="text-[10px] text-amber ml-1">
+                      <span className="text-[10px] text-amber-500 ml-1">
                         ({row.pending_violations} pending)
                       </span>
                     )}
@@ -561,7 +584,7 @@ export function AdminOverviewDashboard() {
                   <td className="p-3">
                     <StatusPill status={row.status} size="sm" />
                   </td>
-                  <td className="p-3 text-slate-400 text-[11px]">
+                  <td className="p-3 text-muted-foreground text-[11px]">
                     {row.last_violation_at ? new Date(row.last_violation_at).toLocaleTimeString() : 'N/A'}
                   </td>
                 </tr>

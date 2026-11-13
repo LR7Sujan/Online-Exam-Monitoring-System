@@ -194,35 +194,35 @@ export function ExamWizardModal({
   const maxNoFaceBeforeTermination = Math.max(1, Math.floor((100 - minTrustScore) / 20));
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-[#05060E]/85 backdrop-blur-xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-background/80 backdrop-blur-md">
       <motion.div
         initial={{ scale: 0.95, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.95, opacity: 0 }}
-        className="relative w-full max-w-3xl rounded-3xl border border-white/10 bg-[#0C0E1C] p-6 sm:p-7 shadow-2xl flex flex-col max-h-[90vh] overflow-hidden"
+        className="relative w-full max-w-3xl rounded-3xl border border-border bg-surface p-6 sm:p-7 shadow-2xl flex flex-col max-h-[90vh] overflow-hidden"
       >
         {/* Wizard Header + Stepper Progress */}
-        <div className="flex items-center justify-between border-b border-white/10 pb-4">
+        <div className="flex items-center justify-between border-b border-border/70 pb-4">
           <div>
-            <h3 className="text-lg font-bold text-white flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-cyan" />
+            <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-brand" />
               <span>{editingExam ? 'Modify Assessment Specification' : 'Architect New Examination'}</span>
             </h3>
-            <p className="text-xs font-mono text-slate-400">
+            <p className="text-xs font-mono text-muted-foreground">
               Multi-step configuration wizard with live threshold integrity bounds
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10"
+            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Animated Stepper Tabs */}
-        <div className="grid grid-cols-3 gap-2 border-b border-white/5 py-3 font-mono text-xs">
+        <div className="grid grid-cols-3 gap-2 border-b border-border/50 py-3 font-mono text-xs">
           {[
             { step: 1, label: '1. Exam Details' },
             { step: 2, label: '2. Windows & Threshold' },
@@ -232,12 +232,12 @@ export function ExamWizardModal({
               key={s.step}
               type="button"
               onClick={() => setCurrentStep(s.step as 1 | 2 | 3)}
-              className={`rounded-xl py-2 px-3 text-center transition-all ${
+              className={`rounded-xl py-2 px-3 text-center transition-all cursor-pointer ${
                 currentStep === s.step
-                  ? 'bg-cyan text-void font-bold shadow-glow-cyan-sm'
+                  ? 'bg-brand text-white font-medium shadow-sm'
                   : currentStep > s.step
-                  ? 'bg-emerald/15 text-emerald font-semibold border border-emerald/30'
-                  : 'bg-white/5 text-slate-400'
+                  ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-medium border border-emerald-500/30'
+                  : 'bg-surface-elevated text-muted-foreground border border-border'
               }`}
             >
               {s.label}
@@ -246,7 +246,7 @@ export function ExamWizardModal({
         </div>
 
         {/* Wizard Step Body */}
-        <div className="flex-1 overflow-y-auto py-5 space-y-5 scrollbar-thin scrollbar-thumb-white/10">
+        <div className="flex-1 overflow-y-auto py-5 space-y-5 scrollbar-thin">
           {/* ================================================================ */}
           {/* STEP 1: EXAM DETAILS */}
           {/* ================================================================ */}
@@ -257,7 +257,7 @@ export function ExamWizardModal({
               className="space-y-4"
             >
               <div>
-                <label className="block text-xs font-mono text-slate-300 font-semibold mb-1">
+                <label className="block text-xs font-mono text-foreground font-semibold mb-1">
                   EXAMINATION TITLE *
                 </label>
                 <input
@@ -265,12 +265,12 @@ export function ExamWizardModal({
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="e.g. CS-401: Distributed Database Systems & ACID Internals"
-                  className="w-full rounded-xl border border-white/10 bg-[#070812] p-3 text-sm text-white placeholder-slate-500 focus:border-cyan focus:outline-none font-mono"
+                  className="w-full rounded-xl border border-border bg-background p-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-brand focus:ring-1 focus:ring-brand focus:outline-none font-mono"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-mono text-slate-300 font-semibold mb-1">
+                <label className="block text-xs font-mono text-foreground font-semibold mb-1">
                   SYLLABUS & INSTRUCTIONS
                 </label>
                 <textarea
@@ -278,12 +278,12 @@ export function ExamWizardModal({
                   onChange={(e) => setDescription(e.target.value)}
                   rows={3}
                   placeholder="Comprehensive exam scope, proctoring guidelines, and allowed scratchpad policies..."
-                  className="w-full rounded-xl border border-white/10 bg-[#070812] p-3 text-xs text-white placeholder-slate-500 focus:border-cyan focus:outline-none font-mono"
+                  className="w-full rounded-xl border border-border bg-background p-3 text-xs text-foreground placeholder:text-muted-foreground focus:border-brand focus:ring-1 focus:ring-brand focus:outline-none font-mono"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-mono text-slate-300 font-semibold mb-1">
+                <label className="block text-xs font-mono text-foreground font-semibold mb-1">
                   DURATION (MINUTES) *
                 </label>
                 <input
@@ -292,7 +292,7 @@ export function ExamWizardModal({
                   max={360}
                   value={durationMinutes}
                   onChange={(e) => setDurationMinutes(Number(e.target.value))}
-                  className="w-full sm:w-48 rounded-xl border border-white/10 bg-[#070812] p-3 text-sm text-white focus:border-cyan focus:outline-none font-mono"
+                  className="w-full sm:w-48 rounded-xl border border-border bg-background p-3 text-sm text-foreground focus:border-brand focus:ring-1 focus:ring-brand focus:outline-none font-mono"
                 />
               </div>
             </motion.div>
@@ -309,42 +309,42 @@ export function ExamWizardModal({
             >
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-mono text-slate-300 font-semibold mb-1">
+                  <label className="block text-xs font-mono text-foreground font-semibold mb-1">
                     START WINDOW (CANDIDATES MAY ENTER) *
                   </label>
                   <input
                     type="datetime-local"
                     value={startWindow}
                     onChange={(e) => setStartWindow(e.target.value)}
-                    className="w-full rounded-xl border border-white/10 bg-[#070812] p-3 text-xs text-white focus:border-cyan focus:outline-none font-mono"
+                    className="w-full rounded-xl border border-border bg-background p-3 text-xs text-foreground focus:border-brand focus:ring-1 focus:ring-brand focus:outline-none font-mono"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-mono text-slate-300 font-semibold mb-1">
+                  <label className="block text-xs font-mono text-foreground font-semibold mb-1">
                     END WINDOW (SESSION CUTOFF) *
                   </label>
                   <input
                     type="datetime-local"
                     value={endWindow}
                     onChange={(e) => setEndWindow(e.target.value)}
-                    className="w-full rounded-xl border border-white/10 bg-[#070812] p-3 text-xs text-white focus:border-cyan focus:outline-none font-mono"
+                    className="w-full rounded-xl border border-border bg-background p-3 text-xs text-foreground focus:border-brand focus:ring-1 focus:ring-brand focus:outline-none font-mono"
                   />
                 </div>
               </div>
 
               {/* Threshold Slider with Live Danger Zone Preview */}
-              <div className="rounded-2xl border border-white/10 bg-[#070814]/80 p-5 space-y-4">
+              <div className="rounded-2xl border border-border bg-surface-elevated/70 p-5 space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h4 className="text-sm font-bold text-white flex items-center gap-2">
-                      <ShieldAlert className="w-4 h-4 text-magenta" />
+                    <h4 className="text-sm font-bold text-foreground flex items-center gap-2">
+                      <ShieldAlert className="w-4 h-4 text-rose-500" />
                       <span>Minimum Authoritative Trust Score: {minTrustScore}%</span>
                     </h4>
-                    <p className="text-xs text-slate-400">
-                      Crossing below this score triggers instant termination via <code className="text-magenta">trg_after_violation_insert</code>.
+                    <p className="text-xs text-muted-foreground">
+                      Crossing below this score triggers instant termination via <code className="text-rose-500 font-mono">trg_after_violation_insert</code>.
                     </p>
                   </div>
-                  <span className="font-mono text-xl font-extrabold text-magenta">
+                  <span className="font-mono text-xl font-extrabold text-rose-500 tabular-nums">
                     {minTrustScore}%
                   </span>
                 </div>
@@ -357,30 +357,30 @@ export function ExamWizardModal({
                   step={5}
                   value={minTrustScore}
                   onChange={(e) => setMinTrustScore(Number(e.target.value))}
-                  className="w-full accent-magenta h-2 bg-white/10 rounded-lg cursor-pointer"
+                  className="w-full accent-rose-500 h-2 bg-muted rounded-lg cursor-pointer"
                 />
 
                 {/* Live "Danger Zone" Visualizer */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between text-[11px] font-mono">
-                    <span className="text-magenta font-semibold">
+                    <span className="text-rose-500 font-semibold">
                       Danger Zone: 0% to {minTrustScore - 1}% (Auto-Disqualification)
                     </span>
-                    <span className="text-emerald font-semibold">
+                    <span className="text-emerald-500 font-semibold">
                       Safe Zone: {minTrustScore}% to 100%
                     </span>
                   </div>
 
-                  <div className="h-4 w-full rounded-full bg-white/10 overflow-hidden flex">
+                  <div className="h-4 w-full rounded-full bg-muted overflow-hidden flex shadow-inner">
                     <div
                       style={{ width: `${minTrustScore}%` }}
-                      className="bg-gradient-to-r from-magenta to-rose-600 shadow-glow-magenta-sm flex items-center justify-center text-[9px] font-mono font-bold text-white"
+                      className="bg-gradient-to-r from-rose-600 to-rose-500 flex items-center justify-center text-[9px] font-mono font-bold text-white"
                     >
                       TERMINATE
                     </div>
                     <div
                       style={{ width: `${100 - minTrustScore}%` }}
-                      className="bg-gradient-to-r from-amber to-emerald flex items-center justify-center text-[9px] font-mono font-bold text-void"
+                      className="bg-gradient-to-r from-amber-500 to-emerald-500 flex items-center justify-center text-[9px] font-mono font-bold text-white"
                     >
                       SAFE
                     </div>
@@ -388,11 +388,11 @@ export function ExamWizardModal({
                 </div>
 
                 {/* Live Simulation Infraction Calculation */}
-                <div className="rounded-xl border border-white/5 bg-black/40 p-3 text-xs font-mono space-y-1 text-slate-300">
-                  <p className="text-cyan font-bold">Rule Calibration Consequences:</p>
-                  <p>• A candidate is disqualified after <strong className="text-white">{maxTabSwitchesBeforeTermination + 1}</strong> Tab Switches (-15 pts each).</p>
-                  <p>• A candidate is disqualified after <strong className="text-white">{maxNoFaceBeforeTermination + 1}</strong> No-Face incidents (-20 pts each).</p>
-                  <p>• A candidate is disqualified after <strong className="text-white">{maxDevToolsBeforeTermination + 1}</strong> DevTools Inspection (-50 pts each).</p>
+                <div className="rounded-xl border border-border bg-background/70 p-3 text-xs font-mono space-y-1 text-muted-foreground">
+                  <p className="text-brand font-bold">Rule Calibration Consequences:</p>
+                  <p>• A candidate is disqualified after <strong className="text-foreground">{maxTabSwitchesBeforeTermination + 1}</strong> Tab Switches (-15 pts each).</p>
+                  <p>• A candidate is disqualified after <strong className="text-foreground">{maxNoFaceBeforeTermination + 1}</strong> No-Face incidents (-20 pts each).</p>
+                  <p>• A candidate is disqualified after <strong className="text-foreground">{maxDevToolsBeforeTermination + 1}</strong> DevTools Inspection (-50 pts each).</p>
                 </div>
               </div>
             </motion.div>
@@ -409,11 +409,11 @@ export function ExamWizardModal({
             >
               <div className="flex items-center justify-between">
                 <div>
-                  <h4 className="text-sm font-bold text-white flex items-center gap-2">
-                    <FileText className="w-4 h-4 text-cyan" />
+                  <h4 className="text-sm font-bold text-foreground flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-brand" />
                     <span>Curated Questions ({questions.length} Staged)</span>
                   </h4>
-                  <p className="text-xs text-slate-400">
+                  <p className="text-xs text-muted-foreground">
                     Draft questions or bulk-import via CSV
                   </p>
                 </div>
@@ -430,9 +430,9 @@ export function ExamWizardModal({
 
               {/* BULK CSV IMPORT PANEL */}
               {csvMode ? (
-                <div className="rounded-2xl border border-cyan/40 bg-[#070914] p-4 space-y-3 font-mono text-xs">
-                  <div className="flex items-center justify-between text-slate-300">
-                    <span className="font-bold text-cyan">PASTE CSV DATA</span>
+                <div className="rounded-2xl border border-border bg-surface-elevated p-4 space-y-3 font-mono text-xs">
+                  <div className="flex items-center justify-between text-muted-foreground">
+                    <span className="font-bold text-brand">PASTE CSV DATA</span>
                     <button
                       type="button"
                       onClick={() =>
@@ -442,7 +442,7 @@ export function ExamWizardModal({
                           `"Which isolation level prevents dirty reads but allows phantom reads?","READ UNCOMMITTED","READ COMMITTED","REPEATABLE READ","SERIALIZABLE","B",2`
                         )
                       }
-                      className="text-[10px] text-cyan hover:underline"
+                      className="text-[10px] text-brand hover:underline cursor-pointer"
                     >
                       Insert Example CSV
                     </button>
@@ -453,10 +453,10 @@ export function ExamWizardModal({
                     onChange={(e) => setCsvText(e.target.value)}
                     rows={6}
                     placeholder={`question_text,option_a,option_b,option_c,option_d,correct_option,marks\n"Question 1","Option A","Option B","Option C","Option D","A",2`}
-                    className="w-full rounded-xl border border-white/10 bg-[#04050A] p-3 text-xs text-white focus:border-cyan focus:outline-none"
+                    className="w-full rounded-xl border border-border bg-background p-3 text-xs text-foreground placeholder:text-muted-foreground focus:border-brand focus:ring-1 focus:ring-brand focus:outline-none"
                   />
 
-                  {csvError && <p className="text-xs text-magenta">{csvError}</p>}
+                  {csvError && <p className="text-xs text-rose-500">{csvError}</p>}
 
                   <div className="flex justify-end gap-2">
                     <NeonButton variant="ghost" size="sm" onClick={() => setCsvMode(false)}>
@@ -469,13 +469,13 @@ export function ExamWizardModal({
                 </div>
               ) : (
                 /* MANUAL QUESTION ADD FORM */
-                <div className="rounded-2xl border border-white/10 bg-[#070814] p-4 space-y-3">
+                <div className="rounded-2xl border border-border bg-surface-elevated/70 p-4 space-y-3">
                   <input
                     type="text"
                     value={newQText}
                     onChange={(e) => setNewQText(e.target.value)}
                     placeholder="Question prompt..."
-                    className="w-full rounded-xl border border-white/10 bg-[#04050A] p-2.5 text-xs text-white focus:border-cyan focus:outline-none font-mono"
+                    className="w-full rounded-xl border border-border bg-background p-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:border-brand focus:ring-1 focus:ring-brand focus:outline-none font-mono"
                   />
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -484,34 +484,34 @@ export function ExamWizardModal({
                       value={newOptA}
                       onChange={(e) => setNewOptA(e.target.value)}
                       placeholder="Option A *"
-                      className="rounded-lg border border-white/10 bg-[#04050A] p-2 text-xs text-white font-mono"
+                      className="rounded-lg border border-border bg-background p-2 text-xs text-foreground placeholder:text-muted-foreground font-mono focus:border-brand focus:outline-none"
                     />
                     <input
                       type="text"
                       value={newOptB}
                       onChange={(e) => setNewOptB(e.target.value)}
                       placeholder="Option B *"
-                      className="rounded-lg border border-white/10 bg-[#04050A] p-2 text-xs text-white font-mono"
+                      className="rounded-lg border border-border bg-background p-2 text-xs text-foreground placeholder:text-muted-foreground font-mono focus:border-brand focus:outline-none"
                     />
                     <input
                       type="text"
                       value={newOptC}
                       onChange={(e) => setNewOptC(e.target.value)}
                       placeholder="Option C"
-                      className="rounded-lg border border-white/10 bg-[#04050A] p-2 text-xs text-white font-mono"
+                      className="rounded-lg border border-border bg-background p-2 text-xs text-foreground placeholder:text-muted-foreground font-mono focus:border-brand focus:outline-none"
                     />
                     <input
                       type="text"
                       value={newOptD}
                       onChange={(e) => setNewOptD(e.target.value)}
                       placeholder="Option D"
-                      className="rounded-lg border border-white/10 bg-[#04050A] p-2 text-xs text-white font-mono"
+                      className="rounded-lg border border-border bg-background p-2 text-xs text-foreground placeholder:text-muted-foreground font-mono focus:border-brand focus:outline-none"
                     />
                   </div>
 
                   <div className="flex items-center justify-between pt-1">
                     <div className="flex items-center gap-3 font-mono text-xs">
-                      <span className="text-slate-400">Correct Option:</span>
+                      <span className="text-muted-foreground">Correct Option:</span>
                       {(['A', 'B', 'C', 'D'] as const).map((opt) => (
                         <label key={opt} className="flex items-center gap-1 cursor-pointer">
                           <input
@@ -519,22 +519,22 @@ export function ExamWizardModal({
                             name="correctOpt"
                             checked={newCorrect === opt}
                             onChange={() => setNewCorrect(opt)}
-                            className="accent-cyan"
+                            className="accent-brand"
                           />
-                          <span className="text-white font-bold">{opt}</span>
+                          <span className="text-foreground font-bold">{opt}</span>
                         </label>
                       ))}
                     </div>
 
                     <div className="flex items-center gap-2">
-                      <span className="font-mono text-xs text-slate-400">Marks:</span>
+                      <span className="font-mono text-xs text-muted-foreground">Marks:</span>
                       <input
                         type="number"
                         min={1}
                         max={20}
                         value={newMarks}
                         onChange={(e) => setNewMarks(Number(e.target.value))}
-                        className="w-14 rounded border border-white/10 bg-[#04050A] p-1 text-center text-xs text-white font-mono"
+                        className="w-14 rounded border border-border bg-background p-1 text-center text-xs text-foreground font-mono focus:border-brand focus:outline-none"
                       />
                       <NeonButton variant="primary" size="sm" leftIcon={<Plus className="w-3.5 h-3.5" />} onClick={handleAddQuestion}>
                         Add
@@ -550,19 +550,19 @@ export function ExamWizardModal({
                   {questions.map((q, idx) => (
                     <div
                       key={idx}
-                      className="flex items-center justify-between rounded-xl border border-white/5 bg-[#090B18] p-3 text-xs font-mono"
+                      className="flex items-center justify-between rounded-xl border border-border bg-surface-elevated p-3 text-xs font-mono"
                     >
                       <div className="min-w-0 flex-1 pr-3 truncate">
-                        <span className="font-bold text-cyan mr-2">Q{idx + 1}.</span>
-                        <span className="text-white truncate">{q.questionText}</span>
-                        <div className="text-[10px] text-slate-400">
-                          Answer: <strong className="text-emerald">{q.correctOption}</strong> ({q.marks} pts)
+                        <span className="font-bold text-brand mr-2">Q{idx + 1}.</span>
+                        <span className="text-foreground truncate">{q.questionText}</span>
+                        <div className="text-[10px] text-muted-foreground">
+                          Answer: <strong className="text-emerald-500">{q.correctOption}</strong> ({q.marks} pts)
                         </div>
                       </div>
                       <button
                         type="button"
                         onClick={() => setQuestions((prev) => prev.filter((_, i) => i !== idx))}
-                        className="p-1 rounded text-slate-400 hover:text-magenta"
+                        className="p-1 rounded text-muted-foreground hover:text-rose-500 cursor-pointer"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -575,7 +575,7 @@ export function ExamWizardModal({
         </div>
 
         {/* Wizard Footer Controls */}
-        <div className="border-t border-white/10 pt-4 flex items-center justify-between">
+        <div className="border-t border-border/70 pt-4 flex items-center justify-between">
           <div>
             {currentStep > 1 && (
               <NeonButton

@@ -84,13 +84,13 @@ export function ResultsAndExportTable() {
   return (
     <div className="space-y-4">
       {/* Action Bar: Filters + CSV & PDF Export Buttons */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3.5 rounded-2xl border border-white/10 bg-[#0C0E1C]/90 p-4 backdrop-blur-xl">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3.5 rounded-2xl border border-border bg-surface p-4 shadow-sm">
         <div className="flex items-center gap-2.5 flex-wrap">
           {/* Exam Selector */}
           <select
             value={selectedExamId}
             onChange={(e) => setSelectedExamId(e.target.value)}
-            className="rounded-xl border border-white/10 bg-[#070914] px-3.5 py-2 text-xs text-white focus:border-cyan focus:outline-none font-mono"
+            className="rounded-xl border border-border bg-background px-3.5 py-2 text-xs text-foreground focus:border-brand focus:ring-1 focus:ring-brand focus:outline-none font-mono"
           >
             <option value="ALL">All Examinations ({exams.length})</option>
             {exams.map((ex) => (
@@ -106,16 +106,16 @@ export function ResultsAndExportTable() {
               key={st}
               type="button"
               onClick={() => setIntegrityFilter(st)}
-              className={`rounded-xl px-3 py-1.5 text-xs font-mono font-bold transition-all ${
+              className={`rounded-xl px-3 py-1.5 text-xs font-mono font-medium transition-all cursor-pointer ${
                 integrityFilter === st
                   ? st === 'CLEAN'
-                    ? 'bg-emerald text-void shadow-glow-emerald-sm'
+                    ? 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/40 shadow-sm'
                     : st === 'FLAGGED'
-                    ? 'bg-amber text-void shadow-glow-amber-sm'
+                    ? 'bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/40 shadow-sm'
                     : st === 'DISQUALIFIED'
-                    ? 'bg-magenta text-white shadow-glow-magenta-sm'
-                    : 'bg-cyan text-void shadow-glow-cyan-sm'
-                  : 'bg-white/5 text-slate-300 hover:bg-white/10'
+                    ? 'bg-rose-500/20 text-rose-700 dark:text-rose-300 border border-rose-500/40 shadow-sm'
+                    : 'bg-brand text-white shadow-sm'
+                  : 'bg-surface-elevated text-muted-foreground hover:text-foreground hover:bg-muted/50 border border-border'
               }`}
             >
               {st}
@@ -126,13 +126,13 @@ export function ResultsAndExportTable() {
         {/* Search & Export Buttons */}
         <div className="flex items-center gap-2.5 flex-wrap">
           <div className="relative w-full sm:w-56">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <Search className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search candidate..."
-              className="w-full rounded-xl border border-white/10 bg-[#070914] pl-9 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:border-cyan focus:outline-none font-mono"
+              className="w-full rounded-xl border border-border bg-background pl-9 pr-3.5 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:border-brand focus:ring-1 focus:ring-brand focus:outline-none font-mono"
             />
           </div>
 
@@ -159,7 +159,7 @@ export function ResultsAndExportTable() {
       </div>
 
       {/* Graded Results Table */}
-      <div className="rounded-2xl border border-white/10 bg-[#0C0E1C]/90 backdrop-blur-xl shadow-2xl overflow-hidden print:border-none print:shadow-none">
+      <div className="rounded-2xl border border-border bg-surface shadow-sm overflow-hidden print:border-none print:shadow-none">
         {/* Printable Header for PDF */}
         <div className="hidden print:block p-6 border-b border-black text-black">
           <h1 className="text-2xl font-bold">ProctorIQ — Candidate Integrity & Examination Audit Report</h1>
@@ -168,7 +168,7 @@ export function ResultsAndExportTable() {
 
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs font-mono">
-            <thead className="border-b border-white/10 bg-[#121528] text-[11px] uppercase tracking-wider text-slate-400 print:text-black print:bg-gray-100">
+            <thead className="border-b border-border bg-surface-elevated text-[11px] uppercase tracking-wider text-muted-foreground print:text-black print:bg-gray-100">
               <tr>
                 <th className="p-3.5 w-16 text-center">Session</th>
                 <th className="p-3.5">Candidate</th>
@@ -180,10 +180,10 @@ export function ResultsAndExportTable() {
                 <th className="p-3.5 text-right">Graded At</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/5 print:text-black">
+            <tbody className="divide-y divide-border print:text-black">
               {filteredResults.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-12 text-center text-slate-400">
+                  <td colSpan={8} className="py-12 text-center text-muted-foreground">
                     No examination results match the specified criteria.
                   </td>
                 </tr>
@@ -194,36 +194,36 @@ export function ResultsAndExportTable() {
                   const trust = Number(r.final_trust_score ?? 100);
 
                   return (
-                    <tr key={r.session_id} className="hover:bg-white/5 transition-colors">
-                      <td className="p-3.5 text-center font-bold text-slate-400">
+                    <tr key={r.session_id} className="hover:bg-muted/40 transition-colors">
+                      <td className="p-3.5 text-center font-bold text-muted-foreground tabular-nums">
                         #{r.session_id}
                       </td>
 
-                      <td className="p-3.5 font-bold text-white print:text-black">
+                      <td className="p-3.5 font-medium text-foreground print:text-black">
                         {r.student_name ?? 'Candidate'}
-                        <div className="text-[10px] text-slate-400">{r.student_email}</div>
+                        <div className="text-[10px] text-muted-foreground">{r.student_email}</div>
                       </td>
 
-                      <td className="p-3.5 text-slate-300 truncate max-w-xs print:text-black" title={r.exam_title}>
+                      <td className="p-3.5 text-muted-foreground truncate max-w-xs print:text-black" title={r.exam_title}>
                         {r.exam_title}
                       </td>
 
-                      <td className="p-3.5 text-center font-bold text-white print:text-black">
+                      <td className="p-3.5 text-center font-medium text-foreground tabular-nums print:text-black">
                         {rawScore} / {totalMarks}
                       </td>
 
-                      <td className="p-3.5 text-center font-bold text-cyan print:text-black">
+                      <td className="p-3.5 text-center font-bold text-brand tabular-nums print:text-black">
                         {Number(r.percentage).toFixed(1)}%
                       </td>
 
-                      <td className="p-3.5 text-center font-bold">
+                      <td className="p-3.5 text-center font-bold tabular-nums">
                         <span
                           className={
                             trust < (r.min_trust_score ?? 50)
-                              ? 'text-magenta'
+                              ? 'text-rose-500'
                               : trust < 85
-                              ? 'text-amber'
-                              : 'text-emerald'
+                              ? 'text-amber-500'
+                              : 'text-emerald-500'
                           }
                         >
                           {trust}%
@@ -234,7 +234,7 @@ export function ResultsAndExportTable() {
                         <StatusPill status={r.integrity_status} size="sm" />
                       </td>
 
-                      <td className="p-3.5 text-slate-400 text-[11px] text-right whitespace-nowrap">
+                      <td className="p-3.5 text-muted-foreground text-[11px] text-right whitespace-nowrap">
                         {new Date(r.graded_at).toLocaleString([], {
                           month: 'short',
                           day: 'numeric',
