@@ -16,11 +16,9 @@ import {
   ResponsiveContainer,
   Tooltip,
 } from 'recharts';
-import { GlassCard } from '../components/ui/GlassCard';
 import { StatusPill } from '../components/ui/StatusPill';
 import { SeverityBadge } from '../components/ui/SeverityBadge';
 import { TrustRing } from '../components/ui/TrustRing';
-import { NeonButton } from '../components/ui/NeonButton';
 import { api } from '../lib/api';
 import type {
   ExamSession,
@@ -62,8 +60,8 @@ export function StudentResultPage() {
   if (query.isLoading) {
     return (
       <div className="max-w-4xl mx-auto py-12 px-4 space-y-6">
-        <div className="glass-card h-80 animate-pulse p-8" />
-        <div className="glass-card h-64 animate-pulse p-8" />
+        <div className="rounded-3xl border border-border bg-surface/60 h-80 animate-pulse p-8" />
+        <div className="rounded-3xl border border-border bg-surface/60 h-64 animate-pulse p-8" />
       </div>
     );
   }
@@ -71,18 +69,22 @@ export function StudentResultPage() {
   if (query.isError || !query.data) {
     return (
       <div className="max-w-xl mx-auto py-16 px-4">
-        <GlassCard className="p-8 text-center space-y-4">
-          <AlertTriangle className="w-10 h-10 text-magenta mx-auto" />
-          <h2 className="text-xl font-bold text-white">Integrity Report Unavailable</h2>
-          <p className="text-xs text-slate-400">
+        <div className="p-8 rounded-3xl border border-border bg-surface/90 text-center space-y-4 shadow-layered-md">
+          <AlertTriangle className="w-10 h-10 text-rose-500 mx-auto" />
+          <h2 className="text-xl font-bold text-foreground">Integrity Report Unavailable</h2>
+          <p className="text-xs text-muted-foreground">
             {query.error instanceof Error
               ? query.error.message
               : 'This exam session has not been submitted or graded yet.'}
           </p>
-          <NeonButton variant="primary" size="md" onClick={() => navigate('/student')}>
+          <button
+            type="button"
+            onClick={() => navigate('/student')}
+            className="py-2.5 px-5 rounded-xl font-semibold text-xs text-white bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 hover:opacity-95 shadow-sm transition-all cursor-pointer"
+          >
             Return to Candidate Console
-          </NeonButton>
-        </GlassCard>
+          </button>
+        </div>
       </div>
     );
   }
@@ -107,13 +109,13 @@ export function StudentResultPage() {
       <div className="flex items-center justify-between">
         <Link
           to="/student"
-          className="inline-flex items-center gap-1.5 text-xs font-mono text-slate-400 hover:text-cyan transition-colors"
+          className="inline-flex items-center gap-1.5 text-xs font-mono text-muted-foreground hover:text-foreground transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
           <span>Back to Candidate Dashboard</span>
         </Link>
 
-        <span className="font-mono text-xs text-cyan">
+        <span className="font-mono text-xs text-brand font-semibold">
           OFFICIAL INNODB TRANSACTION EVALUATION
         </span>
       </div>
@@ -124,45 +126,47 @@ export function StudentResultPage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
       >
-        <GlassCard
-          glow={
-            integrityStatus === 'DISQUALIFIED'
-              ? 'magenta'
-              : integrityStatus === 'FLAGGED'
-              ? 'amber'
-              : 'emerald'
-          }
-          className="p-6 sm:p-8 relative overflow-hidden"
-        >
-          {/* Celebratory or Somber Atmospheric Aura */}
+        <div className="p-6 sm:p-8 rounded-3xl border border-border bg-surface/90 backdrop-blur-xl shadow-layered-md relative overflow-hidden space-y-6">
+          {/* Top highlight bar */}
+          <div
+            className={`absolute top-0 left-0 right-0 h-1.5 ${
+              integrityStatus === 'DISQUALIFIED'
+                ? 'bg-gradient-to-r from-rose-500 to-red-600'
+                : integrityStatus === 'FLAGGED'
+                ? 'bg-gradient-to-r from-amber-500 to-orange-500'
+                : 'bg-gradient-to-r from-emerald-500 via-teal-500 to-indigo-500'
+            }`}
+          />
+
+          {/* Celebratory or Warning Atmospheric Aura */}
           {integrityStatus === 'CLEAN' && (
-            <div className="absolute -top-16 -right-16 w-64 h-64 rounded-full bg-emerald/10 blur-3xl pointer-events-none" />
+            <div className="absolute -top-16 -right-16 w-64 h-64 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
           )}
           {integrityStatus === 'DISQUALIFIED' && (
-            <div className="absolute -top-16 -right-16 w-64 h-64 rounded-full bg-magenta/15 blur-3xl pointer-events-none" />
+            <div className="absolute -top-16 -right-16 w-64 h-64 rounded-full bg-rose-500/15 blur-3xl pointer-events-none" />
           )}
 
-          <div className="flex flex-wrap items-start justify-between gap-4 pb-6 border-b border-white/10">
+          <div className="flex flex-wrap items-start justify-between gap-4 pb-6 border-b border-border/70">
             <div className="space-y-1">
               <div className="flex items-center gap-2">
-                <Award className="w-5 h-5 text-cyan" />
-                <span className="font-mono text-xs uppercase tracking-widest text-cyan font-semibold">
+                <Award className="w-5 h-5 text-brand" />
+                <span className="font-mono text-xs uppercase tracking-widest text-brand font-semibold">
                   Examination Result & Integrity Certificate
                 </span>
               </div>
-              <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+              <h1 className="text-2xl sm:text-3xl font-extrabold text-foreground tracking-tight">
                 {result.exam_title ?? session.exam_title ?? 'Assessment Evaluation'}
               </h1>
-              <p className="text-xs font-mono text-slate-400">
+              <p className="text-xs font-mono text-muted-foreground">
                 SESSION #{result.session_id} • GRADED VIA{' '}
-                <span className="text-cyan">sp_SubmitAndGradeExam</span> •{' '}
+                <span className="text-brand font-semibold">sp_SubmitAndGradeExam</span> •{' '}
                 {new Date(result.graded_at).toLocaleString()}
               </p>
             </div>
 
             {/* Integrity Status Badge */}
             <div className="flex flex-col items-end gap-1.5">
-              <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400">
+              <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
                 Official Integrity Rating
               </span>
               <StatusPill status={integrityStatus} size="md" />
@@ -170,10 +174,10 @@ export function StudentResultPage() {
           </div>
 
           {/* Core Metrics: Score Reveal, Donut, and TrustRing */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-center py-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center py-2">
             {/* 1. Animated Score Reveal */}
-            <div className="flex flex-col items-center justify-center text-center p-4 rounded-2xl border border-white/5 bg-[#0A0B14]/60 space-y-2">
-              <span className="text-xs font-mono uppercase tracking-wider text-slate-400">
+            <div className="flex flex-col items-center justify-center text-center p-6 rounded-2xl border border-border bg-surface-elevated/70 space-y-2">
+              <span className="text-xs font-mono uppercase tracking-wider text-muted-foreground">
                 Grade Percentage
               </span>
               <div className="flex items-baseline justify-center">
@@ -181,26 +185,26 @@ export function StudentResultPage() {
                   initial={{ scale: 0.5, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
                   transition={{ type: 'spring', stiffness: 250, damping: 20 }}
-                  className={`telemetry-num text-5xl font-black tracking-tight ${
+                  className={`font-mono text-5xl font-black tracking-tight ${
                     percentage >= 70
-                      ? 'text-emerald'
+                      ? 'text-emerald-500'
                       : percentage >= 50
-                      ? 'text-amber'
-                      : 'text-magenta'
+                      ? 'text-amber-500'
+                      : 'text-rose-500'
                   }`}
                 >
                   {animatedPercentage}
                 </motion.span>
-                <span className="font-mono text-lg text-slate-400 ml-1">%</span>
+                <span className="font-mono text-lg text-muted-foreground ml-1">%</span>
               </div>
-              <div className="text-xs font-mono text-slate-300">
-                Score: <strong className="text-white">{rawScore}</strong> / {totalMarks} Marks
+              <div className="text-xs font-mono text-foreground">
+                Score: <strong className="text-foreground">{rawScore}</strong> / {totalMarks} Marks
               </div>
             </div>
 
             {/* 2. Donut Breakdown Chart */}
-            <div className="flex flex-col items-center justify-center text-center p-4 rounded-2xl border border-white/5 bg-[#0A0B14]/60 space-y-2">
-              <span className="text-xs font-mono uppercase tracking-wider text-slate-400">
+            <div className="flex flex-col items-center justify-center text-center p-6 rounded-2xl border border-border bg-surface-elevated/70 space-y-2">
+              <span className="text-xs font-mono uppercase tracking-wider text-muted-foreground">
                 Performance Breakdown
               </span>
               <div className="w-36 h-36 relative">
@@ -221,33 +225,34 @@ export function StudentResultPage() {
                     </Pie>
                     <Tooltip
                       contentStyle={{
-                        backgroundColor: '#101222',
-                        borderColor: 'rgba(255,255,255,0.1)',
-                        borderRadius: '10px',
+                        backgroundColor: 'var(--surface-elevated, #18181B)',
+                        borderColor: 'var(--border, #27272A)',
+                        color: 'var(--foreground, #FAFAFA)',
+                        borderRadius: '12px',
                         fontSize: '11px',
-                        fontFamily: 'JetBrains Mono',
+                        fontFamily: 'Geist Mono, monospace',
                       }}
                     />
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                  <span className="text-xs font-mono font-bold text-white">{rawScore}</span>
-                  <span className="text-[9px] font-mono text-slate-400">PTS</span>
+                  <span className="text-xs font-mono font-bold text-foreground">{rawScore}</span>
+                  <span className="text-[9px] font-mono text-muted-foreground">PTS</span>
                 </div>
               </div>
-              <div className="flex items-center gap-3 text-[10px] font-mono text-slate-400">
+              <div className="flex items-center gap-3 text-[10px] font-mono text-muted-foreground">
                 <span className="flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full bg-emerald" /> Earned
+                  <span className="w-2 h-2 rounded-full bg-emerald-500" /> Earned
                 </span>
                 <span className="flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full bg-magenta" /> Lost
+                  <span className="w-2 h-2 rounded-full bg-rose-500" /> Lost
                 </span>
               </div>
             </div>
 
             {/* 3. Final Trust Index */}
-            <div className="flex flex-col items-center justify-center text-center p-4 rounded-2xl border border-white/5 bg-[#0A0B14]/60 space-y-2">
-              <span className="text-xs font-mono uppercase tracking-wider text-slate-400">
+            <div className="flex flex-col items-center justify-center text-center p-6 rounded-2xl border border-border bg-surface-elevated/70 space-y-2">
+              <span className="text-xs font-mono uppercase tracking-wider text-muted-foreground">
                 Final Trust Index
               </span>
               <TrustRing
@@ -256,7 +261,7 @@ export function StudentResultPage() {
                 size="md"
                 sublabel={integrityStatus}
               />
-              <span className="text-[11px] font-mono text-slate-400">
+              <span className="text-[11px] font-mono text-muted-foreground">
                 {integrityStatus === 'DISQUALIFIED'
                   ? 'Locked: Threshold Breached'
                   : 'Authenticated Record'}
@@ -265,95 +270,95 @@ export function StudentResultPage() {
           </div>
 
           {/* Assessment Verdict Explanation */}
-          <div className="mt-4 p-4 rounded-2xl border border-white/10 bg-[#0A0B14]/80 text-xs font-mono flex items-start gap-3">
+          <div className="mt-4 p-4 rounded-2xl border border-border bg-surface-elevated/70 text-xs font-mono flex items-start gap-3">
             {integrityStatus === 'CLEAN' ? (
               <>
-                <CheckCircle2 className="w-5 h-5 text-emerald shrink-0 mt-0.5" />
-                <div className="space-y-0.5 text-slate-300">
-                  <span className="text-emerald font-bold">CLEAN INTEGRITY VERDICT:</span>{' '}
+                <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
+                <div className="space-y-0.5 text-foreground">
+                  <span className="text-emerald-500 font-bold">CLEAN INTEGRITY VERDICT:</span>{' '}
                   No persistent threshold violations occurred. Stored procedure{' '}
-                  <code className="text-cyan">sp_SubmitAndGradeExam</code> verified full academic
+                  <code className="text-brand font-semibold">sp_SubmitAndGradeExam</code> verified full academic
                   compliance.
                 </div>
               </>
             ) : integrityStatus === 'FLAGGED' ? (
               <>
-                <AlertTriangle className="w-5 h-5 text-amber shrink-0 mt-0.5" />
-                <div className="space-y-0.5 text-slate-300">
-                  <span className="text-amber font-bold">FLAGGED INTEGRITY VERDICT:</span> Minor
+                <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+                <div className="space-y-0.5 text-foreground">
+                  <span className="text-amber-500 font-bold">FLAGGED INTEGRITY VERDICT:</span> Minor
                   violations were recorded during your examination. Your score has been calculated
                   pending manual proctor review of flagged telemetry.
                 </div>
               </>
             ) : (
               <>
-                <ShieldAlert className="w-5 h-5 text-magenta shrink-0 mt-0.5" />
-                <div className="space-y-0.5 text-slate-300">
-                  <span className="text-magenta font-bold">DISQUALIFIED VERDICT:</span> Multiple
+                <ShieldAlert className="w-5 h-5 text-rose-500 shrink-0 mt-0.5" />
+                <div className="space-y-0.5 text-foreground">
+                  <span className="text-rose-500 font-bold">DISQUALIFIED VERDICT:</span> Multiple
                   critical infractions dropped your trust index below the minimum threshold of{' '}
                   {minThreshold}%. The session was terminated via trigger{' '}
-                  <code className="text-cyan">trg_after_violation_insert</code>.
+                  <code className="text-brand font-semibold">trg_after_violation_insert</code>.
                 </div>
               </>
             )}
           </div>
-        </GlassCard>
+        </div>
       </motion.div>
 
       {/* Violation Audit History Section */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <ShieldAlert className="w-4 h-4 text-magenta" />
-            <h2 className="text-lg font-bold text-white tracking-tight">
+            <ShieldAlert className="w-4 h-4 text-rose-500" />
+            <h2 className="text-lg font-bold text-foreground tracking-tight">
               Proctoring Incident Audit Ledger
             </h2>
           </div>
-          <span className="font-mono text-xs text-slate-400">
+          <span className="font-mono text-xs text-muted-foreground">
             {violations.length} {violations.length === 1 ? 'event' : 'events'} recorded
           </span>
         </div>
 
         {violations.length === 0 ? (
-          <GlassCard className="p-8 text-center space-y-2">
-            <CheckCircle2 className="w-8 h-8 text-emerald mx-auto" />
-            <h4 className="text-sm font-semibold text-white">Clean Examination Log</h4>
-            <p className="text-xs text-slate-400 max-w-sm mx-auto">
-              Zero proctoring violations recorded in MySQL <code className="text-cyan">Proctoring_Logs</code>.
+          <div className="p-8 text-center rounded-2xl border border-border bg-surface/80 space-y-2">
+            <CheckCircle2 className="w-8 h-8 text-emerald-500 mx-auto" />
+            <h4 className="text-sm font-semibold text-foreground">Clean Examination Log</h4>
+            <p className="text-xs text-muted-foreground max-w-sm mx-auto leading-relaxed">
+              Zero proctoring violations recorded in MySQL <code className="text-brand">Proctoring_Logs</code>.
               Your trust score remained at 100% throughout the session.
             </p>
-          </GlassCard>
+          </div>
         ) : (
           <div className="space-y-3">
             {violations.map((v) => (
-              <GlassCard
+              <div
                 key={v.log_id}
-                className="p-4 flex flex-wrap items-center justify-between gap-4"
+                className="p-4 rounded-2xl border border-border bg-surface/80 hover:bg-surface transition-colors flex flex-wrap items-center justify-between gap-4"
               >
                 <div className="space-y-1">
                   <div className="flex items-center gap-2.5">
                     <SeverityBadge severity={v.severity} size="sm" />
-                    <span className="font-mono text-sm font-bold text-white">
+                    <span className="font-mono text-sm font-bold text-foreground">
                       {v.violation_code}
                     </span>
-                    <span className="font-mono text-xs text-magenta font-semibold">
+                    <span className="font-mono text-xs text-rose-500 font-semibold">
                       -{v.penalty_applied} PTS
                     </span>
                   </div>
-                  <p className="text-xs text-slate-400">
+                  <p className="text-xs text-muted-foreground">
                     {v.violation_label} • Timestamp: {new Date(v.occurred_at).toLocaleTimeString()}
                   </p>
                 </div>
 
                 <div className="flex items-center gap-3">
                   <div className="text-right">
-                    <span className="text-[10px] font-mono text-slate-400 block uppercase">
+                    <span className="text-[10px] font-mono text-muted-foreground block uppercase">
                       Proctor Review
                     </span>
                     <StatusPill status={v.proctor_review_status} size="sm" />
                   </div>
                 </div>
-              </GlassCard>
+              </div>
             ))}
           </div>
         )}
@@ -361,10 +366,11 @@ export function StudentResultPage() {
 
       {/* Return Action */}
       <div className="text-center pt-4">
-        <Link to="/student">
-          <NeonButton variant="outline" size="md">
-            Return to Candidate Dashboard
-          </NeonButton>
+        <Link
+          to="/student"
+          className="inline-flex items-center gap-2 py-2.5 px-5 rounded-xl text-xs font-semibold text-foreground bg-surface-elevated hover:bg-muted border border-border transition-colors shadow-sm"
+        >
+          Return to Candidate Dashboard
         </Link>
       </div>
     </div>

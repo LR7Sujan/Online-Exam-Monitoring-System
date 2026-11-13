@@ -10,9 +10,7 @@ import {
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { GlassCard } from '../components/ui/GlassCard';
 import { StatusPill } from '../components/ui/StatusPill';
-import { NeonButton } from '../components/ui/NeonButton';
 import { Tabs } from '../components/ui/Tabs';
 import { PreExamChecklistModal } from '../components/student/PreExamChecklistModal';
 import { api } from '../lib/api';
@@ -88,7 +86,6 @@ export function StudentDashboardPage() {
   const handleStartClick = (exam: ExamItem) => {
     setStartError(null);
     if (exam.session_id && exam.session_status === 'IN_PROGRESS') {
-      // Resume active session directly
       navigate(`/student/session/${exam.session_id}`);
       return;
     }
@@ -106,9 +103,7 @@ export function StudentDashboardPage() {
   // Categorize exams
   const now = Date.now();
   const liveExams = exams.filter((e) => {
-    const isCompleted =
-      e.session_status &&
-      e.session_status !== 'IN_PROGRESS';
+    const isCompleted = e.session_status && e.session_status !== 'IN_PROGRESS';
     if (isCompleted) return false;
 
     const start = new Date(e.start_window).getTime();
@@ -137,30 +132,30 @@ export function StudentDashboardPage() {
   return (
     <div className="space-y-8 pb-16">
       {/* Candidate Hero Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/10 pb-6">
+      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border/70 pb-6">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
-            <GraduationCap className="w-5 h-5 text-cyan" />
-            <span className="font-mono text-xs uppercase tracking-wider text-cyan font-semibold">
+            <GraduationCap className="w-5 h-5 text-brand" />
+            <span className="font-mono text-xs uppercase tracking-wider text-brand font-semibold">
               Candidate Examination Console
             </span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-foreground tracking-tight">
             Welcome, {user?.fullName}
           </h1>
-          <p className="text-xs sm:text-sm text-slate-400 max-w-xl">
+          <p className="text-xs sm:text-sm text-muted-foreground max-w-xl leading-relaxed">
             ProctorIQ assesses submissions in real time. Academic trust score starts at 100% and is
             enforced by MySQL triggers with automatic penalty deductions.
           </p>
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="p-3 rounded-2xl border border-white/10 bg-[#101222]/80 text-right">
-            <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 block">
+          <div className="p-3 rounded-2xl border border-border bg-surface/80 shadow-sm text-right">
+            <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground block">
               Identity Status
             </span>
-            <span className="text-xs font-semibold text-emerald flex items-center justify-end gap-1 font-mono">
-              <span className="w-2 h-2 rounded-full bg-emerald animate-pulse" />
+            <span className="text-xs font-semibold text-emerald-500 flex items-center justify-end gap-1.5 font-mono">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
               VERIFIED CANDIDATE
             </span>
           </div>
@@ -172,9 +167,9 @@ export function StudentDashboardPage() {
         <motion.div
           initial={{ opacity: 0, y: -6 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex items-start gap-2.5 rounded-xl border border-magenta/40 bg-magenta/10 p-3.5 text-xs text-rose-200"
+          className="flex items-start gap-2.5 rounded-2xl border border-rose-500/30 bg-rose-500/10 p-3.5 text-xs text-rose-600 dark:text-rose-200"
         >
-          <AlertTriangle className="h-4 w-4 shrink-0 text-magenta mt-0.5" />
+          <AlertTriangle className="h-4 w-4 shrink-0 text-rose-500 mt-0.5" />
           <span>{startError}</span>
         </motion.div>
       )}
@@ -204,7 +199,7 @@ export function StudentDashboardPage() {
           ]}
         />
 
-        <span className="text-xs font-mono text-slate-400">
+        <span className="text-xs font-mono text-muted-foreground">
           Showing {filteredExams.length} examinations
         </span>
       </div>
@@ -213,31 +208,30 @@ export function StudentDashboardPage() {
       {examsQuery.isLoading ? (
         <div className="grid gap-6 md:grid-cols-2">
           {[1, 2].map((i) => (
-            <div key={i} className="glass-card h-64 animate-pulse p-6" />
+            <div key={i} className="rounded-2xl border border-border bg-surface/60 h-64 animate-pulse p-6" />
           ))}
         </div>
       ) : filteredExams.length === 0 ? (
-        <GlassCard className="p-12 text-center space-y-3">
-          <Calendar className="w-10 h-10 text-slate-400 mx-auto" />
-          <h3 className="text-base font-semibold text-white">
+        <div className="p-12 text-center rounded-2xl border border-border bg-surface/80 space-y-3">
+          <Calendar className="w-10 h-10 text-muted-foreground mx-auto" />
+          <h3 className="text-base font-semibold text-foreground">
             No examinations in this category
           </h3>
-          <p className="text-xs text-slate-400 max-w-sm mx-auto">
+          <p className="text-xs text-muted-foreground max-w-sm mx-auto leading-relaxed">
             {activeTab === 'live'
               ? 'No exams currently within their open delivery window. Check the Upcoming tab for scheduled tests.'
               : activeTab === 'upcoming'
               ? 'There are no upcoming scheduled assessments assigned to your cohort.'
               : 'You have not completed any examinations yet.'}
           </p>
-        </GlassCard>
+        </div>
       ) : (
         <div className="grid gap-6 md:grid-cols-2">
           <AnimatePresence mode="popLayout">
             {filteredExams.map((exam, idx) => {
               const hasSession = Boolean(exam.session_id);
               const isInProgress = exam.session_status === 'IN_PROGRESS';
-              const isClosed =
-                hasSession && exam.session_status && exam.session_status !== 'IN_PROGRESS';
+              const isClosed = hasSession && exam.session_status && exam.session_status !== 'IN_PROGRESS';
 
               const startCountdown = formatCountdown(exam.start_window);
               const endCountdown = formatCountdown(exam.end_window);
@@ -249,15 +243,6 @@ export function StudentDashboardPage() {
 
               const isUpcoming = new Date(exam.start_window).getTime() > now;
 
-              const cardGlow =
-                exam.session_status === 'TERMINATED_CHEATING'
-                  ? 'magenta'
-                  : isInProgress
-                  ? 'cyan'
-                  : isClosed
-                  ? 'emerald'
-                  : 'none';
-
               return (
                 <motion.div
                   key={exam.id}
@@ -267,15 +252,11 @@ export function StudentDashboardPage() {
                   exit={{ opacity: 0, scale: 0.95 }}
                   transition={{ delay: idx * 0.05 }}
                 >
-                  <GlassCard
-                    glow={cardGlow}
-                    hoverEffect
-                    className="p-6 flex flex-col justify-between h-full space-y-6"
-                  >
+                  <div className="p-6 rounded-2xl border border-border bg-surface/85 hover:bg-surface hover:border-brand/40 shadow-sm hover:shadow-layered-sm transition-all duration-300 flex flex-col justify-between h-full space-y-6">
                     <div>
                       {/* Top Badges */}
                       <div className="flex items-start justify-between gap-2 mb-3">
-                        <span className="font-mono text-xs font-semibold text-cyan">
+                        <span className="font-mono text-xs font-semibold text-brand">
                           EXAM #{exam.id}
                         </span>
 
@@ -283,16 +264,16 @@ export function StudentDashboardPage() {
                           {exam.session_status ? (
                             <StatusPill status={exam.session_status} size="sm" />
                           ) : isWindowOpen ? (
-                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono bg-cyan/15 text-cyan border border-cyan/30 flex items-center gap-1">
-                              <span className="w-1.5 h-1.5 rounded-full bg-cyan animate-pulse" />
+                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono bg-emerald-500/10 text-emerald-500 border border-emerald-500/30 flex items-center gap-1">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                               WINDOW OPEN
                             </span>
                           ) : isUpcoming ? (
-                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono bg-amber/15 text-amber border border-amber/30">
+                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono bg-amber-500/10 text-amber-500 border border-amber-500/30">
                               SCHEDULED
                             </span>
                           ) : (
-                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono bg-slate-800 text-slate-400">
+                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono bg-surface-elevated text-muted-foreground border border-border">
                               CLOSED
                             </span>
                           )}
@@ -300,47 +281,47 @@ export function StudentDashboardPage() {
                       </div>
 
                       {/* Title & Description */}
-                      <h3 className="text-xl font-bold text-white tracking-tight">
+                      <h3 className="text-xl font-bold text-foreground tracking-tight">
                         {exam.title}
                       </h3>
                       {exam.description && (
-                        <p className="mt-2 text-xs text-slate-300 line-clamp-2 leading-relaxed">
+                        <p className="mt-2 text-xs text-muted-foreground line-clamp-2 leading-relaxed">
                           {exam.description}
                         </p>
                       )}
 
                       {/* Exam Specs Table */}
-                      <div className="mt-4 grid grid-cols-3 gap-2.5 rounded-xl border border-white/5 bg-[#0A0B14]/70 p-3 text-xs font-mono">
+                      <div className="mt-4 grid grid-cols-3 gap-2.5 rounded-xl border border-border bg-surface-elevated/70 p-3 text-xs font-mono">
                         <div>
-                          <span className="text-slate-400 text-[10px] block uppercase">
+                          <span className="text-muted-foreground text-[10px] block uppercase">
                             Duration
                           </span>
-                          <span className="font-bold text-white">
+                          <span className="font-bold text-foreground">
                             {exam.duration_minutes} Mins
                           </span>
                         </div>
                         <div>
-                          <span className="text-slate-400 text-[10px] block uppercase">
+                          <span className="text-muted-foreground text-[10px] block uppercase">
                             Questions
                           </span>
-                          <span className="font-bold text-white">
+                          <span className="font-bold text-foreground">
                             {exam.question_count ?? 20} Qs
                           </span>
                         </div>
                         <div>
-                          <span className="text-slate-400 text-[10px] block uppercase">
+                          <span className="text-muted-foreground text-[10px] block uppercase">
                             Min Trust
                           </span>
-                          <span className="font-bold text-magenta">
+                          <span className="font-bold text-rose-500">
                             {exam.min_trust_score ?? 50}%
                           </span>
                         </div>
                       </div>
 
                       {/* Countdown Timer Display */}
-                      <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between text-xs font-mono">
-                        <span className="text-slate-400 flex items-center gap-1.5">
-                          <Clock className="w-3.5 h-3.5 text-cyan" />
+                      <div className="mt-4 pt-3 border-t border-border/70 flex items-center justify-between text-xs font-mono">
+                        <span className="text-muted-foreground flex items-center gap-1.5">
+                          <Clock className="w-3.5 h-3.5 text-brand" />
                           {isUpcoming
                             ? 'Starts in:'
                             : isWindowOpen
@@ -348,12 +329,12 @@ export function StudentDashboardPage() {
                             : 'Assessment status:'}
                         </span>
                         <span
-                          className={`font-bold ${
+                          className={`font-bold px-2 py-0.5 rounded-md text-[11px] border ${
                             isUpcoming
-                              ? 'text-amber'
+                              ? 'text-amber-500 border-amber-500/30 bg-amber-500/10'
                               : isWindowOpen
-                              ? 'text-cyan animate-pulse'
-                              : 'text-slate-400'
+                              ? 'text-brand border-brand/30 bg-brand/10 animate-pulse'
+                              : 'text-muted-foreground border-border bg-surface-elevated'
                           }`}
                         >
                           {isUpcoming
@@ -368,41 +349,40 @@ export function StudentDashboardPage() {
                     {/* Action Button */}
                     <div className="pt-2">
                       {isClosed ? (
-                        <NeonButton
-                          variant="outline"
-                          size="md"
-                          className="w-full"
-                          leftIcon={<Award className="w-4 h-4 text-cyan" />}
+                        <button
+                          type="button"
+                          className="w-full py-2.5 px-4 rounded-xl font-medium text-xs text-foreground bg-surface-elevated hover:bg-muted border border-border transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-sm"
                           onClick={() => navigate(`/student/results/${exam.session_id}`)}
                         >
-                          View Official Integrity Report
-                        </NeonButton>
+                          <Award className="w-4 h-4 text-brand" />
+                          <span>View Official Integrity Report</span>
+                        </button>
                       ) : isInProgress ? (
-                        <NeonButton
-                          variant="primary"
-                          size="md"
-                          className="w-full"
-                          leftIcon={<Play className="w-4 h-4" />}
+                        <button
+                          type="button"
+                          className="w-full py-2.5 px-4 rounded-xl font-semibold text-xs text-white bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 hover:opacity-95 shadow-md shadow-brand/20 active:scale-[0.99] transition-all flex items-center justify-center gap-2 cursor-pointer"
                           onClick={() => navigate(`/student/session/${exam.session_id}`)}
                         >
-                          Resume Active Session (Trust: {exam.session_trust_score}%)
-                        </NeonButton>
+                          <Play className="w-4 h-4 fill-current" />
+                          <span>Resume Active Session (Trust: {exam.session_trust_score}%)</span>
+                        </button>
                       ) : (
-                        <NeonButton
-                          variant="primary"
-                          size="md"
-                          className="w-full"
+                        <button
+                          type="button"
                           disabled={!isWindowOpen}
-                          leftIcon={<Play className="w-4 h-4" />}
+                          className="w-full py-2.5 px-4 rounded-xl font-semibold text-xs text-white bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 hover:opacity-95 shadow-md shadow-brand/20 active:scale-[0.99] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                           onClick={() => handleStartClick(exam)}
                         >
-                          {isWindowOpen
-                            ? 'Launch Pre-Exam Checklist'
-                            : `Opens in ${startCountdown.label}`}
-                        </NeonButton>
+                          <Play className="w-4 h-4 fill-current" />
+                          <span>
+                            {isWindowOpen
+                              ? 'Launch Pre-Exam Checklist'
+                              : `Opens in ${startCountdown.label}`}
+                          </span>
+                        </button>
                       )}
                     </div>
-                  </GlassCard>
+                  </div>
                 </motion.div>
               );
             })}

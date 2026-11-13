@@ -14,7 +14,6 @@ import {
   Wifi,
   Sparkles,
 } from 'lucide-react';
-import { NeonButton } from '../ui/NeonButton';
 import { LiveDot } from '../ui/LiveDot';
 import type { ExamItem } from '../../types/domain';
 
@@ -71,7 +70,7 @@ export function PreExamChecklistModal({
     return () => document.removeEventListener('fullscreenchange', onFsChange);
   }, []);
 
-  // Initialize synthetic stream helper for demo / headless / headless environments without physical camera
+  // Initialize synthetic stream helper for demo / headless environments without physical camera
   const createSyntheticStream = useCallback((): MediaStream | null => {
     try {
       const canvas = document.createElement('canvas');
@@ -82,11 +81,11 @@ export function PreExamChecklistModal({
 
       let tick = 0;
       const renderFrame = () => {
-        ctx.fillStyle = '#06070E';
+        ctx.fillStyle = '#09090B';
         ctx.fillRect(0, 0, 320, 240);
 
         // Grid lines
-        ctx.strokeStyle = 'rgba(34, 211, 238, 0.12)';
+        ctx.strokeStyle = 'rgba(99, 102, 241, 0.15)';
         ctx.lineWidth = 1;
         for (let x = 0; x < 320; x += 24) {
           ctx.beginPath();
@@ -102,7 +101,7 @@ export function PreExamChecklistModal({
         }
 
         // Facial silhouette
-        ctx.strokeStyle = '#22D3EE';
+        ctx.strokeStyle = '#6366F1';
         ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.arc(160, 95, 42, 0, Math.PI * 2);
@@ -114,7 +113,7 @@ export function PreExamChecklistModal({
 
         // Animated scan line
         const scanY = 120 + Math.sin(tick * 0.05) * 80;
-        ctx.strokeStyle = 'rgba(244, 63, 94, 0.8)';
+        ctx.strokeStyle = 'rgba(217, 70, 239, 0.8)';
         ctx.beginPath();
         ctx.moveTo(50, scanY);
         ctx.lineTo(270, scanY);
@@ -122,7 +121,7 @@ export function PreExamChecklistModal({
 
         // Label
         ctx.fillStyle = '#10B981';
-        ctx.font = '10px JetBrains Mono, monospace';
+        ctx.font = '10px Geist Mono, monospace';
         ctx.fillText('SENSOR: SYNTHETIC AI HUD (ACTIVE)', 16, 224);
 
         tick++;
@@ -192,7 +191,6 @@ export function PreExamChecklistModal({
       }
     } catch (err) {
       console.warn('Fullscreen entry denied, enabling kiosk container fallback:', err);
-      // Fallback for automated or permission-restricted environments
       setFullscreenActive(true);
     }
   };
@@ -226,37 +224,40 @@ export function PreExamChecklistModal({
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-[#0A0B14]/85 backdrop-blur-xl">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-background/80 backdrop-blur-xl">
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: 16 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 16 }}
           transition={{ duration: 0.25 }}
-          className="relative w-full max-w-2xl rounded-3xl border border-white/10 bg-[#101222]/95 backdrop-blur-2xl shadow-2xl overflow-hidden flex flex-col"
+          className="relative w-full max-w-2xl rounded-3xl border border-border bg-surface/95 backdrop-blur-2xl shadow-layered-md overflow-hidden flex flex-col"
         >
+          {/* Top highlight bar */}
+          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500" />
+
           {/* Header */}
-          <div className="flex items-center justify-between p-5 border-b border-white/10 bg-[#16192E]/60">
+          <div className="flex items-center justify-between p-5 border-b border-border/70 bg-surface-elevated/50">
             <div>
               <div className="flex items-center gap-2">
-                <ShieldCheck className="w-5 h-5 text-cyan" />
-                <span className="font-mono text-xs uppercase tracking-wider text-cyan font-semibold">
+                <ShieldCheck className="w-5 h-5 text-brand" />
+                <span className="font-mono text-xs uppercase tracking-wider text-brand font-semibold">
                   Pre-Flight Verification Kiosk
                 </span>
               </div>
-              <h3 className="text-lg font-bold text-white mt-0.5">
+              <h3 className="text-lg font-bold text-foreground mt-0.5">
                 {exam.title}
               </h3>
             </div>
             <button
               onClick={onClose}
-              className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-white/5 transition-colors"
+              className="p-1.5 text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted transition-colors cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
 
           {/* Stepper Progress Bar */}
-          <div className="px-6 pt-5 pb-3 bg-[#0C0E1B]/80 border-b border-white/5">
+          <div className="px-6 pt-5 pb-3 bg-surface-elevated/40 border-b border-border/60">
             <div className="flex items-center justify-between gap-2">
               {[
                 { step: 1 as StepKey, label: 'Integrity Rules', completed: rulesAccepted },
@@ -267,12 +268,12 @@ export function PreExamChecklistModal({
                 <button
                   key={s.step}
                   onClick={() => setCurrentStep(s.step)}
-                  className={`flex items-center gap-2 py-1.5 px-3 rounded-xl text-xs font-mono transition-all ${
+                  className={`flex items-center gap-2 py-1.5 px-3 rounded-xl text-xs font-mono transition-all cursor-pointer ${
                     currentStep === s.step
-                      ? 'bg-cyan text-void font-bold shadow-glow-cyan-sm'
+                      ? 'bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 text-white font-bold shadow-sm'
                       : s.completed
-                      ? 'bg-emerald/15 text-emerald border border-emerald/30'
-                      : 'bg-white/5 text-slate-400 hover:text-white'
+                      ? 'bg-emerald-500/15 text-emerald-500 border border-emerald-500/30'
+                      : 'bg-surface-elevated text-muted-foreground hover:text-foreground border border-border/60'
                   }`}
                 >
                   <span className="w-4 h-4 rounded-full bg-current/20 flex items-center justify-center text-[10px]">
@@ -294,26 +295,26 @@ export function PreExamChecklistModal({
                 className="space-y-4"
               >
                 <div className="space-y-1">
-                  <h4 className="text-base font-semibold text-white">
+                  <h4 className="text-base font-semibold text-foreground">
                     Accept Authoritative Exam Rules
                   </h4>
-                  <p className="text-xs text-slate-400">
+                  <p className="text-xs text-muted-foreground">
                     ProctorIQ enforces academic integrity with automated MySQL trigger penalties.
                   </p>
                 </div>
 
-                <div className="space-y-2.5 rounded-2xl border border-white/10 bg-[#0A0B14]/80 p-4 text-xs text-slate-300 font-mono">
-                  <div className="flex items-center justify-between pb-2 border-b border-white/5">
-                    <span className="text-slate-400">Initial Candidate Trust Score:</span>
-                    <span className="text-emerald font-bold">100%</span>
+                <div className="space-y-2.5 rounded-2xl border border-border bg-surface-elevated/60 p-4 text-xs text-foreground font-mono">
+                  <div className="flex items-center justify-between pb-2 border-b border-border/60">
+                    <span className="text-muted-foreground">Initial Candidate Trust Score:</span>
+                    <span className="text-emerald-500 font-bold">100%</span>
                   </div>
-                  <div className="flex items-center justify-between pb-2 border-b border-white/5">
-                    <span className="text-slate-400">Auto-Disqualification Limit:</span>
-                    <span className="text-magenta font-bold">
+                  <div className="flex items-center justify-between pb-2 border-b border-border/60">
+                    <span className="text-muted-foreground">Auto-Disqualification Limit:</span>
+                    <span className="text-rose-500 font-bold">
                       {exam.min_trust_score ?? 50}%
                     </span>
                   </div>
-                  <div className="space-y-1 pt-1 text-[11px] text-slate-400">
+                  <div className="space-y-1 pt-1 text-[11px] text-muted-foreground">
                     <div>• Tab switch or minimizing browser: -15 Trust Points</div>
                     <div>• Exiting kiosk fullscreen: -15 Trust Points</div>
                     <div>• Copy, paste, or right-click: -10 Trust Points</div>
@@ -322,14 +323,14 @@ export function PreExamChecklistModal({
                   </div>
                 </div>
 
-                <label className="flex items-start gap-3 p-3.5 rounded-xl border border-cyan/30 bg-cyan/5 cursor-pointer hover:bg-cyan/10 transition-colors">
+                <label className="flex items-start gap-3 p-3.5 rounded-xl border border-brand/40 bg-brand/10 cursor-pointer hover:bg-brand/15 transition-colors">
                   <input
                     type="checkbox"
                     checked={rulesAccepted}
                     onChange={(e) => setRulesAccepted(e.target.checked)}
-                    className="mt-0.5 accent-cyan w-4 h-4 cursor-pointer"
+                    className="mt-0.5 accent-indigo-600 w-4 h-4 cursor-pointer"
                   />
-                  <span className="text-xs text-slate-200 leading-relaxed select-none">
+                  <span className="text-xs text-foreground leading-relaxed select-none">
                     I acknowledge that all actions are recorded in an immutable audit ledger,
                     penalties are automatically deducted, and falling below the threshold terminates
                     my exam immediately.
@@ -346,15 +347,15 @@ export function PreExamChecklistModal({
                 className="space-y-4"
               >
                 <div className="space-y-1">
-                  <h4 className="text-base font-semibold text-white">
+                  <h4 className="text-base font-semibold text-foreground">
                     Webcam Sensor & Identity Verification
                   </h4>
-                  <p className="text-xs text-slate-400">
+                  <p className="text-xs text-muted-foreground">
                     ProctorIQ requires live video telemetry to verify presence throughout the exam.
                   </p>
                 </div>
 
-                <div className="relative aspect-video w-full rounded-2xl border border-white/10 bg-[#0A0B14] overflow-hidden flex items-center justify-center">
+                <div className="relative aspect-video w-full rounded-2xl border border-border bg-background overflow-hidden flex items-center justify-center">
                   <video
                     ref={videoRef}
                     autoPlay
@@ -364,35 +365,35 @@ export function PreExamChecklistModal({
                   />
 
                   {cameraActive ? (
-                    <div className="absolute top-3 left-3 flex items-center gap-2 px-2.5 py-1 rounded-full bg-void/80 border border-emerald/40 text-[10px] font-mono text-emerald">
+                    <div className="absolute top-3 left-3 flex items-center gap-2 px-2.5 py-1 rounded-full bg-background/80 border border-emerald-500/40 text-[10px] font-mono text-emerald-500 backdrop-blur-md">
                       <LiveDot color="emerald" size="sm" pulse />
                       <span>OPTICAL SENSOR ACTIVE</span>
                     </div>
                   ) : (
                     <div className="text-center p-6 space-y-3">
-                      <Video className="w-10 h-10 text-slate-400 mx-auto" />
-                      <p className="text-xs text-slate-400">
+                      <Video className="w-10 h-10 text-muted-foreground mx-auto" />
+                      <p className="text-xs text-muted-foreground">
                         {cameraError ? (
-                          <span className="text-magenta">{cameraError}</span>
+                          <span className="text-rose-500">{cameraError}</span>
                         ) : (
                           'Camera feed currently inactive.'
                         )}
                       </p>
-                      <NeonButton
-                        variant="primary"
-                        size="sm"
-                        leftIcon={<Camera className="w-4 h-4" />}
+                      <button
+                        type="button"
                         onClick={startCamera}
+                        className="py-2 px-4 rounded-xl text-xs font-semibold text-white bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 hover:opacity-95 shadow-sm transition-all flex items-center gap-2 mx-auto cursor-pointer"
                       >
-                        Activate Webcam Sensor
-                      </NeonButton>
+                        <Camera className="w-4 h-4" />
+                        <span>Activate Webcam Sensor</span>
+                      </button>
                     </div>
                   )}
 
                   {/* Face detection target guide */}
                   {cameraActive && (
                     <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-                      <div className="w-44 h-56 rounded-3xl border-2 border-dashed border-cyan/40" />
+                      <div className="w-44 h-56 rounded-3xl border-2 border-dashed border-brand/50" />
                     </div>
                   )}
                 </div>
@@ -407,28 +408,28 @@ export function PreExamChecklistModal({
                 className="space-y-4"
               >
                 <div className="space-y-1">
-                  <h4 className="text-base font-semibold text-white">
+                  <h4 className="text-base font-semibold text-foreground">
                     Kiosk Lockdown & Fullscreen Mode
                   </h4>
-                  <p className="text-xs text-slate-400">
+                  <p className="text-xs text-muted-foreground">
                     To prevent background application snooping, the examination must run in dedicated
                     fullscreen.
                   </p>
                 </div>
 
-                <div className="p-6 rounded-2xl border border-white/10 bg-[#0A0B14]/80 text-center space-y-4">
-                  <div className="w-14 h-14 rounded-2xl bg-cyan/10 border border-cyan/30 text-cyan mx-auto flex items-center justify-center shadow-glow-cyan-sm">
+                <div className="p-6 rounded-2xl border border-border bg-surface-elevated/70 text-center space-y-4">
+                  <div className="w-14 h-14 rounded-2xl bg-brand/10 border border-brand/30 text-brand mx-auto flex items-center justify-center shadow-sm">
                     <Monitor className="w-7 h-7" />
                   </div>
 
                   <div className="space-y-1">
-                    <p className="text-sm font-semibold text-white">
+                    <p className="text-sm font-semibold text-foreground">
                       Fullscreen Status:{' '}
-                      <span className={fullscreenActive ? 'text-emerald' : 'text-amber'}>
+                      <span className={fullscreenActive ? 'text-emerald-500 font-bold' : 'text-amber-500 font-bold'}>
                         {fullscreenActive ? 'ENGAGED' : 'NOT ENGAGED'}
                       </span>
                     </p>
-                    <p className="text-xs text-slate-400">
+                    <p className="text-xs text-muted-foreground">
                       {fullscreenActive
                         ? 'Kiosk container locked. You are ready to proceed.'
                         : 'Click below to transition this window into lockdown kiosk mode.'}
@@ -436,14 +437,14 @@ export function PreExamChecklistModal({
                   </div>
 
                   {!fullscreenActive && (
-                    <NeonButton
-                      variant="primary"
-                      size="md"
-                      leftIcon={<Maximize2 className="w-4 h-4" />}
+                    <button
+                      type="button"
                       onClick={triggerFullscreen}
+                      className="py-2.5 px-5 rounded-xl font-semibold text-xs text-white bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 hover:opacity-95 shadow-md shadow-brand/20 active:scale-[0.99] transition-all flex items-center gap-2 mx-auto cursor-pointer"
                     >
-                      Enter Lockdown Fullscreen
-                    </NeonButton>
+                      <Maximize2 className="w-4 h-4" />
+                      <span>Enter Lockdown Fullscreen</span>
+                    </button>
                   )}
                 </div>
               </motion.div>
@@ -457,42 +458,42 @@ export function PreExamChecklistModal({
                 className="space-y-4"
               >
                 <div className="space-y-1">
-                  <h4 className="text-base font-semibold text-white">
+                  <h4 className="text-base font-semibold text-foreground">
                     System Telemetry & Environment Check
                   </h4>
-                  <p className="text-xs text-slate-400">
+                  <p className="text-xs text-muted-foreground">
                     Verifying network latency and local hardware compatibility before launch.
                   </p>
                 </div>
 
                 <div className="space-y-3 font-mono text-xs">
-                  <div className="p-3.5 rounded-xl border border-white/10 bg-[#0A0B14]/80 flex items-center justify-between">
+                  <div className="p-3.5 rounded-xl border border-border bg-surface-elevated/70 flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <Wifi className="w-4 h-4 text-emerald" />
-                      <span className="text-slate-200">Network Telemetry Socket</span>
+                      <Wifi className="w-4 h-4 text-emerald-500" />
+                      <span className="text-foreground">Network Telemetry Socket</span>
                     </div>
-                    <span className="text-emerald font-semibold flex items-center gap-1">
+                    <span className="text-emerald-500 font-semibold flex items-center gap-1">
                       <CheckCircle2 className="w-4 h-4" /> Connected
                     </span>
                   </div>
 
-                  <div className="p-3.5 rounded-xl border border-white/10 bg-[#0A0B14]/80 flex items-center justify-between">
+                  <div className="p-3.5 rounded-xl border border-border bg-surface-elevated/70 flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <Video className="w-4 h-4 text-emerald" />
-                      <span className="text-slate-200">Video Sensor Stream</span>
+                      <Video className="w-4 h-4 text-emerald-500" />
+                      <span className="text-foreground">Video Sensor Stream</span>
                     </div>
-                    <span className={cameraActive ? 'text-emerald font-semibold flex items-center gap-1' : 'text-magenta font-semibold flex items-center gap-1'}>
+                    <span className={cameraActive ? 'text-emerald-500 font-semibold flex items-center gap-1' : 'text-rose-500 font-semibold flex items-center gap-1'}>
                       {cameraActive ? <CheckCircle2 className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
                       {cameraActive ? 'Verified' : 'Required'}
                     </span>
                   </div>
 
-                  <div className="p-3.5 rounded-xl border border-white/10 bg-[#0A0B14]/80 flex items-center justify-between">
+                  <div className="p-3.5 rounded-xl border border-border bg-surface-elevated/70 flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <Monitor className="w-4 h-4 text-emerald" />
-                      <span className="text-slate-200">Fullscreen Kiosk Container</span>
+                      <Monitor className="w-4 h-4 text-emerald-500" />
+                      <span className="text-foreground">Fullscreen Kiosk Container</span>
                     </div>
-                    <span className={fullscreenActive ? 'text-emerald font-semibold flex items-center gap-1' : 'text-amber font-semibold flex items-center gap-1'}>
+                    <span className={fullscreenActive ? 'text-emerald-500 font-semibold flex items-center gap-1' : 'text-amber-500 font-semibold flex items-center gap-1'}>
                       {fullscreenActive ? <CheckCircle2 className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
                       {fullscreenActive ? 'Verified' : 'Pending'}
                     </span>
@@ -503,41 +504,49 @@ export function PreExamChecklistModal({
           </div>
 
           {/* Footer Navigation */}
-          <div className="p-5 border-t border-white/10 bg-[#16192E]/60 flex items-center justify-between">
+          <div className="p-5 border-t border-border/70 bg-surface-elevated/50 flex items-center justify-between">
             <div>
               {currentStep > 1 && (
-                <NeonButton
-                  variant="ghost"
-                  size="sm"
-                  leftIcon={<ArrowLeft className="w-4 h-4" />}
+                <button
+                  type="button"
                   onClick={() => setCurrentStep((c) => (c - 1) as StepKey)}
+                  className="py-2 px-3.5 rounded-xl text-xs font-medium text-muted-foreground hover:text-foreground border border-border hover:bg-muted transition-colors flex items-center gap-1.5 cursor-pointer"
                 >
-                  Back
-                </NeonButton>
+                  <ArrowLeft className="w-4 h-4" />
+                  <span>Back</span>
+                </button>
               )}
             </div>
 
             <div className="flex items-center gap-3">
               {currentStep < 4 ? (
-                <NeonButton
-                  variant="primary"
-                  size="sm"
-                  rightIcon={<ArrowRight className="w-4 h-4" />}
+                <button
+                  type="button"
                   onClick={() => setCurrentStep((c) => (c + 1) as StepKey)}
+                  className="py-2 px-4 rounded-xl text-xs font-semibold text-white bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 hover:opacity-95 shadow-sm transition-all flex items-center gap-1.5 cursor-pointer"
                 >
-                  Continue
-                </NeonButton>
+                  <span>Continue</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
               ) : (
-                <NeonButton
-                  variant="success"
-                  size="md"
-                  disabled={!allStepsValid}
-                  isLoading={isLoading}
-                  leftIcon={<Sparkles className="w-4 h-4" />}
+                <button
+                  type="button"
+                  disabled={!allStepsValid || isLoading}
                   onClick={onComplete}
+                  className="py-2.5 px-5 rounded-xl text-xs font-semibold text-white bg-gradient-to-r from-emerald-500 to-teal-600 hover:opacity-95 shadow-md shadow-emerald-500/20 active:scale-[0.99] transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Initialize Assessment Session
-                </NeonButton>
+                  {isLoading ? (
+                    <span className="inline-flex items-center gap-2">
+                      <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      Initializing...
+                    </span>
+                  ) : (
+                    <>
+                      <Sparkles className="w-4 h-4" />
+                      <span>Initialize Assessment Session</span>
+                    </>
+                  )}
+                </button>
               )}
             </div>
           </div>

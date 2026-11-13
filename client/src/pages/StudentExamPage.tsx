@@ -13,8 +13,6 @@ import {
 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { GlassCard } from '../components/ui/GlassCard';
-import { NeonButton } from '../components/ui/NeonButton';
 import { TrustRing } from '../components/ui/TrustRing';
 import { LiveDot } from '../components/ui';
 import { Modal } from '../components/ui/Modal';
@@ -199,7 +197,6 @@ export function StudentExamPage() {
       navigate(`/student/results/${numericSessionId}`);
     },
     onError: () => {
-      // Fallback: even if submit errored, check result endpoint
       navigate(`/student/results/${numericSessionId}`);
     },
   });
@@ -324,52 +321,66 @@ export function StudentExamPage() {
 
   const questions = sessionQuery.data?.questions ?? [];
   const currentQuestion = questions[currentIndex];
-
   const answeredCount = Object.keys(answers).length;
   const isTimeCritical = secondsLeft !== null && secondsLeft <= 300; // Last 5 minutes
 
+  // Screen-edge glow styles based on trust score
+  const isCriticalRisk = trustScore < minTrustScore;
+  const isWarningRisk = trustScore < 80;
+
   return (
-    <div className="relative min-h-screen bg-void text-slate-100 flex flex-col select-none overflow-x-hidden">
+    <div
+      className={`relative min-h-screen bg-background text-foreground flex flex-col select-none overflow-x-hidden transition-all duration-700 ease-out ${
+        isCriticalRisk
+          ? 'shadow-[inset_0_0_100px_rgba(244,63,94,0.35)] ring-2 ring-rose-500/50'
+          : isWarningRisk
+          ? 'shadow-[inset_0_0_70px_rgba(245,158,11,0.22)] ring-1 ring-amber-500/40'
+          : ''
+      }`}
+    >
+      {/* Background Dotted Grid */}
+      <div className="fixed inset-0 bg-dotted-grid pointer-events-none opacity-30" />
+
       {/* ============================================================== */}
-      {/* TOP KIOSK HUD BAR */}
+      {/* MINIMAL TOP HUD BAR */}
       {/* ============================================================== */}
-      <header className="h-16 border-b border-white/10 bg-[#0C0E1B]/95 backdrop-blur-xl sticky top-0 z-30 flex items-center justify-between px-4 sm:px-6">
-        {/* Left: Exam title & Question Counter */}
+      <header className="h-16 border-b border-border/70 bg-surface/85 backdrop-blur-xl sticky top-0 z-30 flex items-center justify-between px-4 sm:px-6">
+        {/* Left: Exam title & Progress */}
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-cyan/10 border border-cyan/30 flex items-center justify-center text-cyan shadow-glow-cyan-sm flex-shrink-0">
+          <div className="w-9 h-9 rounded-xl bg-brand/10 border border-brand/30 flex items-center justify-center text-brand shadow-sm flex-shrink-0">
             <Shield className="w-5 h-5" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-bold text-sm text-white truncate max-w-[200px] sm:max-w-xs">
+              <span className="font-bold text-sm text-foreground truncate max-w-[180px] sm:max-w-xs">
                 {metaQuery.data?.session.exam_title ?? 'Active Assessment'}
               </span>
-              <span className="hidden sm:inline font-mono text-[10px] text-slate-400">
+              <span className="hidden sm:inline font-mono text-[10px] text-muted-foreground border border-border px-1.5 py-0.5 rounded bg-surface-elevated">
                 SESSION #{numericSessionId}
               </span>
             </div>
-            <div className="text-[11px] font-mono text-slate-400">
-              Progress: <span className="text-cyan font-semibold">{answeredCount}</span> /{' '}
+            <div className="text-[11px] font-mono text-muted-foreground">
+              Progress: <span className="text-brand font-semibold">{answeredCount}</span> /{' '}
               {questions.length} Answered
             </div>
           </div>
         </div>
 
-        {/* Center: Server-Synced Countdown Timer (turns red in last 5m) */}
-        <div className="flex items-center">
+        {/* Center: Server-Synced Countdown Timer & TrustRing */}
+        <div className="flex items-center gap-4">
           <div
             className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl border font-mono text-sm tracking-wider font-bold transition-all ${
               isTimeCritical
-                ? 'border-magenta bg-magenta/15 text-magenta shadow-glow-magenta animate-pulse'
-                : 'border-white/10 bg-[#101222]/80 text-cyan'
+                ? 'border-rose-500 bg-rose-500/15 text-rose-500 shadow-md animate-pulse'
+                : 'border-border bg-surface-elevated/80 text-foreground'
             }`}
           >
-            <Clock className={`w-4 h-4 ${isTimeCritical ? 'text-magenta animate-spin' : 'text-cyan'}`} />
-            <span className="telemetry-num">
+            <Clock className={`w-4 h-4 ${isTimeCritical ? 'text-rose-500 animate-spin' : 'text-brand'}`} />
+            <span>
               {secondsLeft !== null ? formatExamTimer(secondsLeft) : '--:--'}
             </span>
             {isTimeCritical && (
-              <span className="text-[10px] uppercase font-mono tracking-widest text-magenta hidden sm:inline">
+              <span className="text-[10px] uppercase font-mono tracking-widest text-rose-500 hidden sm:inline">
                 CRITICAL
               </span>
             )}
@@ -380,21 +391,21 @@ export function StudentExamPage() {
         <div className="flex items-center gap-3">
           {/* Autosave Indicator */}
           <div
-            className="hidden md:flex items-center gap-1.5 font-mono text-xs text-slate-400"
+            className="hidden md:flex items-center gap-1.5 font-mono text-xs text-muted-foreground"
             title={`Autosave: ${lastSavedTime}`}
           >
             {saveStatus === 'saved' ? (
-              <span className="flex items-center gap-1 text-emerald">
+              <span className="flex items-center gap-1 text-emerald-500">
                 <Check className="w-3.5 h-3.5" />
                 <span className="text-[11px]">Saved</span>
               </span>
             ) : saveStatus === 'saving' ? (
-              <span className="flex items-center gap-1 text-cyan animate-pulse">
-                <span className="w-2 h-2 rounded-full bg-cyan" />
+              <span className="flex items-center gap-1 text-brand animate-pulse">
+                <span className="w-2 h-2 rounded-full bg-brand" />
                 <span className="text-[11px]">Syncing...</span>
               </span>
             ) : (
-              <span className="flex items-center gap-1 text-amber">
+              <span className="flex items-center gap-1 text-amber-500">
                 <WifiOff className="w-3.5 h-3.5" />
                 <span className="text-[11px]">
                   Queued ({retryQueueRef.current.length})
@@ -403,22 +414,22 @@ export function StudentExamPage() {
             )}
           </div>
 
-          <NeonButton
-            variant="success"
-            size="sm"
-            leftIcon={<Send className="w-3.5 h-3.5" />}
+          <button
+            type="button"
             onClick={() => setConfirmSubmitOpen(true)}
+            className="py-2 px-3.5 rounded-xl text-xs font-semibold text-white bg-gradient-to-r from-emerald-500 to-teal-600 hover:opacity-95 shadow-sm transition-all flex items-center gap-1.5 cursor-pointer"
           >
-            Submit Exam
-          </NeonButton>
+            <Send className="w-3.5 h-3.5" />
+            <span>Submit Exam</span>
+          </button>
         </div>
       </header>
 
       {/* ============================================================== */}
       {/* MAIN EXAM WORKSPACE */}
       {/* ============================================================== */}
-      <div className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left Column: Active Question & Radio Options (8 cols) */}
+      <div className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 pb-28 grid grid-cols-1 lg:grid-cols-12 gap-6 relative z-10">
+        {/* Left / Center Column: Active Question & Radio Options (8 cols) */}
         <div className="lg:col-span-8 flex flex-col justify-between space-y-6">
           <AnimatePresence mode="wait">
             {currentQuestion ? (
@@ -431,18 +442,20 @@ export function StudentExamPage() {
                 className="space-y-6"
               >
                 {/* Question Header Card */}
-                <GlassCard className="p-6 space-y-4">
-                  <div className="flex items-center justify-between pb-3 border-b border-white/5 font-mono text-xs text-slate-400">
-                    <span className="text-cyan font-bold tracking-wider">
+                <div className="p-6 sm:p-8 rounded-3xl border border-border bg-surface/90 backdrop-blur-xl shadow-layered-sm space-y-4">
+                  <div className="flex items-center justify-between pb-3 border-b border-border/70 font-mono text-xs text-muted-foreground">
+                    <span className="text-brand font-bold tracking-wider">
                       QUESTION {currentIndex + 1} OF {questions.length}
                     </span>
-                    <span>{currentQuestion.marks} Marks</span>
+                    <span className="px-2 py-0.5 rounded-md border border-border bg-surface-elevated">
+                      {currentQuestion.marks} Marks
+                    </span>
                   </div>
 
-                  <h2 className="text-lg sm:text-xl font-semibold text-white leading-relaxed">
+                  <h2 className="text-lg sm:text-2xl font-bold text-foreground leading-relaxed">
                     {currentQuestion.question_text}
                   </h2>
-                </GlassCard>
+                </div>
 
                 {/* Radio Options Grid */}
                 <div className="space-y-3">
@@ -462,13 +475,13 @@ export function StudentExamPage() {
                       <motion.button
                         key={optKey}
                         type="button"
-                        whileHover={{ scale: 1.01 }}
-                        whileTap={{ scale: 0.99 }}
+                        whileHover={{ scale: 1.006 }}
+                        whileTap={{ scale: 0.994 }}
                         onClick={() => handleSelectOption(currentQuestion.id, optKey)}
-                        className={`w-full text-left p-4 rounded-2xl border transition-all flex items-center justify-between gap-4 select-none ${
+                        className={`w-full text-left p-4 sm:p-5 rounded-2xl border transition-all flex items-center justify-between gap-4 select-none cursor-pointer ${
                           isSelected
-                            ? 'border-cyan bg-cyan/10 shadow-glow-cyan-sm text-white font-medium'
-                            : 'border-white/10 bg-[#101222]/70 hover:border-white/20 hover:bg-[#16192E]/80 text-slate-200'
+                            ? 'border-brand bg-brand/10 shadow-sm text-foreground font-medium'
+                            : 'border-border bg-surface/70 hover:border-brand/40 hover:bg-surface text-foreground'
                         }`}
                       >
                         <div className="flex items-center gap-3.5">
@@ -476,28 +489,28 @@ export function StudentExamPage() {
                           <div
                             className={`w-8 h-8 rounded-xl font-mono text-xs font-bold flex items-center justify-center transition-all ${
                               isSelected
-                                ? 'bg-cyan text-void shadow-glow-cyan-sm'
-                                : 'bg-white/5 border border-white/10 text-slate-400'
+                                ? 'bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 text-white shadow-sm'
+                                : 'bg-surface-elevated border border-border text-muted-foreground'
                             }`}
                           >
-                            {optKey}
+                            {optKey}.
                           </div>
-                          <span className="text-sm leading-relaxed">{optText}</span>
+                          <span className="text-sm sm:text-base leading-relaxed">{optText}</span>
                         </div>
 
                         {/* Radio selection circle indicator */}
                         <div
                           className={`w-5 h-5 rounded-full border flex items-center justify-center transition-colors ${
                             isSelected
-                              ? 'border-cyan bg-cyan'
-                              : 'border-white/20 bg-transparent'
+                              ? 'border-brand bg-brand'
+                              : 'border-border bg-transparent'
                           }`}
                         >
                           {isSelected && (
                             <motion.div
                               initial={{ scale: 0 }}
                               animate={{ scale: 1 }}
-                              className="w-2 h-2 rounded-full bg-void"
+                              className="w-2 h-2 rounded-full bg-white"
                             />
                           )}
                         </div>
@@ -507,63 +520,22 @@ export function StudentExamPage() {
                 </div>
               </motion.div>
             ) : (
-              <GlassCard className="p-10 text-center text-slate-400 font-mono">
+              <div className="p-10 text-center text-muted-foreground font-mono rounded-2xl border border-border bg-surface">
                 No question available.
-              </GlassCard>
+              </div>
             )}
           </AnimatePresence>
-
-          {/* Question Stepper Navigation Buttons */}
-          <div className="flex items-center justify-between pt-4 border-t border-white/10">
-            <NeonButton
-              variant="ghost"
-              size="sm"
-              disabled={currentIndex === 0}
-              leftIcon={<ArrowLeft className="w-4 h-4" />}
-              onClick={() => setCurrentIndex((c) => Math.max(0, c - 1))}
-            >
-              Previous Question
-            </NeonButton>
-
-            <span className="font-mono text-xs text-slate-400">
-              {currentIndex + 1} / {questions.length}
-            </span>
-
-            <NeonButton
-              variant={currentIndex === questions.length - 1 ? 'success' : 'primary'}
-              size="sm"
-              rightIcon={
-                currentIndex === questions.length - 1 ? (
-                  <CheckCircle2 className="w-4 h-4" />
-                ) : (
-                  <ArrowRight className="w-4 h-4" />
-                )
-              }
-              onClick={() => {
-                if (currentIndex === questions.length - 1) {
-                  setConfirmSubmitOpen(true);
-                } else {
-                  setCurrentIndex((c) => Math.min(questions.length - 1, c + 1));
-                }
-              }}
-            >
-              {currentIndex === questions.length - 1 ? 'Review & Submit' : 'Next Question'}
-            </NeonButton>
-          </div>
         </div>
 
         {/* Right Column: Palette & Proctoring Telemetry HUD (4 cols) */}
         <div className="lg:col-span-4 space-y-6">
-          {/* Persistent TrustRing HUD */}
-          <GlassCard
-            glow={trustScore < minTrustScore ? 'magenta' : trustScore < 80 ? 'amber' : 'cyan'}
-            className="p-5 flex flex-col items-center justify-center text-center space-y-3"
-          >
-            <div className="w-full flex items-center justify-between pb-2 border-b border-white/5">
-              <span className="font-mono text-[10px] uppercase tracking-wider text-slate-400">
+          {/* TrustRing Card */}
+          <div className="p-5 rounded-3xl border border-border bg-surface/90 backdrop-blur-xl shadow-layered-sm flex flex-col items-center justify-center text-center space-y-3">
+            <div className="w-full flex items-center justify-between pb-2 border-b border-border/70">
+              <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
                 Integrity Index HUD
               </span>
-              <span className="font-mono text-[10px] text-cyan">Live DBMS Trigger</span>
+              <span className="font-mono text-[10px] text-brand font-medium">Live DBMS Trigger</span>
             </div>
 
             <TrustRing
@@ -573,13 +545,13 @@ export function StudentExamPage() {
               sublabel={trustScore < minTrustScore ? 'THRESHOLD BREACH' : undefined}
             />
 
-            <div className="text-[11px] text-slate-400 font-mono">
-              Minimum Threshold: <span className="text-magenta font-bold">{minTrustScore}%</span>
+            <div className="text-[11px] text-muted-foreground font-mono">
+              Minimum Threshold: <span className="text-rose-500 font-bold">{minTrustScore}%</span>
             </div>
-          </GlassCard>
+          </div>
 
-          {/* Webcam Preview Thumbnail with LiveDot, Bounding Box HUD, & Face OK Status */}
-          <GlassCard className="p-4 space-y-3">
+          {/* Webcam Preview Thumbnail with LiveDot & Face OK Status */}
+          <div className="p-4 rounded-3xl border border-border bg-surface/90 backdrop-blur-xl shadow-layered-sm space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <LiveDot
@@ -587,14 +559,14 @@ export function StudentExamPage() {
                   size="sm"
                   pulse={cameraActive}
                 />
-                <span className="font-mono text-[11px] font-semibold text-slate-200">
+                <span className="font-mono text-[11px] font-semibold text-foreground">
                   {cameraActive ? statusText : 'CAMERA OFFLINE'}
                 </span>
               </div>
-              <span className="text-[9px] font-mono text-cyan">FACIAL TELEMETRY</span>
+              <span className="text-[9px] font-mono text-brand font-medium">FACIAL TELEMETRY</span>
             </div>
 
-            <div className="relative aspect-video w-full rounded-xl border border-white/10 bg-[#0A0B14] overflow-hidden flex items-center justify-center">
+            <div className="relative aspect-video w-full rounded-2xl border border-border bg-background overflow-hidden flex items-center justify-center shadow-inner">
               <video
                 ref={videoRef}
                 autoPlay
@@ -610,22 +582,22 @@ export function StudentExamPage() {
               />
               {!cameraActive && (
                 <div className="text-center p-4">
-                  <Video className="w-6 h-6 text-slate-400 mx-auto" />
-                  <span className="text-[10px] text-slate-400 block mt-1">
+                  <Video className="w-6 h-6 text-muted-foreground mx-auto" />
+                  <span className="text-[10px] text-muted-foreground block mt-1">
                     Sensor unavailable
                   </span>
                 </div>
               )}
             </div>
-          </GlassCard>
+          </div>
 
           {/* Question Palette Grid */}
-          <GlassCard className="p-5 space-y-4">
-            <div className="flex items-center justify-between pb-2 border-b border-white/5">
-              <span className="font-mono text-xs font-semibold text-white uppercase tracking-wider">
+          <div className="p-5 rounded-3xl border border-border bg-surface/90 backdrop-blur-xl shadow-layered-sm space-y-4">
+            <div className="flex items-center justify-between pb-2 border-b border-border/70">
+              <span className="font-mono text-xs font-semibold text-foreground uppercase tracking-wider">
                 Question Palette
               </span>
-              <span className="text-[11px] font-mono text-cyan">
+              <span className="text-[11px] font-mono text-brand font-semibold">
                 {answeredCount}/{questions.length}
               </span>
             </div>
@@ -641,12 +613,12 @@ export function StudentExamPage() {
                     key={q.id}
                     type="button"
                     onClick={() => setCurrentIndex(idx)}
-                    className={`h-9 rounded-xl font-mono text-xs font-bold transition-all flex items-center justify-center relative select-none ${
+                    className={`h-9 rounded-xl font-mono text-xs font-bold transition-all flex items-center justify-center relative select-none cursor-pointer ${
                       isCurrent
-                        ? 'border-2 border-cyan bg-cyan/20 text-cyan shadow-glow-cyan-sm z-10'
+                        ? 'border-2 border-brand bg-brand/20 text-brand shadow-sm z-10'
                         : isAnswered
-                        ? 'bg-emerald/20 border border-emerald/50 text-emerald-300'
-                        : 'bg-white/5 border border-white/10 text-slate-400 hover:text-white hover:bg-white/10'
+                        ? 'bg-emerald-500/20 border border-emerald-500/50 text-emerald-500'
+                        : 'bg-surface-elevated border border-border text-muted-foreground hover:text-foreground hover:bg-muted'
                     }`}
                   >
                     {idx + 1}
@@ -656,22 +628,64 @@ export function StudentExamPage() {
             </div>
 
             {/* Legend */}
-            <div className="pt-2 border-t border-white/5 flex items-center justify-between text-[10px] font-mono text-slate-400">
+            <div className="pt-2 border-t border-border/70 flex items-center justify-between text-[10px] font-mono text-muted-foreground">
               <div className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded bg-emerald/30 border border-emerald/60" />
+                <span className="w-2.5 h-2.5 rounded bg-emerald-500/30 border border-emerald-500/60" />
                 <span>Answered</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded bg-white/5 border border-white/20" />
+                <span className="w-2.5 h-2.5 rounded bg-surface-elevated border border-border" />
                 <span>Unanswered</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded border border-cyan bg-cyan/30" />
+                <span className="w-2.5 h-2.5 rounded border border-brand bg-brand/30" />
                 <span>Current</span>
               </div>
             </div>
-          </GlassCard>
+          </div>
         </div>
+      </div>
+
+      {/* ============================================================== */}
+      {/* FLOATING BOTTOM BAR FOR PREV / NEXT */}
+      {/* ============================================================== */}
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-20 flex items-center gap-3 sm:gap-4 px-4 sm:px-6 py-3 rounded-2xl border border-border bg-surface/90 backdrop-blur-xl shadow-layered-md">
+        <button
+          type="button"
+          disabled={currentIndex === 0}
+          onClick={() => setCurrentIndex((c) => Math.max(0, c - 1))}
+          className="py-2 px-3.5 rounded-xl text-xs font-semibold text-foreground hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center gap-1.5 cursor-pointer"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          <span>Previous Question</span>
+        </button>
+
+        <span className="font-mono text-xs text-muted-foreground px-2 border-x border-border/80">
+          Question {currentIndex + 1} of {questions.length}
+        </span>
+
+        <button
+          type="button"
+          onClick={() => {
+            if (currentIndex === questions.length - 1) {
+              setConfirmSubmitOpen(true);
+            } else {
+              setCurrentIndex((c) => Math.min(questions.length - 1, c + 1));
+            }
+          }}
+          className={`py-2 px-4 rounded-xl text-xs font-semibold text-white transition-all flex items-center gap-1.5 cursor-pointer shadow-sm ${
+            currentIndex === questions.length - 1
+              ? 'bg-gradient-to-r from-emerald-500 to-teal-600 hover:opacity-95'
+              : 'bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 hover:opacity-95'
+          }`}
+        >
+          <span>{currentIndex === questions.length - 1 ? 'Review & Submit' : 'Next Question'}</span>
+          {currentIndex === questions.length - 1 ? (
+            <CheckCircle2 className="w-4 h-4" />
+          ) : (
+            <ArrowRight className="w-4 h-4" />
+          )}
+        </button>
       </div>
 
       {/* ============================================================== */}
@@ -699,33 +713,37 @@ export function StudentExamPage() {
         description="Submit your exam session for transactional SQL evaluation."
         footer={
           <>
-            <NeonButton variant="ghost" size="sm" onClick={() => setConfirmSubmitOpen(false)}>
-              Continue Working
-            </NeonButton>
-            <NeonButton
-              variant="success"
-              size="sm"
-              isLoading={submitMutation.isPending}
-              onClick={() => submitMutation.mutate()}
+            <button
+              type="button"
+              onClick={() => setConfirmSubmitOpen(false)}
+              className="py-2 px-3.5 rounded-xl text-xs font-medium text-muted-foreground hover:text-foreground border border-border hover:bg-muted transition-colors cursor-pointer"
             >
-              Confirm & Submit
-            </NeonButton>
+              Continue Working
+            </button>
+            <button
+              type="button"
+              disabled={submitMutation.isPending}
+              onClick={() => submitMutation.mutate()}
+              className="py-2 px-4 rounded-xl text-xs font-semibold text-white bg-gradient-to-r from-emerald-500 to-teal-600 hover:opacity-95 shadow-sm transition-all cursor-pointer"
+            >
+              {submitMutation.isPending ? 'Submitting...' : 'Confirm & Submit'}
+            </button>
           </>
         }
       >
-        <div className="space-y-3 text-xs text-slate-300 font-mono">
+        <div className="space-y-3 text-xs text-foreground font-mono">
           <p>
-            You have answered <strong className="text-cyan font-bold">{answeredCount}</strong> of{' '}
-            <strong className="text-white font-bold">{questions.length}</strong> questions.
+            You have answered <strong className="text-brand font-bold">{answeredCount}</strong> of{' '}
+            <strong className="text-foreground font-bold">{questions.length}</strong> questions.
           </p>
           {answeredCount < questions.length && (
-            <div className="p-3 rounded-xl border border-amber/30 bg-amber/10 text-amber">
+            <div className="p-3 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-500">
               Warning: You have {questions.length - answeredCount} unanswered questions remaining.
             </div>
           )}
-          <p className="text-slate-400">
-            Once submitted, your session is locked via <code className="text-cyan">SELECT ... FOR UPDATE</code>{' '}
-            and evaluated by stored procedure <code className="text-cyan">sp_SubmitAndGradeExam</code>.
+          <p className="text-muted-foreground">
+            Once submitted, your session is locked via <code className="text-brand font-bold">SELECT ... FOR UPDATE</code>{' '}
+            and evaluated by stored procedure <code className="text-brand font-bold">sp_SubmitAndGradeExam</code>.
           </p>
         </div>
       </Modal>
