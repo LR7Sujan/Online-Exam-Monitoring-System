@@ -50,10 +50,10 @@ export function ToggleSwitch({
         tabIndex={disabled ? -1 : 0}
         onKeyDown={handleKeyDown}
         onClick={handleToggle}
-        className={`relative inline-flex items-center rounded-full p-0.5 transition-colors duration-200 border focus-visible:ring-2 focus-visible:ring-cyan focus-visible:ring-offset-2 focus-visible:ring-offset-[#070810] focus-visible:outline-none ${trackWidth} ${
+        className={`relative inline-flex items-center rounded-full p-0.5 transition-colors duration-200 border focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none ${trackWidth} ${
           checked
-            ? 'bg-cyan/25 border-cyan/60 shadow-glow-cyan-sm'
-            : 'bg-white/10 border-white/15 hover:bg-white/15'
+            ? 'bg-brand/20 border-brand/50 shadow-sm'
+            : 'bg-muted border-border hover:bg-muted/80'
         }`}
       >
         <motion.div
@@ -61,8 +61,8 @@ export function ToggleSwitch({
           initial={false}
           animate={{ x: checked ? knobOffset : 2 }}
           transition={{ type: 'spring', stiffness: 550, damping: 32 }}
-          className={`rounded-full shadow-md ${knobSize} ${
-            checked ? 'bg-cyan' : 'bg-slate-300'
+          className={`rounded-full shadow-sm ${knobSize} ${
+            checked ? 'bg-brand' : 'bg-muted-foreground'
           }`}
         />
       </div>

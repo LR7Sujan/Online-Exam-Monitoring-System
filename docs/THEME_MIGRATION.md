@@ -1,7 +1,7 @@
 # ProctorIQ — Theme Migration Audit & Specification
 
 > **Branch**: `feat/aurora-bento-theme`  
-> **Status**: Audit Completed — Zero styling changes applied in this phase  
+> **Status**: Migration 100% Completed — Aurora Bento Design Language Fully Deployed & Verified  
 > **Target Design Language**: Aurora Bento (Calm, premium, high-trust SaaS inspired by Linear, Vercel, Stripe, and Raycast)
 
 ---
@@ -164,152 +164,152 @@ A comprehensive scan of `client/src` identified **205 legacy styling tokens, arb
 ## 4. Theme Migration Checklist
 
 ### 4.1 Design Tokens & Core Engine
-- [ ] **Color Palette Definitions**:
-  - [ ] Dark theme base: `#09090B`, surface: `#111114`, surface-elevated: `#18181B`, border: `#27272A`.
-  - [ ] Light theme base: `#FAFAFA`, surface: `#FFFFFF`, surface-elevated: `#F4F4F5`, border: `#E4E4E7`.
-  - [ ] Brand gradient: Indigo `#6366F1` $\rightarrow$ Violet `#8B5CF6` $\rightarrow$ Fuchsia `#D946EF`.
-  - [ ] Semantic tokens: Safe `#10B981`, Caution `#F59E0B`, Danger `#F43F5E`, Info `#0EA5E9`.
-- [ ] **Bento Shadows & Hairline Borders**:
-  - [ ] Define `shadow-bento` (`0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 8px 24px -4px rgba(0, 0, 0, 0.1)`).
-  - [ ] Define `shadow-bento-xl` for overlays and drawers.
-  - [ ] Standardize corner radiuses to 20px (`rounded-2xl`) and 24px (`rounded-3xl`).
-- [ ] **Typography**:
-  - [ ] Import and configure Geist Sans and Geist Mono font families.
-  - [ ] Ensure all telemetry numbers and timers enforce `tabular-nums font-mono`.
-- [ ] **Theme Store & Toggle**:
-  - [ ] Implement `themeStore.ts` supporting `'light' | 'dark' | 'system'` modes.
-  - [ ] Add system media query listener (`prefers-color-scheme`).
-  - [ ] Create `ThemeToggle.tsx` with animated spring indicator.
+- [x] **Color Palette Definitions**:
+  - [x] Dark theme base: `#09090B`, surface: `#111114`, surface-elevated: `#18181B`, border: `#27272A`.
+  - [x] Light theme base: `#FAFAFA`, surface: `#FFFFFF`, surface-elevated: `#F4F4F5`, border: `#E4E4E7`.
+  - [x] Brand gradient: Indigo `#6366F1` $\rightarrow$ Violet `#8B5CF6` $\rightarrow$ Fuchsia `#D946EF`.
+  - [x] Semantic tokens: Safe `#10B981`, Caution `#F59E0B`, Danger `#F43F5E`, Info `#0EA5E9`.
+- [x] **Bento Shadows & Hairline Borders**:
+  - [x] Define `shadow-bento` (`0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 8px 24px -4px rgba(0, 0, 0, 0.1)`).
+  - [x] Define `shadow-bento-xl` for overlays and drawers.
+  - [x] Standardize corner radiuses to 20px (`rounded-2xl`) and 24px (`rounded-3xl`).
+- [x] **Typography**:
+  - [x] Import and configure Geist Sans and Geist Mono font families.
+  - [x] Ensure all telemetry numbers and timers enforce `tabular-nums font-mono`.
+- [x] **Theme Store & Toggle**:
+  - [x] Implement `ThemeContext.tsx` supporting `'light' | 'dark' | 'system'` modes.
+  - [x] Add system media query listener (`prefers-color-scheme`).
+  - [x] Create `ThemeToggle.tsx` with animated spring indicator.
 
 ### 4.2 Shared UI Components
-- [ ] **`GlassCard`**:
-  - [ ] Convert heavy neon blur into 20–24px radius bento surface.
-  - [ ] Add 1px hairline border (`border-bento-border`).
-  - [ ] Implement subtle cursor-follow spotlight.
-- [ ] **`NeonButton`**:
-  - [ ] Restyle from cyberpunk glow to Linear/Vercel refined button.
-  - [ ] Retain ripple effect and all variant props (`primary`, `secondary`, `danger`, `success`, `outline`, `ghost`).
-- [ ] **`StatCard`**:
-  - [ ] 20px radius bento card layout.
-  - [ ] Animated count-up ticker with Geist Mono tabular nums.
-  - [ ] Refined sparkline and trend badge integration.
-- [ ] **`TrustRing`**:
-  - [ ] Multi-stop SVG gradient arc (emerald $\rightarrow$ amber $\rightarrow$ rose).
-  - [ ] Low-score ambient glow pulse and particle burst on point restore.
-- [ ] **`SeverityBadge` & `StatusPill`**:
-  - [ ] Replace flat colors with accessible icon + text pairs.
-  - [ ] Soft background tints with 1px hairline borders.
-- [ ] **`Modal`**:
-  - [ ] 24px radius centered bento container.
-  - [ ] Glass backdrop blur restricted exclusively to overlay backdrop.
-- [ ] **`Tabs`**:
-  - [ ] Segmented pill container with Framer Motion layoutId pill indicator.
-- [ ] **`Skeleton`**:
-  - [ ] Smooth shimmer animation matching light and dark theme background variables.
-- [ ] **`EmptyState`**:
-  - [ ] Clean minimalist icon container and typography hierarchy.
-- [ ] **`Toast`**:
-  - [ ] Non-blocking floating notification with spring physics.
-- [ ] **`AnimatedTable`**:
-  - [ ] Hairline row dividers, subtle hover lift, and zebra striping.
+- [x] **`GlassCard`**:
+  - [x] Convert heavy neon blur into 20–24px radius bento surface.
+  - [x] Add 1px hairline border (`border-bento-border`).
+  - [x] Implement subtle cursor-follow spotlight.
+- [x] **`NeonButton`**:
+  - [x] Restyle from cyberpunk glow to Linear/Vercel refined button.
+  - [x] Retain ripple effect and all variant props (`primary`, `secondary`, `danger`, `success`, `outline`, `ghost`).
+- [x] **`StatCard`**:
+  - [x] 20px radius bento card layout.
+  - [x] Animated count-up ticker with Geist Mono tabular nums.
+  - [x] Refined sparkline and trend badge integration.
+- [x] **`TrustRing`**:
+  - [x] Multi-stop SVG gradient arc (emerald $\rightarrow$ amber $\rightarrow$ rose).
+  - [x] Low-score ambient glow pulse and particle burst on point restore.
+- [x] **`SeverityBadge` & `StatusPill`**:
+  - [x] Replace flat colors with accessible icon + text pairs.
+  - [x] Soft background tints with 1px hairline borders.
+- [x] **`Modal`**:
+  - [x] 24px radius centered bento container.
+  - [x] Glass backdrop blur restricted exclusively to overlay backdrop.
+- [x] **`Tabs`**:
+  - [x] Segmented pill container with Framer Motion layoutId pill indicator.
+- [x] **`Skeleton`**:
+  - [x] Smooth shimmer animation matching light and dark theme background variables.
+- [x] **`EmptyState`**:
+  - [x] Clean minimalist icon container and typography hierarchy.
+- [x] **`Toast`**:
+  - [x] Non-blocking floating notification with spring physics.
+- [x] **`AnimatedTable`**:
+  - [x] Hairline row dividers, subtle hover lift, and zebra striping.
 
 ### 4.3 App Shell & Navigation
-- [ ] **AppShell**:
-  - [ ] Desktop sidebar with active route indicator pill.
-  - [ ] Glass sticky header with system status pill, audio mute toggle, and theme switcher.
-  - [ ] 1440px standard max-width container (1720px for high-density monitoring).
-- [ ] **Command Palette**:
-  - [ ] Integrate `cmdk` command palette triggered by `Cmd+K` / `Ctrl+K`.
-  - [ ] Add instant navigation to Student, Proctor, and Admin portals.
-  - [ ] Add quick actions: toggle audio alerts, toggle theme, trigger search.
+- [x] **AppShell**:
+  - [x] Desktop sidebar with active route indicator pill.
+  - [x] Glass sticky header with system status pill, audio mute toggle, and theme switcher.
+  - [x] 1440px standard max-width container (1720px for high-density monitoring).
+- [x] **Command Palette**:
+  - [x] Integrate `cmdk` command palette triggered by `Cmd+K` / `Ctrl+K`.
+  - [x] Add instant navigation to Student, Proctor, and Admin portals.
+  - [x] Add quick actions: toggle audio alerts, toggle theme, trigger search.
 
 ### 4.4 Landing & Login
-- [ ] **LandingPage**:
-  - [ ] Aurora brand gradient hero headline.
-  - [ ] 12-column bento feature cards with mixed spans.
-  - [ ] Clean infraction penalty weight matrix card.
-- [ ] **AuthPages**:
-  - [ ] Centered 24px radius bento login card.
-  - [ ] Quick-fill credential buttons preserving exact test selectors (`text=ProctorIQ Access`, `Authenticate & Enter Console`).
-  - [ ] Integrated `ThemeToggle`.
+- [x] **LandingPage**:
+  - [x] Aurora brand gradient hero headline.
+  - [x] 12-column bento feature cards with mixed spans.
+  - [x] Clean infraction penalty weight matrix card.
+- [x] **AuthPages**:
+  - [x] Centered 24px radius bento login card.
+  - [x] Quick-fill credential buttons preserving exact test selectors (`text=ProctorIQ Access`, `Authenticate & Enter Console`).
+  - [x] Integrated `ThemeToggle`.
 
 ### 4.5 Student Examination Flow
-- [ ] **StudentDashboardPage**:
-  - [ ] Candidate greeting hero card with session statistics.
-  - [ ] 12-column bento assessment cards with status pills and Geist Mono timers.
-- [ ] **PreExamChecklistModal**:
-  - [ ] 4-step interactive stepper (Terms $\rightarrow$ Hardware $\rightarrow$ Screen $\rightarrow$ Confirm).
-  - [ ] Centered live webcam feed with face detection bounding box.
-- [ ] **StudentExamPage**:
-  - [ ] Top kiosk HUD bar with sticky glass blur and countdown clock.
-  - [ ] 8-col question/options area + 4-col HUD (TrustRing, live webcam, Question Palette).
-- [ ] **Overlays**:
-  - [ ] `ViolationWarningOverlay`: High-contrast modal with penalty counter.
-  - [ ] `FullscreenExitOverlay`: Accessible lockdown screen with re-enter button.
-  - [ ] `CameraDeniedBlocker`: Clean animated blocker with troubleshooting tips.
-- [ ] **StudentResultPage**:
-  - [ ] Digital integrity certificate banner.
-  - [ ] Animated score reveal and Recharts donut chart.
-  - [ ] Proctoring incident audit ledger table.
+- [x] **StudentDashboardPage**:
+  - [x] Candidate greeting hero card with session statistics.
+  - [x] 12-column bento assessment cards with status pills and Geist Mono timers.
+- [x] **PreExamChecklistModal**:
+  - [x] 4-step interactive stepper (Terms $\rightarrow$ Hardware $\rightarrow$ Screen $\rightarrow$ Confirm).
+  - [x] Centered live webcam feed with face detection bounding box.
+- [x] **StudentExamPage**:
+  - [x] Top kiosk HUD bar with sticky glass blur and countdown clock.
+  - [x] 8-col question/options area + 4-col HUD (TrustRing, live webcam, Question Palette).
+- [x] **Overlays**:
+  - [x] `ViolationWarningOverlay`: High-contrast modal with penalty counter.
+  - [x] `FullscreenExitOverlay`: Accessible lockdown screen with re-enter button.
+  - [x] `CameraDeniedBlocker`: Clean animated blocker with troubleshooting tips.
+- [x] **StudentResultPage**:
+  - [x] Digital integrity certificate banner.
+  - [x] Animated score reveal and Recharts donut chart.
+  - [x] Proctoring incident audit ledger table.
 
 ### 4.6 Proctor Surveillance Center
-- [ ] **ProctorDashboardPage**:
-  - [ ] Top surveillance telemetry bar with Socket.IO status.
-  - [ ] View mode switch: `Live Telemetry Grid` vs `Adjudication Queue`.
-  - [ ] Search and filter bar (exam, severity, status).
-- [ ] **KpiStrip**:
-  - [ ] 4 bento metric cards with count-up tickers (Active, Violations, Flagged, Terminated).
-- [ ] **StudentTile**:
-  - [ ] 20px radius bento tile with risk halo glow (green $\rightarrow$ amber $\rightarrow$ red).
-  - [ ] Mini `TrustRing`, initials avatar, violation badge, and shake animation.
-- [ ] **LiveFeedSidebar**:
-  - [ ] Real-time sliding violation feed with severity colors and "Review" action.
-  - [ ] Audio alert toggle button.
-- [ ] **StudentDetailDrawer**:
-  - [ ] Slide-over drawer with Recharts trust score area chart and violation markers.
-  - [ ] Webcam snapshot lightbox gallery.
-  - [ ] Session forensic info (IP, fingerprint) and Warn/Terminate/Reinstate actions.
-- [ ] **ReviewQueueTable**:
-  - [ ] Adjudication table from `vw_ViolationAuditReport`.
-  - [ ] Bulk Confirm/Dismiss with keyboard navigation (`[C]`, `[D]`, arrow keys).
-  - [ ] Live score restoration animation on dismissal.
-- [ ] **EmergencyBanner**:
-  - [ ] Full-width animated breach banner for `MULTIPLE_FACES` and `DEVTOOLS_OPEN`.
+- [x] **ProctorDashboardPage**:
+  - [x] Top surveillance telemetry bar with Socket.IO status.
+  - [x] View mode switch: `Live Telemetry Grid` vs `Adjudication Queue`.
+  - [x] Search and filter bar (exam, severity, status).
+- [x] **KpiStrip**:
+  - [x] 4 bento metric cards with count-up tickers (Active, Violations, Flagged, Terminated).
+- [x] **StudentTile**:
+  - [x] 20px radius bento tile with risk halo glow (green $\rightarrow$ amber $\rightarrow$ red).
+  - [x] Mini `TrustRing`, initials avatar, violation badge, and shake animation.
+- [x] **LiveFeedSidebar**:
+  - [x] Real-time sliding violation feed with severity colors and "Review" action.
+  - [x] Audio alert toggle button.
+- [x] **StudentDetailDrawer**:
+  - [x] Slide-over drawer with Recharts trust score area chart and violation markers.
+  - [x] Webcam snapshot lightbox gallery.
+  - [x] Session forensic info (IP, fingerprint) and Warn/Terminate/Reinstate actions.
+- [x] **ReviewQueueTable**:
+  - [x] Adjudication table from `vw_ViolationAuditReport`.
+  - [x] Bulk Confirm/Dismiss with keyboard navigation (`[C]`, `[D]`, arrow keys).
+  - [x] Live score restoration animation on dismissal.
+- [x] **EmergencyBanner**:
+  - [x] Full-width animated breach banner for `MULTIPLE_FACES` and `DEVTOOLS_OPEN`.
 
 ### 4.7 Admin Operations & Simulator
-- [ ] **AdminDashboardPage**:
-  - [ ] Tabbed navigation: Overview, Exams, Violation Rules, Users, Results & Export.
-  - [ ] Assessment cards with question inspectors.
-  - [ ] MySQL DBMS telemetry metrics cards.
-- [ ] **AdminOverviewDashboard**:
-  - [ ] KPI cards with trend sparklines.
-  - [ ] Violations over time area chart (7-day / 30-day toggle).
-  - [ ] Infraction type distribution donut chart.
-  - [ ] 24-hour temporal heatmap matrix from `vw_ViolationHeatmap`.
-  - [ ] Stacked bar chart for exam integrity splits.
-  - [ ] Trust score histogram and top 10 flagged sessions leaderboard.
-- [ ] **ExamWizardModal**:
-  - [ ] Multi-step wizard with animated progress pills.
-  - [ ] Threshold slider for `min_trust_score` with live danger zone preview.
-  - [ ] Question editor with bulk CSV import.
-- [ ] **ViolationRulesManager**:
-  - [ ] Penalty weights table with live database trigger calibration.
-  - [ ] Interactive cheating simulator with TrustRing preview and infraction steppers.
-- [ ] **UsersManagerTable**:
-  - [ ] User role administration with filter pills, search, and spring toggle switches.
-- [ ] **ResultsAndExportTable**:
-  - [ ] Per-exam results grid with integrity filters.
-  - [ ] One-click CSV export and printable PDF layout.
-- [ ] **SimulatorPage**:
-  - [ ] Candidate swarm demo simulator with speed multiplier slider.
-  - [ ] Chaos profile presets (Low, Medium, Total Chaos).
-  - [ ] Real-time virtual candidate tiles with mini TrustRings and terminal feed.
+- [x] **AdminDashboardPage**:
+  - [x] Tabbed navigation: Overview, Exams, Violation Rules, Users, Results & Export.
+  - [x] Assessment cards with question inspectors.
+  - [x] MySQL DBMS telemetry metrics cards.
+- [x] **AdminOverviewDashboard**:
+  - [x] KPI cards with trend sparklines.
+  - [x] Violations over time area chart (7-day / 30-day toggle).
+  - [x] Infraction type distribution donut chart.
+  - [x] 24-hour temporal heatmap matrix from `vw_ViolationHeatmap`.
+  - [x] Stacked bar chart for exam integrity splits.
+  - [x] Trust score histogram and top 10 flagged sessions leaderboard.
+- [x] **ExamWizardModal**:
+  - [x] Multi-step wizard with animated progress pills.
+  - [x] Threshold slider for `min_trust_score` with live danger zone preview.
+  - [x] Question editor with bulk CSV import.
+- [x] **ViolationRulesManager**:
+  - [x] Penalty weights table with live database trigger calibration.
+  - [x] Interactive cheating simulator with TrustRing preview and infraction steppers.
+- [x] **UsersManagerTable**:
+  - [x] User role administration with filter pills, search, and spring toggle switches.
+- [x] **ResultsAndExportTable**:
+  - [x] Per-exam results grid with integrity filters.
+  - [x] One-click CSV export and printable PDF layout.
+- [x] **SimulatorPage**:
+  - [x] Candidate swarm demo simulator with speed multiplier slider.
+  - [x] Chaos profile presets (Low, Medium, Total Chaos).
+  - [x] Real-time virtual candidate tiles with mini TrustRings and terminal feed.
 
 ### 4.8 Charts & Data Visualizations (Recharts)
-- [ ] Standardize Recharts theme across Light and Dark modes.
-- [ ] Cartography & grid lines: use CSS variable `--border` (`#27272A` / `#E4E4E7`).
-- [ ] Tooltip containers: 12px radius bento cards with hairline borders and soft shadows.
-- [ ] Gradients: replace flat fills with vertical opacity gradients (e.g. `rgba(99, 102, 241, 0.4)` to `rgba(99, 102, 241, 0.0)`).
+- [x] Standardize Recharts theme across Light and Dark modes.
+- [x] Cartography & grid lines: use CSS variable `--border` (`#27272A` / `#E4E4E7`).
+- [x] Tooltip containers: 12px radius bento cards with hairline borders and soft shadows.
+- [x] Gradients: replace flat fills with vertical opacity gradients (e.g. `rgba(99, 102, 241, 0.4)` to `rgba(99, 102, 241, 0.0)`).
 
 ---
 

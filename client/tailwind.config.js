@@ -51,16 +51,13 @@ export default {
           dark: '#0284C7',
         },
 
-        // Legacy Tokens (Kept for backwards compatibility per rule 6)
-        void: '#0A0B14',
-        panel: '#101222',
-        elevated: '#16192E',
+        // Extended Palette
         cyan: {
-          DEFAULT: '#22D3EE',
-          300: '#67E8F9',
-          400: '#22D3EE',
-          500: '#06B6D4',
-          600: '#0891B2',
+          DEFAULT: '#0EA5E9',
+          300: '#7DD3FC',
+          400: '#38BDF8',
+          500: '#0EA5E9',
+          600: '#0284C7',
         },
         violet: {
           DEFAULT: '#8B5CF6',
@@ -107,18 +104,6 @@ export default {
         bento: '0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 8px 24px -4px rgba(0, 0, 0, 0.1)',
         'bento-xl': '0 20px 40px -8px rgba(0, 0, 0, 0.25)',
         'bento-card': '0 0 0 1px var(--border), 0 2px 8px -2px rgba(0, 0, 0, 0.08)',
-
-        // Legacy glow shadows
-        'glow-cyan': '0 0 24px rgba(34, 211, 238, 0.28)',
-        'glow-cyan-sm': '0 0 12px rgba(34, 211, 238, 0.22)',
-        'glow-violet': '0 0 24px rgba(139, 92, 246, 0.28)',
-        'glow-violet-sm': '0 0 12px rgba(139, 92, 246, 0.22)',
-        'glow-magenta': '0 0 28px rgba(244, 63, 94, 0.35)',
-        'glow-magenta-sm': '0 0 12px rgba(244, 63, 94, 0.25)',
-        'glow-emerald': '0 0 24px rgba(16, 185, 129, 0.28)',
-        'glow-emerald-sm': '0 0 12px rgba(16, 185, 129, 0.22)',
-        'glow-amber': '0 0 24px rgba(245, 158, 11, 0.28)',
-        'glow-amber-sm': '0 0 12px rgba(245, 158, 11, 0.22)',
       },
       animation: {
         'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',

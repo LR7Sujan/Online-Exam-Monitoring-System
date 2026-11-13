@@ -25,6 +25,7 @@ import {
   ReferenceLine,
 } from 'recharts';
 import { TrustRing } from '../ui/TrustRing';
+import { ParticleBurst } from '../ui/ParticleBurst';
 import { useAuthStore } from '../../store/authStore';
 import { StatusPill } from '../ui/StatusPill';
 import { SeverityBadge } from '../ui/SeverityBadge';
@@ -56,6 +57,7 @@ export function StudentDetailDrawer({ sessionId, onClose }: StudentDetailDrawerP
     code: string;
     time: string;
   } | null>(null);
+  const [showReinstateBurst, setShowReinstateBurst] = useState(false);
 
   const [warnModalOpen, setWarnModalOpen] = useState<boolean>(false);
   const [warnMessage, setWarnMessage] = useState<string>('Please ensure your face remains centered in the camera frame.');
@@ -122,6 +124,8 @@ export function StudentDetailDrawer({ sessionId, onClose }: StudentDetailDrawerP
       }),
     onSuccess: () => {
       playPingSound('reinstate');
+      setShowReinstateBurst(true);
+      setTimeout(() => setShowReinstateBurst(false), 2200);
       queryClient.invalidateQueries({ queryKey: ['proctor-session-inspect', sessionId] });
       queryClient.invalidateQueries({ queryKey: ['proctor-live-monitor'] });
       queryClient.invalidateQueries({ queryKey: ['proctor-kpis'] });
@@ -233,7 +237,8 @@ export function StudentDetailDrawer({ sessionId, onClose }: StudentDetailDrawerP
           <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-6 scrollbar-thin">
             {/* 1. Header Overview: TrustRing + Quick Stats */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 rounded-2xl border border-border bg-surface-elevated/70 p-4 items-center">
-              <div className="flex justify-center sm:justify-start">
+              <div className="flex justify-center sm:justify-start relative">
+                {showReinstateBurst && <ParticleBurst count={24} />}
                 <TrustRing
                   score={currentScore}
                   minThreshold={minThreshold}

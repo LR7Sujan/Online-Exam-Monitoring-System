@@ -10,6 +10,7 @@ import {
 import { SeverityBadge } from '../ui/SeverityBadge';
 import { StatusPill } from '../ui/StatusPill';
 import { NeonButton } from '../ui/NeonButton';
+import { ParticleBurst } from '../ui/ParticleBurst';
 import { api } from '../../lib/api';
 import { playPingSound } from '../../utils/audioAlert';
 import type { ReviewStatus, ViolationAuditRow } from '../../types/domain';
@@ -377,7 +378,8 @@ export function ReviewQueueTable({ onInspectStudent }: ReviewQueueTableProps) {
                       </td>
 
                       {/* Trust Score with Animated Restore indicator */}
-                      <td className="p-3.5 text-center font-mono tabular-nums">
+                      <td className="p-3.5 text-center font-mono tabular-nums relative">
+                        {animScore && <ParticleBurst count={16} />}
                         <motion.span
                           key={trust}
                           animate={
