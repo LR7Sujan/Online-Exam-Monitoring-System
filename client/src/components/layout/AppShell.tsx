@@ -27,6 +27,7 @@ import { useAuthStore } from '../../store/authStore';
 import { useSocketContext } from '../../context/useSocketContext';
 import { LiveDot } from '../ui/LiveDot';
 import { SeverityBadge } from '../ui/SeverityBadge';
+import { ThemeToggle } from '../ui/ThemeToggle';
 import { isAudioMuted, setAudioMuted, playPingSound } from '../../utils/audioAlert';
 
 interface NavItem {
@@ -313,6 +314,9 @@ export function AppShell() {
               <Sparkles className="w-3.5 h-3.5" />
               <span>Styleguide</span>
             </NavLink>
+
+            {/* Theme Toggle (Light / Dark / System) */}
+            <ThemeToggle />
 
             {/* Audio Alert Pings Toggle (off by default) */}
             <button

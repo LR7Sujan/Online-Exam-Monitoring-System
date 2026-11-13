@@ -4,6 +4,7 @@ import { lazy, Suspense, type ReactNode } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { SocketProvider } from './context/SocketContext';
 import { ToastProvider } from './components/ui/Toast';
+import { ThemeProvider } from './context/ThemeContext';
 import { AppShell } from './components/layout/AppShell';
 import { LoginPage, RegisterPage } from './pages/AuthPages';
 import { PageSkeleton } from './components/ui/Skeleton';
@@ -51,11 +52,12 @@ function RequireRole({
 
 export function App() {
   return (
-    <MotionConfig reducedMotion="user">
-      <QueryClientProvider client={queryClient}>
-        <SocketProvider>
-          <ToastProvider>
-            <BrowserRouter>
+    <ThemeProvider defaultTheme="dark" storageKey="proctoriq-theme">
+      <MotionConfig reducedMotion="user">
+        <QueryClientProvider client={queryClient}>
+          <SocketProvider>
+            <ToastProvider>
+              <BrowserRouter>
               <Suspense fallback={<PageSkeleton />}>
                 <Routes>
                   {/* Public standalone pages without sidebar */}
@@ -157,6 +159,7 @@ export function App() {
         </SocketProvider>
       </QueryClientProvider>
     </MotionConfig>
+  </ThemeProvider>
   );
 }
 

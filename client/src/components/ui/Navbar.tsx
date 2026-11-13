@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { disconnectSocket } from '../../lib/socket';
 import { useAuthStore } from '../../store/authStore';
 import { StatusBadge } from './StatusBadge';
+import { ThemeToggle } from './ThemeToggle';
 
 export function Navbar() {
   const { user, logout } = useAuthStore();
@@ -66,6 +67,9 @@ export function Navbar() {
               </Link>
             );
           })}
+
+          {/* Theme Switcher */}
+          <ThemeToggle />
 
           {user ? (
             <div className="flex items-center gap-3 border-l border-white/10 pl-3">
