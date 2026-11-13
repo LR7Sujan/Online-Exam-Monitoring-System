@@ -45,26 +45,26 @@ export function TrustRing({
   const isDanger = clamped < minThreshold;
   const isWarning = !isDanger && clamped < 80;
 
-  // Gradient configuration based on risk tier
+  // Gradient configuration based on risk tier: emerald -> amber -> rose
   const gradientId = `trust-grad-${uniqueId}`;
   let stopColor1 = '#10B981'; // Emerald
-  let stopColor2 = '#22D3EE'; // Cyan
+  let stopColor2 = '#34D399';
   let primaryColor = '#10B981';
 
   if (isDanger) {
-    stopColor1 = '#F43F5E'; // Magenta
-    stopColor2 = '#BE123C'; // Ruby Red
+    stopColor1 = '#F43F5E'; // Rose
+    stopColor2 = '#BE123C';
     primaryColor = '#F43F5E';
   } else if (isWarning) {
     stopColor1 = '#F59E0B'; // Amber
-    stopColor2 = '#FB923C'; // Orange
+    stopColor2 = '#FBBF24';
     primaryColor = '#F59E0B';
   }
 
-  // Glow intensifies as score drops (from 6px at 100% to 26px at critical low)
+  // Glow intensifies as score drops (from 4px at 100% to 24px at critical low)
   const scoreDrop = 100 - clamped;
-  const glowRadius = Math.round(6 + scoreDrop * 0.2);
-  const glowAlpha = Math.min(0.95, 0.4 + scoreDrop * 0.0055);
+  const glowRadius = Math.round(4 + scoreDrop * 0.2);
+  const glowAlpha = Math.min(0.85, 0.3 + scoreDrop * 0.005);
 
   // Particle burst on score restoration
   const prevScoreRef = useRef(clamped);
@@ -73,7 +73,7 @@ export function TrustRing({
   useEffect(() => {
     // Score restored (increased by at least 2 points)
     if (clamped > prevScoreRef.current + 1) {
-      const sparkColors = ['#10B981', '#22D3EE', '#FBBF24', '#34D399', '#67E8F9'];
+      const sparkColors = ['#10B981', '#34D399', '#6366F1', '#8B5CF6', '#FBBF24'];
       const burstCount = 18;
       const newParticles: Particle[] = Array.from({ length: burstCount }, (_, i) => {
         const angle = (i / burstCount) * 2 * Math.PI + (Math.random() - 0.5) * 0.4;
@@ -111,15 +111,15 @@ export function TrustRing({
       {isDanger && (
         <motion.div
           animate={{
-            scale: [1, 1.18, 1],
-            opacity: [0.35, 0.75, 0.35],
+            scale: [1, 1.2, 1],
+            opacity: [0.3, 0.7, 0.3],
           }}
           transition={{
-            duration: 1.3,
+            duration: 1.4,
             repeat: Infinity,
             ease: 'easeInOut',
           }}
-          className="absolute inset-0 rounded-full bg-magenta/25 blur-2xl pointer-events-none"
+          className="absolute inset-0 rounded-full bg-rose-500/20 blur-xl pointer-events-none"
         />
       )}
 
@@ -143,7 +143,8 @@ export function TrustRing({
           cy={pixelSize / 2}
           r={radius}
           fill="none"
-          stroke="rgba(255, 255, 255, 0.08)"
+          stroke="currentColor"
+          className="text-zinc-200 dark:text-zinc-800"
           strokeWidth={strokeWidth}
         />
 
@@ -159,107 +160,96 @@ export function TrustRing({
           strokeDasharray={circumference}
           initial={false}
           animate={{ strokeDashoffset: offset }}
-          transition={{ duration: 0.65, ease: 'easeOut' }}
+          transition={{ duration: 0.8, ease: [0.34, 1.56, 0.64, 1] }}
           style={{
-            filter: `drop-shadow(0 0 ${glowRadius}px ${primaryColor}${Math.round(glowAlpha * 255).toString(16).padStart(2, '0')})`,
+            filter: `drop-shadow(0 0 ${glowRadius}px ${primaryColor}${Math.round(
+              glowAlpha * 255
+            ).toString(16).padStart(2, '0')})`,
           }}
         />
 
-        {/* Minimum Threshold Marker */}
+        {/* Optional Min Threshold Marker */}
         {showThresholdMarker && (
-          <circle
-            cx={markerX}
-            cy={markerY}
-            r={strokeWidth * 0.45}
-            fill="#F43F5E"
-            stroke="#0A0B14"
-            strokeWidth={2}
-          />
+          <g>
+            <circle
+              cx={markerX}
+              cy={markerY}
+              r={strokeWidth / 2 + 1}
+              fill="#F43F5E"
+              stroke="white"
+              strokeWidth="1.5"
+            />
+          </g>
         )}
       </svg>
 
-      {/* Score Restoration Particle Burst */}
-      <AnimatePresence>
-        {particles.length > 0 && (
-          <div
-            className="absolute inset-0 pointer-events-none flex items-center justify-center overflow-visible"
-            aria-hidden="true"
-          >
-            {particles.map((p) => {
-              const targetX = Math.cos(p.angle) * p.distance;
-              const targetY = Math.sin(p.angle) * p.distance;
-              return (
-                <motion.span
-                  key={p.id}
-                  initial={{ x: 0, y: 0, scale: 0, opacity: 1 }}
-                  animate={{
-                    x: targetX,
-                    y: targetY,
-                    scale: [0, 1.4, 0],
-                    opacity: [1, 0.9, 0],
-                  }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.8, ease: 'easeOut' }}
-                  style={{
-                    backgroundColor: p.color,
-                    width: p.size,
-                    height: p.size,
-                    boxShadow: `0 0 10px ${p.color}`,
-                  }}
-                  className="absolute rounded-full"
-                />
-              );
-            })}
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* Center Metrics Content */}
-      <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-2">
-        {showLabel && pixelSize > 100 && (
-          <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
-            Trust Score
-          </span>
-        )}
-
-        <div className="flex items-baseline justify-center">
-          <motion.span
-            key={clamped}
-            initial={{ scale: 0.92, opacity: 0.8 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-            className="telemetry-num font-bold tracking-tight"
-            style={{
-              color: primaryColor,
-              fontSize: pixelSize > 140 ? '2.25rem' : pixelSize > 100 ? '1.5rem' : '1.1rem',
-              lineHeight: 1,
-            }}
-          >
-            {clamped}
-          </motion.span>
-          <span
-            className="font-mono text-slate-400 ml-0.5"
-            style={{ fontSize: pixelSize > 140 ? '0.875rem' : '0.75rem' }}
-          >
-            %
-          </span>
-        </div>
-
-        {sublabel ? (
-          <span className="text-[10px] text-slate-400 truncate max-w-[80%]">
-            {sublabel}
-          </span>
-        ) : (
-          pixelSize > 120 && (
-            <span className="font-mono text-[10px] text-slate-400 mt-0.5">
-              LIMIT {minThreshold}%
+      {/* Center Readout */}
+      {showLabel && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+          <div className="flex items-baseline">
+            <span
+              className={`font-mono font-bold tracking-tight tabular-nums text-foreground ${
+                pixelSize > 120 ? 'text-3xl' : 'text-xl'
+              }`}
+            >
+              {clamped}
             </span>
-          )
-        )}
-      </div>
+            <span
+              className={`font-mono text-muted-foreground ml-0.5 font-medium ${
+                pixelSize > 120 ? 'text-sm' : 'text-[10px]'
+              }`}
+            >
+              %
+            </span>
+          </div>
+
+          {sublabel && (
+            <span
+              className={`font-mono uppercase tracking-wider text-muted-foreground mt-0.5 ${
+                pixelSize > 120 ? 'text-[10px]' : 'text-[8px]'
+              }`}
+            >
+              {sublabel}
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Particle Restoration Burst Animation */}
+      <AnimatePresence>
+        {particles.map((p) => {
+          const x = pixelSize / 2 + p.distance * Math.cos(p.angle);
+          const y = pixelSize / 2 + p.distance * Math.sin(p.angle);
+          return (
+            <motion.div
+              key={p.id}
+              initial={{
+                x: pixelSize / 2,
+                y: pixelSize / 2,
+                scale: 0.2,
+                opacity: 1,
+              }}
+              animate={{
+                x,
+                y,
+                scale: [0.2, 1.3, 0],
+                opacity: [1, 0.9, 0],
+              }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.85, ease: 'easeOut' }}
+              style={{
+                position: 'absolute',
+                width: p.size,
+                height: p.size,
+                borderRadius: '9999px',
+                backgroundColor: p.color,
+                boxShadow: `0 0 8px ${p.color}`,
+                pointerEvents: 'none',
+              }}
+            />
+          );
+        })}
+      </AnimatePresence>
     </div>
   );
 }
-
-// Backward compatibility alias
-export const TrustGauge = TrustRing;

@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { useSpring, useTransform } from 'framer-motion';
-import { GlassCard } from './GlassCard';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 
 export interface StatCardProps {
@@ -17,49 +16,44 @@ export interface StatCardProps {
   className?: string;
 }
 
-const accentColors: Record<
+const accentConfig: Record<
   'cyan' | 'violet' | 'magenta' | 'emerald' | 'amber',
-  { text: string; bg: string; stroke: string; fill: string; border: string; glow: 'cyan' | 'violet' | 'magenta' | 'emerald' | 'amber' }
+  { stroke: string; fill: string; text: string; bg: string; border: string }
 > = {
   cyan: {
-    text: 'text-cyan',
-    bg: 'bg-cyan/10',
-    stroke: '#22D3EE',
-    fill: 'rgba(34, 211, 238, 0.15)',
-    border: 'border-cyan/30',
-    glow: 'cyan',
+    stroke: '#0EA5E9',
+    fill: 'rgba(14, 165, 233, 0.15)',
+    text: 'text-sky-600 dark:text-sky-400',
+    bg: 'bg-sky-50 dark:bg-sky-950/40',
+    border: 'border-sky-200 dark:border-sky-800/80',
   },
   violet: {
-    text: 'text-violet',
-    bg: 'bg-violet/10',
     stroke: '#8B5CF6',
     fill: 'rgba(139, 92, 246, 0.15)',
-    border: 'border-violet/30',
-    glow: 'violet',
+    text: 'text-violet-600 dark:text-violet-400',
+    bg: 'bg-violet-50 dark:bg-violet-950/40',
+    border: 'border-violet-200 dark:border-violet-800/80',
   },
   magenta: {
-    text: 'text-magenta',
-    bg: 'bg-magenta/10',
     stroke: '#F43F5E',
     fill: 'rgba(244, 63, 94, 0.15)',
-    border: 'border-magenta/30',
-    glow: 'magenta',
+    text: 'text-rose-600 dark:text-rose-400',
+    bg: 'bg-rose-50 dark:bg-rose-950/40',
+    border: 'border-rose-200 dark:border-rose-800/80',
   },
   emerald: {
-    text: 'text-emerald',
-    bg: 'bg-emerald/10',
     stroke: '#10B981',
     fill: 'rgba(16, 185, 129, 0.15)',
-    border: 'border-emerald/30',
-    glow: 'emerald',
+    text: 'text-emerald-600 dark:text-emerald-400',
+    bg: 'bg-emerald-50 dark:bg-emerald-950/40',
+    border: 'border-emerald-200 dark:border-emerald-800/80',
   },
   amber: {
-    text: 'text-amber',
-    bg: 'bg-amber/10',
     stroke: '#F59E0B',
     fill: 'rgba(245, 158, 11, 0.15)',
-    border: 'border-amber/30',
-    glow: 'amber',
+    text: 'text-amber-600 dark:text-amber-400',
+    bg: 'bg-amber-50 dark:bg-amber-950/40',
+    border: 'border-amber-200 dark:border-amber-800/80',
   },
 };
 
@@ -94,7 +88,7 @@ function Sparkline({
   return (
     <svg
       viewBox={`0 0 ${width} ${height}`}
-      className="w-28 h-9 overflow-visible"
+      className="w-28 h-9 overflow-visible shrink-0"
       aria-hidden="true"
     >
       <defs>
@@ -147,7 +141,7 @@ function AnimatedNumber({
     return () => unsubscribe();
   }, [display]);
 
-  return <span className="telemetry-num">{renderedText}</span>;
+  return <span className="tabular-nums font-mono">{renderedText}</span>;
 }
 
 export function StatCard({
@@ -163,20 +157,18 @@ export function StatCard({
   accent = 'cyan',
   className = '',
 }: StatCardProps) {
-  const palette = accentColors[accent];
+  const cfg = accentConfig[accent] ?? accentConfig.cyan;
 
   return (
-    <GlassCard
-      glow={palette.glow}
-      hoverEffect
-      className={`p-5 flex flex-col justify-between ${className}`}
+    <div
+      className={`rounded-[20px] border border-border bg-surface text-foreground shadow-bento hover:shadow-bento-xl transition-all duration-300 p-5 flex flex-col justify-between ${className}`}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="space-y-1">
-          <p className="text-xs uppercase font-medium tracking-wider text-slate-400">
+          <p className="text-xs uppercase font-medium tracking-wider text-muted-foreground">
             {label}
           </p>
-          <div className={`text-3xl font-bold tracking-tight text-white ${palette.text}`}>
+          <div className="text-3xl font-bold tracking-tight text-foreground">
             <AnimatedNumber
               value={value}
               decimals={decimals}
@@ -188,23 +180,23 @@ export function StatCard({
 
         {icon && (
           <div
-            className={`p-2.5 rounded-xl border ${palette.border} ${palette.bg} ${palette.text} shadow-sm`}
+            className={`p-2.5 rounded-xl border ${cfg.border} ${cfg.bg} ${cfg.text} shadow-sm shrink-0`}
           >
             {icon}
           </div>
         )}
       </div>
 
-      <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between gap-2">
+      <div className="mt-4 pt-3 border-t border-border flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5 text-xs">
           {change !== undefined && (
             <span
-              className={`inline-flex items-center gap-0.5 font-medium px-1.5 py-0.5 rounded ${
+              className={`inline-flex items-center gap-1 font-mono font-medium text-[11px] px-2 py-0.5 rounded-full border ${
                 change > 0
-                  ? 'bg-emerald/15 text-emerald'
+                  ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/80'
                   : change < 0
-                  ? 'bg-magenta/15 text-magenta'
-                  : 'bg-slate-800 text-slate-400'
+                  ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-800/80'
+                  : 'bg-muted text-muted-foreground border-border'
               }`}
             >
               {change > 0 ? (
@@ -217,17 +209,17 @@ export function StatCard({
               {change > 0 ? `+${change}%` : `${change}%`}
             </span>
           )}
-          <span className="text-slate-400 text-[11px] truncate">{changeLabel}</span>
+          <span className="text-muted-foreground text-[11px] truncate">{changeLabel}</span>
         </div>
 
         {sparklineData && sparklineData.length > 1 && (
           <Sparkline
             data={sparklineData}
-            stroke={palette.stroke}
-            fill={palette.fill}
+            stroke={cfg.stroke}
+            fill={cfg.fill}
           />
         )}
       </div>
-    </GlassCard>
+    </div>
   );
 }
