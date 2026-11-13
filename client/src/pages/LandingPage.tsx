@@ -1,31 +1,26 @@
 import { motion } from 'framer-motion';
 import {
-  Activity,
   ArrowRight,
   Cpu,
-  Database,
-  Eye,
-  Lock,
-  ShieldAlert,
   ShieldCheck,
-  Zap,
   Terminal,
   Sparkles,
+  LayoutDashboard,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
-import { CanvasNetworkBg } from '../components/ui/CanvasNetworkBg';
-import { GlassCard } from '../components/ui/GlassCard';
-import { NeonButton } from '../components/ui/NeonButton';
 import { SeverityBadge } from '../components/ui/SeverityBadge';
+import { ThemeToggle } from '../components/ui/ThemeToggle';
+import { MockDashboardCard } from '../components/landing/MockDashboardCard';
+import { FeatureBento } from '../components/landing/FeatureBento';
 
 const VIOLATION_MATRIX = [
-  { code: 'COPY_PASTE', penalty: '-10 pts', severity: 'LOW', desc: 'Clipboard snooping attempt intercepted' },
-  { code: 'TAB_SWITCH', penalty: '-15 pts', severity: 'MEDIUM', desc: 'Window blur / focus loss detected' },
-  { code: 'FULLSCREEN_EXIT', penalty: '-15 pts', severity: 'MEDIUM', desc: 'Proctor kiosk container breach' },
-  { code: 'NO_FACE', penalty: '-20 pts', severity: 'HIGH', desc: 'Candidate absent from video feed' },
-  { code: 'MULTIPLE_FACES', penalty: '-35 pts', severity: 'HIGH', desc: 'Secondary person in candidate camera' },
-  { code: 'DEVTOOLS_OPEN', penalty: '-50 pts', severity: 'CRITICAL', desc: 'Debugger inspection console detected' },
+  { code: 'COPY_PASTE', penalty: '-10 pts', severity: 'LOW' as const, desc: 'Clipboard snooping attempt intercepted' },
+  { code: 'TAB_SWITCH', penalty: '-15 pts', severity: 'MEDIUM' as const, desc: 'Window blur / focus loss detected' },
+  { code: 'FULLSCREEN_EXIT', penalty: '-15 pts', severity: 'MEDIUM' as const, desc: 'Proctor kiosk container breach' },
+  { code: 'NO_FACE', penalty: '-20 pts', severity: 'HIGH' as const, desc: 'Candidate absent from video feed (>5s)' },
+  { code: 'MULTIPLE_FACES', penalty: '-35 pts', severity: 'HIGH' as const, desc: 'Secondary person in candidate camera' },
+  { code: 'DEVTOOLS_OPEN', penalty: '-50 pts', severity: 'CRITICAL' as const, desc: 'Debugger inspection console detected' },
 ];
 
 export function LandingPage() {
@@ -40,15 +35,67 @@ export function LandingPage() {
       : '/login';
 
   return (
-    <div className="relative min-h-screen">
-      {/* Interactive Neural Network Particles Canvas */}
-      <CanvasNetworkBg />
+    <div className="relative min-h-screen bg-background text-foreground overflow-x-hidden selection:bg-brand/20">
+      {/* Background Aurora Blobs & Dotted Grid */}
+      <div className="aurora-backdrop pointer-events-none" />
+      <div className="fixed inset-0 bg-dotted-grid pointer-events-none opacity-40" />
 
-      <div className="relative z-10 mx-auto max-w-7xl px-4 pb-24 pt-8 sm:px-6 lg:pt-14">
+      {/* Top Header Navbar */}
+      <header className="sticky top-0 z-40 border-b border-border/60 bg-surface/80 backdrop-blur-xl">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+          <Link to="/" className="flex items-center gap-3 group">
+            <div className="h-9 w-9 rounded-xl bg-gradient-to-tr from-indigo-500 via-violet-500 to-fuchsia-500 flex items-center justify-center text-white shadow-md shadow-brand/20 transition-transform group-hover:scale-105">
+              <ShieldCheck className="h-5 w-5" />
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-lg font-bold tracking-tight text-foreground">
+                Proctor<span className="text-brand">IQ</span>
+              </span>
+              <span className="hidden sm:inline-block px-2 py-0.5 rounded-full text-[10px] font-mono font-medium border border-border bg-surface-elevated text-muted-foreground">
+                SQL-ENFORCED
+              </span>
+            </div>
+          </Link>
+
+          <nav className="flex items-center gap-2 sm:gap-3">
+            <Link
+              to="/styleguide"
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground rounded-lg border border-border hover:border-brand/40 bg-surface-elevated transition-colors"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-brand" />
+              <span>Styleguide</span>
+            </Link>
+
+            <ThemeToggle />
+
+            {user ? (
+              <Link
+                to={dashboardRoute}
+                className="inline-flex items-center gap-2 py-2 px-4 rounded-xl text-xs font-semibold text-white bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 hover:opacity-95 shadow-sm transition-all"
+              >
+                <LayoutDashboard className="w-3.5 h-3.5" />
+                <span>Console ({user.role})</span>
+              </Link>
+            ) : (
+              <Link
+                to="/login"
+                className="inline-flex items-center gap-2 py-2 px-4 rounded-xl text-xs font-semibold text-white bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 hover:opacity-95 shadow-sm transition-all"
+              >
+                <span>Operator Login</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            )}
+          </nav>
+        </div>
+      </header>
+
+      {/* Main Container */}
+      <div className="relative z-10 max-w-7xl mx-auto px-4 pb-24 pt-8 sm:px-6 lg:pt-14 space-y-20 sm:space-y-24">
         {/* ========================================================== */}
-        {/* HERO SECTION */}
+        {/* HERO SPLIT SECTION */}
         {/* ========================================================== */}
-        <div className="grid items-center gap-12 lg:grid-cols-12">
+        <section className="grid items-center gap-10 lg:grid-cols-12 lg:gap-12">
+          {/* Left Column: Headline, Copy, CTA, DBMS Badges */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -56,236 +103,113 @@ export function LandingPage() {
             className="lg:col-span-7 space-y-6"
           >
             {/* System Status Pill */}
-            <div className="inline-flex items-center gap-2.5 rounded-full border border-cyan/40 bg-cyan/10 px-4 py-1.5 text-xs font-mono text-cyan-300 shadow-glow-cyan-sm">
+            <div className="inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-full text-xs font-mono font-medium border border-brand/30 bg-brand/10 text-brand shadow-sm">
               <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan opacity-75" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan" />
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-brand" />
               </span>
               <span>DBMS-ENFORCED ZERO-TRUST EXAM CORE</span>
             </div>
 
-            {/* Glitchy Gradient Headline "ProctorIQ" */}
+            {/* Gradient Headline "ProctorIQ" */}
             <div className="space-y-2">
-              <h1 className="text-5xl font-extrabold tracking-tight text-white sm:text-6xl lg:text-7xl font-sans leading-[1.1]">
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-foreground leading-[1.12]">
                 Mission Control for{' '}
-                <span className="relative inline-block">
-                  <span className="bg-gradient-to-r from-cyan via-violet to-magenta bg-clip-text text-transparent filter drop-shadow-[0_0_24px_rgba(34,211,238,0.4)]">
-                    ProctorIQ
-                  </span>
+                <span className="bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 bg-clip-text text-transparent">
+                  ProctorIQ
                 </span>
               </h1>
-              <p className="text-xl sm:text-2xl font-mono text-slate-300">
+              <p className="text-lg sm:text-xl font-mono text-muted-foreground">
                 Authoritative Anti-Cheating & Integrity Orchestration
               </p>
             </div>
 
-            <p className="max-w-2xl text-base leading-relaxed text-slate-300">
+            <p className="max-w-2xl text-base leading-relaxed text-muted-foreground">
               ProctorIQ enforces automatic penalty deductions, lockout thresholds,
               server-authoritative deadlines, and ACID exam grading directly inside{' '}
-              <span className="font-mono text-cyan font-semibold">MySQL 8.0+</span> triggers
+              <span className="font-mono text-foreground font-semibold">MySQL 8.0</span> triggers
               and stored procedures — streamed live to proctors over real-time WebSockets.
             </p>
 
             {/* Action Buttons */}
-            <div className="flex flex-wrap items-center gap-4 pt-2">
-              <Link to={dashboardRoute}>
-                <NeonButton
-                  variant="primary"
-                  size="lg"
-                  rightIcon={<ArrowRight className="w-4 h-4" />}
-                >
-                  {user ? 'Open Mission Console' : 'Launch Mission Control'}
-                </NeonButton>
+            <div className="flex flex-wrap items-center gap-3 pt-2">
+              <Link
+                to={dashboardRoute}
+                className="py-3 px-5 rounded-xl font-semibold text-sm text-white bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 hover:from-indigo-600 hover:via-violet-600 hover:to-fuchsia-600 shadow-md shadow-brand/20 hover:shadow-lg hover:shadow-brand/30 active:scale-[0.99] transition-all flex items-center gap-2"
+              >
+                <span>{user ? 'Open Mission Console' : 'Launch Mission Control'}</span>
+                <ArrowRight className="w-4 h-4" />
               </Link>
+
               {!user && (
-                <Link to="/register">
-                  <NeonButton variant="outline" size="lg">
-                    Register Candidate
-                  </NeonButton>
+                <Link
+                  to="/register"
+                  className="py-3 px-5 rounded-xl font-medium text-sm text-foreground bg-surface-elevated hover:bg-muted border border-border transition-colors flex items-center gap-2"
+                >
+                  Register Candidate
                 </Link>
               )}
-              <Link to="/styleguide">
-                <NeonButton variant="ghost" size="lg" leftIcon={<Sparkles className="w-4 h-4 text-violet" />}>
-                  Explore UI Styleguide
-                </NeonButton>
+
+              <Link
+                to="/styleguide"
+                className="py-3 px-4 rounded-xl font-medium text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5"
+              >
+                <Sparkles className="w-4 h-4 text-brand" />
+                <span>Explore UI Styleguide</span>
               </Link>
             </div>
 
             {/* Live DBMS Tech Badges */}
-            <div className="grid grid-cols-3 gap-4 border-t border-white/10 pt-6">
+            <div className="grid grid-cols-3 gap-4 border-t border-border/70 pt-6">
               <div>
-                <div className="telemetry-num text-2xl font-bold text-cyan">ACID</div>
-                <div className="text-xs text-slate-400 font-mono">SELECT ... FOR UPDATE</div>
+                <div className="text-2xl font-bold font-mono text-brand">ACID</div>
+                <div className="text-xs text-muted-foreground font-mono">SELECT ... FOR UPDATE</div>
               </div>
               <div>
-                <div className="telemetry-num text-2xl font-bold text-violet">Triggers</div>
-                <div className="text-xs text-slate-400 font-mono">Auto-Deduct & Lockout</div>
+                <div className="text-2xl font-bold font-mono text-violet-500">Triggers</div>
+                <div className="text-xs text-muted-foreground font-mono">Auto-Deduct & Lockout</div>
               </div>
               <div>
-                <div className="telemetry-num text-2xl font-bold text-emerald">&lt;20ms</div>
-                <div className="text-xs text-slate-400 font-mono">Real-time Telemetry</div>
+                <div className="text-2xl font-bold font-mono text-emerald-500">&lt;20ms</div>
+                <div className="text-xs text-muted-foreground font-mono">Real-time Telemetry</div>
               </div>
             </div>
           </motion.div>
 
-          {/* Right Hero Graphic: Real-time DB Pipeline Simulator */}
+          {/* Right Column: Floating Mock Dashboard Card */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
+            initial={{ opacity: 0, scale: 0.96 }}
             animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.6, delay: 0.15 }}
+            transition={{ duration: 0.5, delay: 0.15 }}
             className="lg:col-span-5"
           >
-            <GlassCard glow="cyan" hoverEffect animatedBorder className="p-6">
-              <div className="mb-4 flex items-center justify-between border-b border-white/10 pb-3">
-                <div className="flex items-center gap-2">
-                  <Activity className="h-4 w-4 text-cyan" />
-                  <span className="font-mono text-xs font-semibold uppercase tracking-wider text-slate-200">
-                    Active DB Enforcement Pipeline
-                  </span>
-                </div>
-                <span className="rounded-full bg-emerald/15 px-2.5 py-0.5 font-mono text-[10px] text-emerald font-semibold border border-emerald/30">
-                  MYSQL 8.0 INNODB
-                </span>
-              </div>
-
-              <div className="space-y-3">
-                {[
-                  {
-                    icon: Eye,
-                    title: '1. Real-time Telemetry Stream',
-                    sub: 'Webcam face tracking, tab switch, clipboard, DevTools capture',
-                    accent: 'text-cyan border-cyan/40 bg-cyan/10',
-                  },
-                  {
-                    icon: ShieldAlert,
-                    title: '2. trg_after_violation_insert',
-                    sub: 'Atomically deducts penalty points in InnoDB & checks threshold',
-                    accent: 'text-violet border-violet/40 bg-violet/10',
-                  },
-                  {
-                    icon: Lock,
-                    title: '3. Instant Lockout Trigger',
-                    sub: 'trust_score < min_trust_score flips session to TERMINATED_CHEATING',
-                    accent: 'text-magenta border-magenta/40 bg-magenta/10',
-                  },
-                  {
-                    icon: Database,
-                    title: '4. sp_SubmitAndGradeExam',
-                    sub: 'SELECT ... FOR UPDATE locks session, grades answers, issues result',
-                    accent: 'text-emerald border-emerald/40 bg-emerald/10',
-                  },
-                ].map((step, i) => (
-                  <motion.div
-                    key={step.title}
-                    initial={{ opacity: 0, x: 15 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.2 + i * 0.1 }}
-                    className="flex items-start gap-3 rounded-xl border border-white/[0.08] bg-[#0A0B14]/80 p-3.5 hover:border-cyan/30 transition-colors"
-                  >
-                    <div className={`rounded-xl border p-2 ${step.accent} flex-shrink-0`}>
-                      <step.icon className="h-4 w-4" />
-                    </div>
-                    <div>
-                      <div className="font-mono text-xs font-semibold text-white">
-                        {step.title}
-                      </div>
-                      <div className="mt-0.5 text-xs text-slate-400">
-                        {step.sub}
-                      </div>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-            </GlassCard>
+            <MockDashboardCard />
           </motion.div>
-        </div>
+        </section>
 
         {/* ========================================================== */}
-        {/* SCROLL-ANIMATED FEATURE CARDS */}
+        {/* SCROLL-REVEAL FEATURE BENTO */}
         {/* ========================================================== */}
-        <section className="mt-20">
-          <div className="text-center max-w-2xl mx-auto mb-12">
-            <span className="font-mono text-xs uppercase tracking-widest text-cyan font-semibold">
-              CORE CAPABILITIES
-            </span>
-            <h2 className="mt-2 text-3xl font-bold text-white tracking-tight">
-              Engineered for Uncompromising Academic Integrity
-            </h2>
-            <p className="mt-2 text-sm text-slate-400">
-              Zero client-side trust. All penalties, grading logic, and session state are enforced
-              atomically inside MySQL transactions.
-            </p>
-          </div>
-
-          <div className="grid gap-6 md:grid-cols-3">
-            {[
-              {
-                icon: ShieldCheck,
-                title: 'Immutable Grading Lock',
-                desc: 'sp_SubmitAndGradeExam acquires row-level locks via SELECT ... FOR UPDATE, guaranteeing exactly-once transactional evaluation even under concurrent submissions.',
-                accent: 'cyan' as const,
-              },
-              {
-                icon: Zap,
-                title: 'Live Triage & Reinstatement',
-                desc: 'Proctors inspect vw_ProctorLiveMonitor and audit feeds in real-time. When a false positive is dismissed, trg_after_review_update immediately restores points.',
-                accent: 'violet' as const,
-              },
-              {
-                icon: Database,
-                title: 'Authoritative Timeouts',
-                desc: 'Server cron executes sp_AutoTimeoutExpiredSessions every 60 seconds, preventing local browser clock manipulation or lingering open sessions.',
-                accent: 'magenta' as const,
-              },
-            ].map((card, idx) => (
-              <motion.div
-                key={card.title}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: idx * 0.15 }}
-              >
-                <GlassCard
-                  glow={card.accent}
-                  hoverEffect
-                  className="p-6 h-full flex flex-col justify-between"
-                >
-                  <div>
-                    <div className="w-12 h-12 rounded-xl border border-white/10 bg-white/5 flex items-center justify-center text-cyan mb-4 shadow-sm">
-                      <card.icon className="w-6 h-6" />
-                    </div>
-                    <h3 className="text-lg font-semibold text-white tracking-wide">
-                      {card.title}
-                    </h3>
-                    <p className="mt-2.5 text-sm text-slate-400 leading-relaxed">
-                      {card.desc}
-                    </p>
-                  </div>
-                  <div className="mt-6 pt-4 border-t border-white/5 flex items-center text-xs font-mono text-cyan">
-                    <span>Verified in InnoDB</span>
-                  </div>
-                </GlassCard>
-              </motion.div>
-            ))}
-          </div>
+        <section className="pt-8">
+          <FeatureBento />
         </section>
 
         {/* ========================================================== */}
         {/* VIOLATION PENALTY MATRIX */}
         {/* ========================================================== */}
-        <section className="mt-20">
-          <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
+        <section className="space-y-6">
+          <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
-              <div className="flex items-center gap-2 font-mono text-xs uppercase tracking-widest text-cyan font-semibold">
+              <div className="flex items-center gap-2 font-mono text-xs uppercase tracking-wider text-brand font-semibold">
                 <Cpu className="h-4 w-4" />
                 Database Rule Table
               </div>
-              <h2 className="mt-1 text-2xl sm:text-3xl font-bold text-white tracking-tight">
+              <h2 className="mt-1 text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
                 Authoritative Violation Penalty Matrix
               </h2>
             </div>
-            <p className="text-xs text-slate-400 max-w-md">
-              Penalties are read strictly from MySQL <code className="text-cyan">Violation_Types</code> on insert.
+            <p className="text-xs text-muted-foreground max-w-md">
+              Penalties are read strictly from MySQL <code className="text-brand font-mono">Violation_Types</code> on insert.
               Client-supplied penalty points are ignored.
             </p>
           </div>
@@ -294,30 +218,31 @@ export function LandingPage() {
             {VIOLATION_MATRIX.map((item, idx) => (
               <motion.div
                 key={item.code}
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 16 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                transition={{ duration: 0.4, delay: idx * 0.08 }}
+                transition={{ duration: 0.4, delay: idx * 0.06 }}
+                whileHover={{ y: -3 }}
+                className="p-5 rounded-2xl border border-border bg-surface/80 hover:bg-surface hover:border-brand/40 shadow-sm transition-all flex flex-col justify-between"
               >
-                <GlassCard hoverEffect className="p-4 flex flex-col justify-between h-full">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="space-y-1">
-                      <div className="font-mono text-sm font-semibold text-white">
-                        {item.code}
-                      </div>
-                      <p className="text-xs text-slate-400">{item.desc}</p>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="space-y-1">
+                    <div className="font-mono text-sm font-semibold text-foreground">
+                      {item.code}
                     </div>
-                    <span className="telemetry-num text-xl font-bold text-magenta">
-                      {item.penalty}
-                    </span>
+                    <p className="text-xs text-muted-foreground">{item.desc}</p>
                   </div>
-                  <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between">
-                    <SeverityBadge severity={item.severity} size="sm" />
-                    <span className="text-[10px] font-mono text-slate-400">
-                      Auto-Deduct
-                    </span>
-                  </div>
-                </GlassCard>
+                  <span className="text-lg font-bold font-mono text-rose-500">
+                    {item.penalty}
+                  </span>
+                </div>
+
+                <div className="mt-4 pt-3 border-t border-border/60 flex items-center justify-between">
+                  <SeverityBadge severity={item.severity} size="sm" />
+                  <span className="text-[10px] font-mono text-muted-foreground">
+                    Auto-Deduct
+                  </span>
+                </div>
               </motion.div>
             ))}
           </div>
@@ -327,29 +252,32 @@ export function LandingPage() {
         {/* QUICK ACCESS CTA */}
         {/* ========================================================== */}
         <motion.div
-          initial={{ opacity: 0, scale: 0.96 }}
+          initial={{ opacity: 0, scale: 0.98 }}
           whileInView={{ opacity: 1, scale: 1 }}
           viewport={{ once: true }}
-          className="mt-20 p-8 rounded-3xl border border-cyan/30 bg-gradient-to-r from-[#101222]/90 to-[#16192E]/90 shadow-glow-cyan text-center max-w-4xl mx-auto space-y-4"
+          className="p-8 sm:p-10 rounded-3xl border border-brand/30 bg-gradient-to-r from-surface via-surface-elevated to-surface shadow-layered-md text-center max-w-4xl mx-auto space-y-4 relative overflow-hidden"
         >
-          <Terminal className="w-10 h-10 text-cyan mx-auto animate-pulse" />
-          <h3 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
+          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500" />
+          <Terminal className="w-10 h-10 text-brand mx-auto animate-pulse" />
+          <h3 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
             Ready to Initialize Assessment Session?
           </h3>
-          <p className="text-sm text-slate-300 max-w-xl mx-auto">
+          <p className="text-sm text-muted-foreground max-w-xl mx-auto leading-relaxed">
             Test candidate workflows, live proctoring telemetry, or administrative schema views with
             seeded demo credentials in one click.
           </p>
-          <div className="flex items-center justify-center gap-4 pt-2">
-            <Link to="/login">
-              <NeonButton variant="primary" size="md">
-                Enter Operator Login
-              </NeonButton>
+          <div className="flex items-center justify-center gap-3 pt-2">
+            <Link
+              to="/login"
+              className="py-2.5 px-5 rounded-xl font-semibold text-sm text-white bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 hover:opacity-95 shadow-sm transition-all"
+            >
+              Enter Operator Login
             </Link>
-            <Link to="/styleguide">
-              <NeonButton variant="outline" size="md">
-                View Styleguide
-              </NeonButton>
+            <Link
+              to="/styleguide"
+              className="py-2.5 px-5 rounded-xl font-medium text-sm text-muted-foreground hover:text-foreground bg-surface-elevated border border-border hover:border-brand/40 transition-colors"
+            >
+              View Styleguide
             </Link>
           </div>
         </motion.div>

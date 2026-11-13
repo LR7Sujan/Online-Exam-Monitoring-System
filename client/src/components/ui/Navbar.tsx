@@ -1,4 +1,4 @@
-import { LogOut, Radio, ShieldCheck, Terminal, UserCheck } from 'lucide-react';
+import { LogOut, Radio, ShieldCheck, UserCheck } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { disconnectSocket } from '../../lib/socket';
 import { useAuthStore } from '../../store/authStore';
@@ -29,22 +29,22 @@ export function Navbar() {
           : [];
 
   return (
-    <header className="sticky top-0 z-40 border-b border-white/10 bg-[#0A0B14]/85 backdrop-blur-xl">
+    <header className="sticky top-0 z-40 border-b border-border/60 bg-surface/85 backdrop-blur-xl">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6">
         <Link to="/" className="flex items-center gap-3 group">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-cyan-400/40 bg-cyan-400/10 text-cyan-300 shadow-glow-cyan transition-transform group-hover:scale-105">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-tr from-indigo-500 via-violet-500 to-fuchsia-500 text-white shadow-md shadow-brand/20 transition-transform group-hover:scale-105">
             <ShieldCheck className="h-5 w-5" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-base font-bold tracking-tight text-white">
-                Proctor<span className="text-cyan-400">IQ</span>
+              <span className="text-base font-bold tracking-tight text-foreground">
+                Proctor<span className="text-brand">IQ</span>
               </span>
-              <span className="hidden rounded border border-violet-400/30 bg-violet-400/10 px-1.5 py-0.5 font-mono text-[10px] text-violet-300 sm:inline-block">
+              <span className="hidden rounded-full border border-border bg-surface-elevated px-2 py-0.5 font-mono text-[10px] text-muted-foreground sm:inline-block">
                 SQL-ENFORCED
               </span>
             </div>
-            <p className="hidden text-[11px] text-slate-400 sm:block">
+            <p className="hidden text-[11px] text-muted-foreground sm:block">
               Autonomous Exam Integrity & Telemetry
             </p>
           </div>
@@ -57,10 +57,10 @@ export function Navbar() {
               <Link
                 key={item.to}
                 to={item.to}
-                className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+                className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
                   active
-                    ? 'border border-cyan-400/40 bg-cyan-400/10 text-cyan-300'
-                    : 'text-slate-300 hover:bg-white/5 hover:text-white'
+                    ? 'border border-brand/40 bg-brand/10 text-brand'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                 }`}
               >
                 {item.label}
@@ -72,12 +72,12 @@ export function Navbar() {
           <ThemeToggle />
 
           {user ? (
-            <div className="flex items-center gap-3 border-l border-white/10 pl-3">
+            <div className="flex items-center gap-3 border-l border-border pl-3">
               <div className="hidden items-center gap-2 md:flex">
-                <Radio className="h-3.5 w-3.5 animate-pulse text-emerald-400" />
+                <Radio className="h-3.5 w-3.5 animate-pulse text-emerald-500" />
                 <div className="text-right">
-                  <div className="flex items-center gap-1.5 text-xs font-semibold text-white">
-                    <UserCheck className="h-3.5 w-3.5 text-cyan-400" />
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                    <UserCheck className="h-3.5 w-3.5 text-brand" />
                     {user.fullName}
                   </div>
                 </div>
@@ -87,7 +87,7 @@ export function Navbar() {
               <button
                 type="button"
                 onClick={handleLogout}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-xs font-medium text-slate-300 transition-colors hover:border-rose-500/40 hover:bg-rose-500/10 hover:text-rose-200"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface-elevated px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-rose-500/40 hover:bg-rose-500/10 hover:text-rose-500 cursor-pointer"
               >
                 <LogOut className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline">Sign Out</span>
@@ -97,16 +97,9 @@ export function Navbar() {
             <div className="flex items-center gap-2">
               <Link
                 to="/login"
-                className="rounded-lg border border-white/10 px-3 py-1.5 text-sm font-medium text-slate-200 transition-colors hover:border-cyan-400/40 hover:text-cyan-300"
+                className="rounded-lg border border-border bg-surface-elevated px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:border-brand/40 hover:text-brand"
               >
-                Sign In
-              </Link>
-              <Link
-                to="/register"
-                className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-cyan-500 to-violet-500 px-3.5 py-1.5 text-sm font-semibold text-slate-950 shadow-glow-cyan transition-opacity hover:opacity-90"
-              >
-                <Terminal className="h-3.5 w-3.5" />
-                Launch
+                Operator Login
               </Link>
             </div>
           )}
@@ -115,4 +108,3 @@ export function Navbar() {
     </header>
   );
 }
-
