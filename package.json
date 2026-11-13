@@ -1,0 +1,24 @@
+{
+  "name": "proctoriq-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "ProctorIQ — DBMS-Centric Online Exam Monitoring & Anti-Cheating System",
+  "scripts": {
+    "db:up": "docker compose -f db/docker-compose.yml up -d",
+    "db:down": "docker compose -f db/docker-compose.yml down",
+    "db:init": "npm --prefix server run db:init",
+    "db:setup": "npm run db:init",
+    "dev:server": "npm --prefix server run dev",
+    "dev:client": "npm --prefix client run dev",
+    "build": "npm --prefix server run build && npm --prefix client run build",
+    "lint": "npm --prefix server run lint && npm --prefix client run lint",
+    "simulate": "npm --prefix server run simulate --",
+    "demo": "node scripts/demo.js",
+    "test:server": "npm --prefix server test",
+    "test:vitest": "npm --prefix server run test:vitest",
+    "test:e2e": "npm --prefix client run test:e2e"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.7"
+  }
+}

@@ -1,0 +1,31 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: proctoriq-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-proctoriq_root}
+      MYSQL_DATABASE: ${DB_NAME:-proctoriq}
+      MYSQL_USER: ${DB_USER:-proctoriq_app}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-proctoriq_pass}
+    ports:
+      - "${DB_PORT:-3306}:3306"
+    volumes:
+      - proctoriq_mysql_data:/var/lib/mysql
+      - ./migrations/001_init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+      - ./migrations/002_improvements.sql:/docker-entrypoint-initdb.d/02-improvements.sql:ro
+      - ./migrations/003_session_security.sql:/docker-entrypoint-initdb.d/03-session-security.sql:ro
+      - ./seed.sql:/docker-entrypoint-initdb.d/04-seed.sql:ro
+    command:
+      - --default-authentication-plugin=mysql_native_password
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --log-bin-trust-function-creators=1
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-pproctoriq_root"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+
+volumes:
+  proctoriq_mysql_data:

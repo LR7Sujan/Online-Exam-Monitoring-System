@@ -1,0 +1,48 @@
+import { createServer } from 'node:http';
+import { createApp } from './app.js';
+import { pool, testDbConnection } from './config/db.js';
+import { env } from './config/env.js';
+import { initSocketServer } from './realtime/socket.js';
+import { startAutoTimeoutCron, stopAutoTimeoutCron } from './services/timeoutCron.js';
+
+const app = createApp();
+const httpServer = createServer(app);
+initSocketServer(httpServer);
+
+async function bootstrap(): Promise<void> {
+  const dbReady = await testDbConnection();
+  if (!dbReady) {
+    console.warn(
+      `[ProctorIQ] Warning: MySQL not reachable at ${env.DB_HOST}:${env.DB_PORT}/${env.DB_NAME}. Start MySQL and verify .env.`
+    );
+  } else {
+    console.log(`[ProctorIQ] Connected to MySQL (${env.DB_HOST}:${env.DB_PORT}/${env.DB_NAME})`);
+  }
+
+  if (env.NODE_ENV !== 'test') {
+    startAutoTimeoutCron();
+    console.log('[ProctorIQ] Auto-timeout cron active (* * * * *) -> sp_AutoTimeoutExpiredSessions');
+  }
+
+  httpServer.listen(env.PORT, () => {
+    console.log(`[ProctorIQ] API + Socket.IO server listening on http://localhost:${env.PORT}`);
+    console.log(`[ProctorIQ] Swagger docs available at http://localhost:${env.PORT}/api/docs`);
+  });
+}
+
+function shutdown(signal: string): void {
+  console.log(`[ProctorIQ] Received ${signal}. Closing server gracefully...`);
+  stopAutoTimeoutCron();
+  httpServer.close(async () => {
+    await pool.end();
+    process.exit(0);
+  });
+}
+
+process.on('SIGINT', () => shutdown('SIGINT'));
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+
+bootstrap().catch((err) => {
+  console.error('[ProctorIQ] Fatal startup error:', err);
+  process.exit(1);
+});

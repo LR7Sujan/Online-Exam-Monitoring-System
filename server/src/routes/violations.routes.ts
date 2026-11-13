@@ -1,0 +1,162 @@
+import { Router } from 'express';
+import type { RowDataPacket } from 'mysql2/promise';
+import { z } from 'zod';
+import { executeSql, pool, queryRows } from '../config/db.js';
+import { requireAuth, requireRole, type AuthenticatedRequest } from '../middleware/auth.js';
+import { validate } from '../middleware/validate.js';
+import { emitSessionTerminated, emitViolationNew } from '../realtime/socket.js';
+import { shouldDebounceViolation, violationRateLimiter } from '../services/violationGuard.js';
+import type { ExamSessionRow, ViolationTypeRow } from '../types/api.js';
+import { AppError } from '../utils/errors.js';
+import { sendSuccess } from '../utils/response.js';
+
+export const violationsRouter = Router();
+
+const reportViolationSchema = z.object({
+  sessionId: z.coerce.number().int().positive(),
+  violationCode: z.string().trim().min(2).max(40),
+  evidenceMeta: z.record(z.unknown()).optional(),
+});
+
+// GET /api/violations/types
+violationsRouter.get('/types', requireAuth, async (_req, res, next) => {
+  try {
+    const types = await queryRows<ViolationTypeRow[]>(
+      'SELECT id, code, label, description, penalty_points, severity FROM Violation_Types ORDER BY penalty_points ASC'
+    );
+    sendSuccess(res, types);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/violations/report (compatibility alias with rate limit + 3s debounce)
+violationsRouter.post(
+  '/report',
+  requireAuth,
+  requireRole('STUDENT'),
+  violationRateLimiter,
+  validate({ body: reportViolationSchema }),
+  async (req: AuthenticatedRequest, res, next) => {
+    try {
+      const { sessionId, violationCode, evidenceMeta } = req.body as z.infer<
+        typeof reportViolationSchema
+      >;
+      const code = violationCode.toUpperCase();
+
+      const sessionRows = await queryRows<ExamSessionRow[]>(
+        `SELECT es.*, e.min_trust_score, e.title AS exam_title
+           FROM Exam_Sessions es
+           JOIN Exams e ON e.id = es.exam_id
+          WHERE es.id = ?
+          LIMIT 1`,
+        [sessionId]
+      );
+      const session = sessionRows[0];
+      if (!session) {
+        throw new AppError(404, 'SESSION_NOT_FOUND', 'Exam session not found.');
+      }
+      if (session.student_id !== req.user!.sub) {
+        throw new AppError(403, 'FORBIDDEN', 'Cannot report violation for another student session.');
+      }
+
+      if (shouldDebounceViolation(sessionId, code)) {
+        sendSuccess(res, {
+          debounced: true,
+          violationCode: code,
+          trustScore: session.trust_score,
+          minTrustScore: session.min_trust_score,
+          status: session.status,
+        });
+        return;
+      }
+
+      const typeRows = await queryRows<ViolationTypeRow[]>(
+        'SELECT id, code, label, penalty_points, severity FROM Violation_Types WHERE code = ? LIMIT 1',
+        [code]
+      );
+      const vType = typeRows[0];
+      if (!vType) {
+        throw new AppError(400, 'INVALID_VIOLATION_CODE', 'Unknown violation code.');
+      }
+
+      const insertRes = await executeSql(
+        `INSERT INTO Proctoring_Logs (session_id, violation_type_id, evidence_meta)
+         VALUES (?, ?, ?)`,
+        [sessionId, vType.id, evidenceMeta ? JSON.stringify(evidenceMeta) : null]
+      );
+
+      const updatedRows = await queryRows<ExamSessionRow[]>(
+        `SELECT es.*, e.min_trust_score, e.title AS exam_title
+           FROM Exam_Sessions es
+           JOIN Exams e ON e.id = es.exam_id
+          WHERE es.id = ?
+          LIMIT 1`,
+        [sessionId]
+      );
+      const updatedSession = updatedRows[0];
+
+      const payload = {
+        logId: insertRes.insertId,
+        sessionId,
+        examId: updatedSession.exam_id,
+        studentId: updatedSession.student_id,
+        studentName: req.user!.fullName,
+        violationCode: vType.code,
+        violationLabel: vType.label,
+        severity: vType.severity,
+        penaltyApplied: vType.penalty_points,
+        trustScore: updatedSession.trust_score,
+        trust_score: updatedSession.trust_score,
+        minTrustScore: updatedSession.min_trust_score,
+        sessionStatus: updatedSession.status,
+        status: updatedSession.status,
+        occurredAt: new Date().toISOString(),
+      };
+
+      emitViolationNew(updatedSession.student_id, sessionId, payload, {
+        sessionId,
+        trust_score: updatedSession.trust_score,
+        status: updatedSession.status,
+      });
+
+      let gradedResult = null;
+      if (updatedSession.status === 'TERMINATED_CHEATING') {
+        const [resultSets] = await pool.query<RowDataPacket[][]>(
+          'CALL sp_SubmitAndGradeExam(?, ?)',
+          [sessionId, 'AUTO_TERMINATED']
+        );
+        gradedResult = resultSets[0]?.[0] ?? null;
+
+        emitSessionTerminated(
+          updatedSession.student_id,
+          sessionId,
+          { ...payload, reason: vType.code, result: gradedResult },
+          {
+            sessionId,
+            trust_score: updatedSession.trust_score,
+            status: updatedSession.status,
+            reason: vType.code,
+          }
+        );
+      }
+
+      sendSuccess(
+        res,
+        {
+          logId: insertRes.insertId,
+          violationCode: vType.code,
+          penaltyApplied: vType.penalty_points,
+          trustScore: updatedSession.trust_score,
+          minTrustScore: updatedSession.min_trust_score,
+          status: updatedSession.status,
+          debounced: false,
+          result: gradedResult,
+        },
+        201
+      );
+    } catch (err) {
+      next(err);
+    }
+  }
+);

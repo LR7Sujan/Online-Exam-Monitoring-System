@@ -1,0 +1,183 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+
+  html {
+    background-color: #0a0b14;
+    color: #e2e8f0;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+
+  body {
+    min-height: 100vh;
+    background-color: #0a0b14;
+    background-image:
+      radial-gradient(ellipse 90% 60% at 20% -10%, rgba(34, 211, 238, 0.12), transparent 70%),
+      radial-gradient(ellipse 70% 50% at 80% 10%, rgba(139, 92, 246, 0.12), transparent 70%),
+      radial-gradient(circle at 50% 50%, rgba(10, 11, 20, 0.6), rgba(10, 11, 20, 1)),
+      linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+    background-size: 100% 100%, 100% 100%, 100% 100%, 48px 48px, 48px 48px;
+    background-attachment: fixed;
+    overflow-x: hidden;
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply rounded-2xl border border-white/10 bg-[#101222]/80 backdrop-blur-xl shadow-[0_16px_48px_rgba(0,0,0,0.5)];
+  }
+
+  .glass-panel {
+    @apply rounded-xl border border-white/[0.08] bg-[#16192E]/70 backdrop-blur-md;
+  }
+
+  .glass-elevated {
+    @apply rounded-xl border border-white/[0.12] bg-[#1A1D36]/80 backdrop-blur-lg;
+  }
+
+  .telemetry-num {
+    @apply font-mono tabular-nums tracking-tight;
+  }
+
+  .gradient-border-cyan {
+    position: relative;
+    border: 1px solid transparent;
+    background-clip: padding-box;
+  }
+  .gradient-border-cyan::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(135deg, rgba(34, 211, 238, 0.6), rgba(139, 92, 246, 0.2), transparent);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+
+  .gradient-border-magenta {
+    position: relative;
+    border: 1px solid transparent;
+    background-clip: padding-box;
+  }
+  .gradient-border-magenta::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(135deg, rgba(244, 63, 94, 0.8), rgba(245, 158, 11, 0.3), transparent);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+
+  /* Conic-gradient rotating animated border for hero cards */
+  .animated-gradient-border {
+    position: relative;
+    border: 1px solid transparent;
+    background-clip: padding-box;
+  }
+  .animated-gradient-border::before {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    border-radius: inherit;
+    background: conic-gradient(
+      from 0deg at 50% 50%,
+      #22D3EE 0deg,
+      #8B5CF6 90deg,
+      #F43F5E 180deg,
+      #10B981 270deg,
+      #22D3EE 360deg
+    );
+    animation: rotateConic 8s linear infinite;
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+    z-index: 0;
+  }
+}
+
+@keyframes rotateConic {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Subtle Animated Aurora Layer with Zero Layout Thrashing */
+@keyframes auroraPulse {
+  0%, 100% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.7;
+  }
+  50% {
+    transform: translate3d(-1.5%, 2%, 0) scale(1.06);
+    opacity: 0.95;
+  }
+}
+
+.aurora-backdrop {
+  position: fixed;
+  inset: -15%;
+  width: 130%;
+  height: 130%;
+  pointer-events: none;
+  z-index: -2;
+  background:
+    radial-gradient(circle at 15% 20%, rgba(34, 211, 238, 0.08) 0%, transparent 45%),
+    radial-gradient(circle at 85% 25%, rgba(139, 92, 246, 0.08) 0%, transparent 45%),
+    radial-gradient(circle at 50% 85%, rgba(244, 63, 94, 0.05) 0%, transparent 50%);
+  filter: blur(55px);
+  will-change: transform;
+  animation: auroraPulse 16s ease-in-out infinite;
+}
+
+/* Focus Visible Accessible Ring Across All Interactive Elements */
+:focus-visible {
+  outline: 2px solid #22D3EE !important;
+  outline-offset: 2px !important;
+}
+
+/* Custom subtle scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0a0b14;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.22);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(34, 211, 238, 0.45);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

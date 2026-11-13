@@ -1,0 +1,221 @@
+@baseUrl = http://localhost:4000/api
+@adminToken = REPLACE_WITH_ADMIN_JWT
+@proctorToken = REPLACE_WITH_PROCTOR_JWT
+@studentToken = REPLACE_WITH_STUDENT_JWT
+@sessionToken = REPLACE_WITH_SESSION_TOKEN
+@sessionId = 1
+@examId = 1
+
+### Health & Swagger Docs
+GET {{baseUrl}}/health
+
+### OpenAPI JSON Spec
+GET {{baseUrl}}/docs.json
+
+### ============================================================================
+### AUTH
+### ============================================================================
+
+### Login Admin
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@proctoriq.io",
+  "password": "ProctorIQ#2026"
+}
+
+### Login Proctor
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "proctor@proctoriq.io",
+  "password": "ProctorIQ#2026"
+}
+
+### Login Student
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "student@proctoriq.io",
+  "password": "ProctorIQ#2026"
+}
+
+### Register New Student
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "fullName": "Test Candidate",
+  "email": "new.candidate@proctoriq.io",
+  "password": "StrongPassword#2026"
+}
+
+### ============================================================================
+### ADMIN ENDPOINTS
+### ============================================================================
+
+### List All Exams
+GET {{baseUrl}}/exams
+Authorization: Bearer {{adminToken}}
+
+### Create Exam
+POST {{baseUrl}}/exams
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "title": "DBMS-500: Query Optimization & Locking",
+  "description": "Covers B+Trees, InnoDB row locks, and triggers.",
+  "durationMinutes": 45,
+  "minTrustScore": 50,
+  "startWindow": "2026-01-01T00:00:00.000Z",
+  "endWindow": "2027-01-01T00:00:00.000Z",
+  "isPublished": true
+}
+
+### Add Question to Exam
+POST {{baseUrl}}/exams/{{examId}}/questions
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "questionText": "Which clause acquires an exclusive row lock in InnoDB?",
+  "optionA": "SELECT ... FOR UPDATE",
+  "optionB": "SELECT ... NOLOCK",
+  "optionC": "EXPLAIN ANALYZE",
+  "optionD": "SHOW LOCKS",
+  "correctOption": "A",
+  "marks": 2
+}
+
+### List Violation Types
+GET {{baseUrl}}/violation-types
+Authorization: Bearer {{adminToken}}
+
+### Update Violation Type Penalty Weight
+PATCH {{baseUrl}}/violation-types/1
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "penaltyPoints": 20
+}
+
+### Analytics Overview (vw_ExamAnalytics)
+GET {{baseUrl}}/analytics/overview
+Authorization: Bearer {{adminToken}}
+
+### Analytics Heatmap (vw_ViolationHeatmap)
+GET {{baseUrl}}/analytics/heatmap
+Authorization: Bearer {{adminToken}}
+
+### ============================================================================
+### STUDENT ENDPOINTS
+### ============================================================================
+
+### Get Available Exams
+GET {{baseUrl}}/exams/available
+Authorization: Bearer {{studentToken}}
+
+### Start Exam Session (creates IP, fingerprint, session_token)
+POST {{baseUrl}}/exams/{{examId}}/start
+Authorization: Bearer {{studentToken}}
+Content-Type: application/json
+
+{
+  "deviceFingerprint": "chrome-win11-fp-001"
+}
+
+### Duplicate Start Without Matching Token/Fingerprint -> 409 Conflict
+POST {{baseUrl}}/exams/{{examId}}/start
+Authorization: Bearer {{studentToken}}
+Content-Type: application/json
+
+{
+  "deviceFingerprint": "different-device-fp"
+}
+
+### Resume Active Session With Matching Token & Fingerprint -> 200 OK
+POST {{baseUrl}}/exams/{{examId}}/start
+Authorization: Bearer {{studentToken}}
+Content-Type: application/json
+
+{
+  "deviceFingerprint": "chrome-win11-fp-001",
+  "sessionToken": "{{sessionToken}}"
+}
+
+### Fetch Sanitized Session Questions (no correct_option)
+GET {{baseUrl}}/sessions/{{sessionId}}/questions
+Authorization: Bearer {{studentToken}}
+
+### Server-Authoritative Timer
+GET {{baseUrl}}/sessions/{{sessionId}}/time-left
+Authorization: Bearer {{studentToken}}
+
+### Atomic UPSERT Answer
+PUT {{baseUrl}}/sessions/{{sessionId}}/answer
+Authorization: Bearer {{studentToken}}
+Content-Type: application/json
+
+{
+  "questionId": 1,
+  "selectedOption": "B"
+}
+
+### Log Violation (rate-limited + 3s debounced)
+POST {{baseUrl}}/sessions/{{sessionId}}/violation
+Authorization: Bearer {{studentToken}}
+Content-Type: application/json
+
+{
+  "code": "TAB_SWITCH",
+  "snapshot": "data:image/png;base64,iVBORw0KGgo="
+}
+
+### Submit & Grade Exam (sp_SubmitAndGradeExam)
+POST {{baseUrl}}/sessions/{{sessionId}}/submit
+Authorization: Bearer {{studentToken}}
+
+### View Graded Result
+GET {{baseUrl}}/sessions/{{sessionId}}/result
+Authorization: Bearer {{studentToken}}
+
+### ============================================================================
+### PROCTOR ENDPOINTS
+### ============================================================================
+
+### Live Monitor (vw_ProctorLiveMonitor)
+GET {{baseUrl}}/monitor/live
+Authorization: Bearer {{proctorToken}}
+
+### Audit Report (vw_ViolationAuditReport)
+GET {{baseUrl}}/monitor/audit?reviewStatus=PENDING&limit=50
+Authorization: Bearer {{proctorToken}}
+
+### Session Violation Timeline
+GET {{baseUrl}}/sessions/{{sessionId}}/timeline
+Authorization: Bearer {{proctorToken}}
+
+### Review Log (CONFIRMED | DISMISSED)
+PATCH {{baseUrl}}/logs/1/review
+Authorization: Bearer {{proctorToken}}
+Content-Type: application/json
+
+{
+  "status": "DISMISSED",
+  "reviewNotes": "Verified harmless OS popup"
+}
+
+### Force-Terminate Active Session
+POST {{baseUrl}}/sessions/{{sessionId}}/force-terminate
+Authorization: Bearer {{proctorToken}}
+Content-Type: application/json
+
+{
+  "reason": "Secondary monitor detected on proctor feed"
+}
+

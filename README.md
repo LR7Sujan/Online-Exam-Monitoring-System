@@ -1,0 +1,144 @@
+# ProctorIQ — Autonomous Anti-Cheating & Exam Proctoring Mission Control
+
+A **DBMS-centric**, high-integrity online examination monitoring platform built on **MySQL 8.0+**, **Node.js + Express + Socket.IO + TypeScript**, and **React + Vite + Tailwind CSS + Framer Motion + Recharts**.
+
+All core academic integrity invariants—penalty deductions, dynamic trust score decay, automatic disqualification thresholds, server-synchronized deadlines, atomic answer autosaves, and concurrency-locked grading—are enforced natively inside **MySQL 8.0+ stored procedures and triggers**.
+
+---
+
+## ⚡ Quick Start (Under 5 Commands)
+
+Get the complete system running locally with seeded mock exams and virtual students in under 2 minutes:
+
+```bash
+# 1. Install dependencies across monorepo
+npm install && npm --prefix server install && npm --prefix client install
+
+# 2. Configure environment (copy default configuration)
+cp .env.example .env
+
+# 3. Start MySQL 8.0 container (runs schema, triggers & seeds automatically)
+npm run db:up
+
+# 4. Launch full-stack platform (API, Vite Client, Sockets & DB verify)
+npm run demo
+```
+
+Once running:
+- 🌐 **Candidate & Mission Control UI:** [http://localhost:5173](http://localhost:5173)
+- 🔌 **Backend REST API & WebSockets:** [http://localhost:4000](http://localhost:4000)
+- 📚 **Interactive Swagger API Docs:** [http://localhost:4000/api/docs](http://localhost:4000/api/docs)
+- 🤖 **Live Swarm Demo Simulator:** [http://localhost:5173/admin/simulator](http://localhost:5173/admin/simulator)
+
+---
+
+## 🔑 Demo Credentials
+
+All seeded accounts share the default master password: **`ProctorIQ#2026`**
+
+| Role | Email Address | Capabilities |
+| :--- | :--- | :--- |
+| **Administrator** | `admin@proctoriq.io` | Executive analytics, exam creation wizard, penalty weight tuner, user roles, RFC 4180 CSV & PDF audit exports, swarm simulator. |
+| **Proctor** | `proctor@proctoriq.io` | Real-time live monitor grid, streaming violation feed, student telemetry drawer with webcam snapshots, adjudication review queue with trigger-based point restoration. |
+| **Student** | `student@proctoriq.io` *(or student2..student60)* | Candidate dashboard, 4-step pre-exam checklist, fullscreen lockdown kiosk, live webcam HUD with face detection, server-synced countdown timer. |
+
+---
+
+## 📸 Core Capabilities & Interface Showcase
+
+```
++-----------------------------------------------------------------------------------+
+| PROCTORIQ MISSION CONTROL: ORBITAL PROCTORING CORE                                |
++-----------------------------------------------------------------------------------+
+|  [KPI STRIP]  Active Sessions: 30  |  Violations (10m): 12  |  Terminated: 6      |
++-----------------------------------------------------------------------------------+
+|  LIVE CANDIDATE TELEMETRY GRID (Framer Motion)    |  REAL-TIME INCIDENT FEED      |
+|                                                   |                               |
+|  +--------------------+   +--------------------+  |  [CRITICAL] DevTools Detected |
+|  | John Doe (CS-401)  |   | Sarah Connor       |  |  Student: Alex Chen (-50 PTS) |
+|  | Trust Score: 85%   |   | Trust Score: 50%   |  |  Snapshot: [View JPEG]        |
+|  | Status: IN_PROGRESS|   | Status: FLAGGED    |  |  [Confirm]   [Dismiss]        |
+|  +--------------------+   +--------------------+  |                               |
+|  +--------------------+   +--------------------+  |  [HIGH] Multiple Faces (2+)   |
+|  | Alex Chen (CS-401) |   | Virtual Student 5  |  |  Student: Sarah Connor (-35)  |
+|  | Trust: 0% [LOCKED] |   | Trust Score: 100%  |  |  Snapshot: [View JPEG]        |
+|  | DISQUALIFIED       |   | Status: CLEAN      |  |  [Confirm]   [Dismiss]        |
+|  +--------------------+   +--------------------+  |                               |
++-----------------------------------------------------------------------------------+
+```
+
+### 1. Student Examination Kiosk (`/student/session/:id`)
+- **4-Step Verification Stepper:** Enforces Integrity Rules agreement, optical camera stream initialization, fullscreen kiosk lock, and system telemetry validation.
+- **Client-Side Face Detection:** MediaPipe BlazeFace detection running at ~1 frame/second. Flags `NO_FACE` if missing for 5 consecutive seconds; flags `MULTIPLE_FACES` if 2+ faces detected.
+- **Persistent TrustRing HUD:** SVG circular gauge that transitions dynamically from emerald $\rightarrow$ amber $\rightarrow$ magenta as score drops, pulsing when critical.
+- **Autosave Engine:** Answers synced instantly to MySQL with optimistic UI updates and an offline retry queue.
+
+### 2. Proctor Mission Control (`/proctor`)
+- **Socket.IO Real-Time Stream:** Sub-15ms broadcast latency when violations are recorded in MySQL.
+- **Interactive Student Drawer:** Detailed Recharts area chart showing trust score trajectory over time with violation markers, student IP / device fingerprint, and webcam snapshots in a lightbox.
+- **Adjudication Review Queue:** Table populated from view `vw_ViolationAuditReport`. Clicking "Dismiss" invokes MySQL trigger `trg_after_review_update`, restoring trust points and updating results in real time. Keyboard shortcuts: `C` (Confirm), `D` (Dismiss).
+
+### 3. Administrator Portal (`/admin`)
+- **Executive Analytics:** Circadian violation heatmap (hour $\times$ violation type), infraction type distribution donut, time-series incident trends, and trust score distribution histogram.
+- **Dynamic Rule Calibration:** Penalty weight editor allowing instant modification of penalties (e.g. changing `TAB_SWITCH` penalty from 15 to 30 PTS). Changes take effect on the very next violation with zero code modifications.
+- **Swarm Demo Simulator (`/admin/simulator`):** Spawns $N$ configurable virtual students answering questions and triggering stochastic violations with adjustable chaos and speed sliders.
+
+---
+
+## 🏛️ System Architecture
+
+ProctorIQ enforces a strict separation of concerns where business invariants and state transitions are owned by the database engine:
+
+```
+[Candidate Browser]  ──(REST / WebSockets)──>  [Express & Socket.IO Gateway]
+                                                         │
+                                               (mysql2 Connection Pool)
+                                                         ▼
+                                            ┌─────────────────────────┐
+                                            │ MySQL 8.0+ InnoDB Engine│
+                                            │ • Triggers (45000)      │
+                                            │ • sp_SubmitAndGradeExam │
+                                            │ • SELECT ... FOR UPDATE │
+                                            │ • Immutable Audit Logs  │
+                                            └─────────────────────────┘
+```
+
+For complete architectural details, sequence diagrams, and concurrency locking strategies, consult [Architecture & Design Guide](docs/ARCHITECTURE.md).
+
+---
+
+## 📚 Technical Documentation & Defense Reference
+
+- **[Comprehensive Viva & Defense Guide (docs/VIVA.md)](docs/VIVA.md):** Plain-language model answers to core database and forensic questions (3NF separation, trigger atomicity, `FOR UPDATE` pessimistic row locking, UPSERT mechanics, and 15 additional viva questions).
+- **[System Architecture & Forensic Guide (docs/ARCHITECTURE.md)](docs/ARCHITECTURE.md):** Full system sequence diagram, session state machine, ACID properties, and MediaPipe face detection specifications.
+- **[Entity-Relationship Diagram & Database Schemas (docs/ERD.md)](docs/ERD.md):** 3NF entity-relationship models, tables, indexes, and trigger lifecycles.
+- **[REST & Socket.IO API Specification (docs/API_SPEC.md)](docs/API_SPEC.md):** API routes, request/response envelopes, and WebSocket event payloads.
+
+---
+
+## 🧪 Automated Testing Suite
+
+ProctorIQ features comprehensive unit, integration, SQL guarantee, and end-to-end browser tests:
+
+```bash
+# Run Vitest test suites (Scoring logic, SQL triggers, API security)
+npm run test:vitest
+
+# Run backend unit and contract tests (Node test runner)
+npm run test:server
+
+# Run Playwright E2E browser test (Login -> Exam -> Violations -> Auto-terminate -> Result)
+npm run test:e2e
+```
+
+---
+
+## 🛡️ Known Limitations & High-Stakes Recommendations
+
+Browser-based proctoring operates within standard web browser security sandbox constraints (HTML5 Fullscreen API, Page Visibility API, and MediaDevices API):
+
+1. **Hardware Capture & Virtual Machines:** Highly sophisticated actors using external HDMI capture cards, secondary monitors through hardware splitters, or hypervisor-level virtual machines cannot be fully detected via client-side JavaScript alone.
+2. **Audio Leakage:** Background human voices can be masked or outside directional microphone pickup patterns without multi-channel directional spatial acoustic analysis.
+3. **High-Stakes Best Practice:** For high-stakes institutional or certification examinations, ProctorIQ is designed to be paired with:
+   - A dedicated OS-level lockdown browser (such as **Safe Exam Browser** or **Chromebook Kiosk Mode**).
+   - Dual-camera proctoring (a primary webcam for facial telemetry and a secondary mobile phone camera capturing the candidate's hands, keyboard, and physical desk environment).

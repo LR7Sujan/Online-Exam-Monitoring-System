@@ -1,0 +1,222 @@
+{
+  "info": {
+    "name": "ProctorIQ API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:4000/api" },
+    { "key": "token", "value": "" },
+    { "key": "sessionId", "value": "1" },
+    { "key": "examId", "value": "1" }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"student@proctoriq.io\",\n  \"password\": \"ProctorIQ#2026\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/login"
+          }
+        },
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Candidate One\",\n  \"email\": \"candidate1@proctoriq.io\",\n  \"password\": \"ProctorIQ#2026\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/register"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Student",
+      "item": [
+        {
+          "name": "Available Exams",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/exams/available"
+          }
+        },
+        {
+          "name": "Start Exam",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"deviceFingerprint\": \"postman-fp-001\"\n}"
+            },
+            "url": "{{baseUrl}}/exams/{{examId}}/start"
+          }
+        },
+        {
+          "name": "Get Session Questions",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/sessions/{{sessionId}}/questions"
+          }
+        },
+        {
+          "name": "Get Time Left",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/sessions/{{sessionId}}/time-left"
+          }
+        },
+        {
+          "name": "Upsert Answer",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"questionId\": 1,\n  \"selectedOption\": \"A\"\n}"
+            },
+            "url": "{{baseUrl}}/sessions/{{sessionId}}/answer"
+          }
+        },
+        {
+          "name": "Log Violation",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"TAB_SWITCH\"\n}"
+            },
+            "url": "{{baseUrl}}/sessions/{{sessionId}}/violation"
+          }
+        },
+        {
+          "name": "Submit Exam",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/sessions/{{sessionId}}/submit"
+          }
+        },
+        {
+          "name": "Get Result",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/sessions/{{sessionId}}/result"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Proctor",
+      "item": [
+        {
+          "name": "Monitor Live",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/monitor/live"
+          }
+        },
+        {
+          "name": "Monitor Audit",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/monitor/audit?reviewStatus=PENDING"
+          }
+        },
+        {
+          "name": "Session Timeline",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/sessions/{{sessionId}}/timeline"
+          }
+        },
+        {
+          "name": "Review Log",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"DISMISSED\"\n}"
+            },
+            "url": "{{baseUrl}}/logs/1/review"
+          }
+        },
+        {
+          "name": "Force Terminate",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Confirmed misconduct\"\n}"
+            },
+            "url": "{{baseUrl}}/sessions/{{sessionId}}/force-terminate"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin",
+      "item": [
+        {
+          "name": "Analytics Overview",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/analytics/overview"
+          }
+        },
+        {
+          "name": "Analytics Heatmap",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/analytics/heatmap"
+          }
+        },
+        {
+          "name": "Violation Types",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/violation-types"
+          }
+        }
+      ]
+    }
+  ]
+}
+

@@ -1,0 +1,12 @@
+node_modules/
+*/node_modules/
+dist/
+*/dist/
+.env
+*.local
+.DS_Store
+coverage/
+test-results/
+playwright-report/
+server/uploads/snapshot-*.jpg
+!server/uploads/.gitkeep
