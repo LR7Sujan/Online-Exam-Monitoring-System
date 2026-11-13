@@ -19,99 +19,99 @@ const statusConfig: Record<
 > = {
   // Session Statuses
   IN_PROGRESS: {
-    border: 'border-cyan/40',
-    bg: 'bg-cyan/10',
-    text: 'text-cyan-300',
+    border: 'border-sky-200 dark:border-sky-800/80',
+    bg: 'bg-sky-50 dark:bg-sky-950/40',
+    text: 'text-sky-700 dark:text-sky-300',
     dotColor: 'cyan',
     label: 'IN PROGRESS',
   },
   SUBMITTED: {
-    border: 'border-emerald/40',
-    bg: 'bg-emerald/10',
-    text: 'text-emerald-300',
+    border: 'border-emerald-200 dark:border-emerald-800/80',
+    bg: 'bg-emerald-50 dark:bg-emerald-950/40',
+    text: 'text-emerald-700 dark:text-emerald-300',
     dotColor: 'emerald',
     label: 'SUBMITTED',
   },
   TIMED_OUT: {
-    border: 'border-amber/40',
-    bg: 'bg-amber/10',
-    text: 'text-amber-300',
+    border: 'border-amber-200 dark:border-amber-800/80',
+    bg: 'bg-amber-50 dark:bg-amber-950/40',
+    text: 'text-amber-700 dark:text-amber-300',
     dotColor: 'amber',
     label: 'TIMED OUT',
   },
   TERMINATED_CHEATING: {
-    border: 'border-magenta/50',
-    bg: 'bg-magenta/15',
-    text: 'text-magenta-300',
+    border: 'border-rose-200 dark:border-rose-800/80',
+    bg: 'bg-rose-50 dark:bg-rose-950/40',
+    text: 'text-rose-700 dark:text-rose-300',
     dotColor: 'rose',
     label: 'TERMINATED',
   },
 
   // Integrity Statuses
   CLEAN: {
-    border: 'border-emerald/40',
-    bg: 'bg-emerald/10',
-    text: 'text-emerald-300',
+    border: 'border-emerald-200 dark:border-emerald-800/80',
+    bg: 'bg-emerald-50 dark:bg-emerald-950/40',
+    text: 'text-emerald-700 dark:text-emerald-300',
     dotColor: 'emerald',
     label: 'CLEAN',
   },
   FLAGGED: {
-    border: 'border-amber/40',
-    bg: 'bg-amber/10',
-    text: 'text-amber-300',
+    border: 'border-amber-200 dark:border-amber-800/80',
+    bg: 'bg-amber-50 dark:bg-amber-950/40',
+    text: 'text-amber-700 dark:text-amber-300',
     dotColor: 'amber',
     label: 'FLAGGED',
   },
   DISQUALIFIED: {
-    border: 'border-magenta/50',
-    bg: 'bg-magenta/15',
-    text: 'text-magenta-300',
+    border: 'border-rose-200 dark:border-rose-800/80',
+    bg: 'bg-rose-50 dark:bg-rose-950/40',
+    text: 'text-rose-700 dark:text-rose-300',
     dotColor: 'rose',
     label: 'DISQUALIFIED',
   },
 
   // Review Statuses
   PENDING: {
-    border: 'border-amber/40',
-    bg: 'bg-amber/10',
-    text: 'text-amber-300',
+    border: 'border-amber-200 dark:border-amber-800/80',
+    bg: 'bg-amber-50 dark:bg-amber-950/40',
+    text: 'text-amber-700 dark:text-amber-300',
     dotColor: 'amber',
     label: 'PENDING REVIEW',
   },
   CONFIRMED: {
-    border: 'border-magenta/50',
-    bg: 'bg-magenta/15',
-    text: 'text-magenta-300',
+    border: 'border-rose-200 dark:border-rose-800/80',
+    bg: 'bg-rose-50 dark:bg-rose-950/40',
+    text: 'text-rose-700 dark:text-rose-300',
     dotColor: 'rose',
     label: 'CONFIRMED',
   },
   DISMISSED: {
-    border: 'border-slate-500/40',
-    bg: 'bg-slate-500/10',
-    text: 'text-slate-300',
+    border: 'border-zinc-200 dark:border-zinc-800',
+    bg: 'bg-zinc-100 dark:bg-zinc-800/60',
+    text: 'text-zinc-600 dark:text-zinc-400',
     dotColor: 'gray',
     label: 'DISMISSED',
   },
 
   // Roles
   ADMIN: {
-    border: 'border-violet/40',
-    bg: 'bg-violet/15',
-    text: 'text-violet-300',
+    border: 'border-indigo-200 dark:border-indigo-800/80',
+    bg: 'bg-indigo-50 dark:bg-indigo-950/40',
+    text: 'text-indigo-700 dark:text-indigo-300',
     dotColor: 'cyan',
-    label: 'ADMIN',
+    label: 'ADMINISTRATOR',
   },
   PROCTOR: {
-    border: 'border-cyan/40',
-    bg: 'bg-cyan/15',
-    text: 'text-cyan-300',
+    border: 'border-sky-200 dark:border-sky-800/80',
+    bg: 'bg-sky-50 dark:bg-sky-950/40',
+    text: 'text-sky-700 dark:text-sky-300',
     dotColor: 'cyan',
     label: 'PROCTOR',
   },
   STUDENT: {
-    border: 'border-emerald/40',
-    bg: 'bg-emerald/15',
-    text: 'text-emerald-300',
+    border: 'border-emerald-200 dark:border-emerald-800/80',
+    bg: 'bg-emerald-50 dark:bg-emerald-950/40',
+    text: 'text-emerald-700 dark:text-emerald-300',
     dotColor: 'emerald',
     label: 'STUDENT',
   },
@@ -123,38 +123,32 @@ export function StatusPill({
   pulse,
   className = '',
 }: StatusPillProps) {
-  const norm = status.toUpperCase().replace(/\s+/g, '_');
-  const config =
-    statusConfig[norm] ?? {
-      border: 'border-white/15',
-      bg: 'bg-white/5',
-      text: 'text-slate-300',
-      dotColor: 'gray',
-      label: status.replace(/_/g, ' '),
-    };
+  const norm = (status || '').toUpperCase().replace(/[\s-]/g, '_');
+  const cfg = statusConfig[norm] ?? {
+    border: 'border-zinc-200 dark:border-zinc-800',
+    bg: 'bg-zinc-100 dark:bg-zinc-800',
+    text: 'text-zinc-600 dark:text-zinc-400',
+    dotColor: 'gray' as const,
+    label: status,
+  };
 
-  const shouldPulse = pulse !== undefined ? pulse : norm === 'IN_PROGRESS';
-  const label = config.label ?? status.replace(/_/g, ' ');
+  const isPulsing = pulse ?? (norm === 'IN_PROGRESS' || norm === 'PENDING');
 
   const sizeClasses =
     size === 'sm'
-      ? 'px-2 py-0.5 text-[10px] gap-1.5'
-      : 'px-2.5 py-1 text-xs gap-2';
+      ? 'px-2 py-0.5 text-[10px] gap-1'
+      : 'px-2.5 py-1 text-xs gap-1.5';
 
   return (
     <span
-      className={`inline-flex items-center font-mono font-medium uppercase tracking-wider rounded-full border ${config.border} ${config.bg} ${config.text} ${sizeClasses} ${className}`}
+      className={`inline-flex items-center font-mono font-medium rounded-full border ${cfg.border} ${cfg.bg} ${cfg.text} ${sizeClasses} ${className}`}
     >
       <LiveDot
-        color={config.dotColor}
-        size={size === 'sm' ? 'sm' : 'sm'}
-        pulse={shouldPulse}
+        color={cfg.dotColor}
+        size={size === 'sm' ? 'sm' : 'md'}
+        pulse={isPulsing}
       />
-      <span>{label}</span>
+      <span>{cfg.label ?? status}</span>
     </span>
   );
 }
-
-// Backward compatibility alias
-export const StatusBadge = StatusPill;
-

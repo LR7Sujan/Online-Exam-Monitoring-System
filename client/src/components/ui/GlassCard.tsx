@@ -1,7 +1,7 @@
 import React, { forwardRef, useState } from 'react';
 
 export type GlassGlow = 'none' | 'cyan' | 'violet' | 'magenta' | 'emerald' | 'amber';
-export type GlassVariant = 'card' | 'panel' | 'elevated';
+export type GlassVariant = 'card' | 'panel' | 'elevated' | 'overlay';
 
 export interface GlassCardProps extends React.HTMLAttributes<HTMLDivElement> {
   children?: React.ReactNode;
@@ -17,26 +17,20 @@ export interface GlassCardProps extends React.HTMLAttributes<HTMLDivElement> {
 
 const glowClasses: Record<GlassGlow, string> = {
   none: '',
-  cyan: 'border-cyan-500/30 shadow-glow-cyan',
-  violet: 'border-violet-500/30 shadow-glow-violet',
-  magenta: 'border-magenta-500/40 shadow-glow-magenta',
-  emerald: 'border-emerald-500/30 shadow-glow-emerald',
-  amber: 'border-amber-500/30 shadow-glow-amber',
+  cyan: 'border-sky-500/30 dark:border-sky-500/40 shadow-[0_0_24px_rgba(14,165,233,0.12)]',
+  violet: 'border-violet-500/30 dark:border-violet-500/40 shadow-[0_0_24px_rgba(139,92,246,0.12)]',
+  magenta: 'border-rose-500/35 dark:border-rose-500/45 shadow-[0_0_24px_rgba(244,63,94,0.15)]',
+  emerald: 'border-emerald-500/30 dark:border-emerald-500/40 shadow-[0_0_24px_rgba(16,185,129,0.12)]',
+  amber: 'border-amber-500/30 dark:border-amber-500/40 shadow-[0_0_24px_rgba(245,158,11,0.12)]',
 };
 
 const hoverGlowClasses: Record<GlassGlow, string> = {
-  none: 'hover:border-white/20',
-  cyan: 'hover:border-cyan-400/40 hover:shadow-glow-cyan',
-  violet: 'hover:border-violet-400/40 hover:shadow-glow-violet',
-  magenta: 'hover:border-magenta-400/50 hover:shadow-glow-magenta',
-  emerald: 'hover:border-emerald-400/40 hover:shadow-glow-emerald',
-  amber: 'hover:border-amber-400/40 hover:shadow-glow-amber',
-};
-
-const variantClasses: Record<GlassVariant, string> = {
-  card: 'glass-card',
-  panel: 'glass-panel',
-  elevated: 'glass-elevated',
+  none: 'hover:border-zinc-300 dark:hover:border-zinc-700',
+  cyan: 'hover:border-sky-400 dark:hover:border-sky-400/60 hover:shadow-[0_0_28px_rgba(14,165,233,0.2)]',
+  violet: 'hover:border-violet-400 dark:hover:border-violet-400/60 hover:shadow-[0_0_28px_rgba(139,92,246,0.2)]',
+  magenta: 'hover:border-rose-400 dark:hover:border-rose-400/60 hover:shadow-[0_0_28px_rgba(244,63,94,0.22)]',
+  emerald: 'hover:border-emerald-400 dark:hover:border-emerald-400/60 hover:shadow-[0_0_28px_rgba(16,185,129,0.2)]',
+  amber: 'hover:border-amber-400 dark:hover:border-amber-400/60 hover:shadow-[0_0_28px_rgba(245,158,11,0.2)]',
 };
 
 export const GlassCard = forwardRef<HTMLDivElement, GlassCardProps>(
@@ -77,15 +71,27 @@ export const GlassCard = forwardRef<HTMLDivElement, GlassCardProps>(
       onMouseLeave?.(e);
     };
 
-    const baseVariant = variantClasses[variant];
+    // Bento base surfaces: solid hairline border, soft layered shadow, 20px radius
+    const baseVariant =
+      variant === 'overlay'
+        ? 'rounded-[20px] border border-border bg-surface/80 backdrop-blur-xl text-foreground shadow-bento-xl'
+        : variant === 'panel'
+        ? 'rounded-[20px] border border-border bg-surface-elevated text-foreground shadow-bento-sm'
+        : variant === 'elevated'
+        ? 'rounded-[20px] border border-border bg-surface-elevated text-foreground shadow-bento'
+        : 'rounded-[20px] border border-border bg-surface text-foreground shadow-bento';
+
     const glowClass = hoverEffect ? hoverGlowClasses[glow] : glowClasses[glow];
     const gradClass =
       gradientBorder === 'cyan'
-        ? 'gradient-border-cyan'
+        ? 'animated-gradient-border'
         : gradientBorder === 'magenta'
-        ? 'gradient-border-magenta'
+        ? 'border-rose-500/50 dark:border-rose-500/50 shadow-[0_0_24px_rgba(244,63,94,0.18)]'
         : '';
-    const liftClass = hoverLift ? 'transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-2xl' : 'transition-all duration-300';
+    const liftClass =
+      hoverLift && hoverEffect
+        ? 'transition-all duration-300 ease-out hover:-translate-y-0.5 hover:shadow-bento-xl'
+        : 'transition-all duration-200';
     const animBorderClass = animatedBorder ? 'animated-gradient-border' : '';
 
     return (
@@ -96,20 +102,18 @@ export const GlassCard = forwardRef<HTMLDivElement, GlassCardProps>(
         className={`${baseVariant} ${liftClass} relative overflow-hidden ${glowClass} ${gradClass} ${animBorderClass} ${className}`}
         {...rest}
       >
-        {/* Interactive Cursor-Follow Glow Spotlight */}
+        {/* Subtle Ambient Cursor Follow Spotlight */}
         {cursorGlow && mousePos && (
           <div
-            className="pointer-events-none absolute -inset-px transition-opacity duration-300 z-0"
+            className="pointer-events-none absolute -inset-px transition-opacity duration-300 opacity-100"
             style={{
-              background: `radial-gradient(380px circle at ${mousePos.x}px ${mousePos.y}px, rgba(34, 211, 238, 0.12), transparent 75%)`,
+              background: `radial-gradient(350px circle at ${mousePos.x}px ${mousePos.y}px, rgba(99, 102, 241, 0.08), transparent 60%)`,
             }}
             aria-hidden="true"
           />
         )}
 
-        <div className="relative z-10 w-full h-full">
-          {children}
-        </div>
+        <div className="relative z-10">{children}</div>
       </div>
     );
   }

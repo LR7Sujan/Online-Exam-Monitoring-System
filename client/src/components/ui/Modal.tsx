@@ -59,60 +59,58 @@ export function Modal({
     <AnimatePresence>
       {isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
-          {/* Backdrop */}
+          {/* Glass Overlay Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
             onClick={closeOnBackdropClick ? onClose : undefined}
-            className="fixed inset-0 bg-[#0A0B14]/80 backdrop-blur-md"
+            className="fixed inset-0 bg-black/60 dark:bg-black/75 backdrop-blur-md"
             aria-hidden="true"
           />
 
-          {/* Modal Card */}
+          {/* Modal Bento Container */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.94, y: 14 }}
+            initial={{ opacity: 0, scale: 0.96, y: 12 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.94, y: 14 }}
-            transition={{ type: 'spring', stiffness: 350, damping: 28 }}
+            exit={{ opacity: 0, scale: 0.96, y: 12 }}
+            transition={{ type: 'spring', stiffness: 400, damping: 30 }}
             role="dialog"
             aria-modal="true"
-            className={`relative w-full ${sizeClasses[size]} rounded-2xl border border-white/10 bg-[#101222]/95 backdrop-blur-2xl shadow-[0_24px_64px_rgba(0,0,0,0.7)] overflow-hidden flex flex-col z-10 ${className}`}
+            className={`relative w-full ${sizeClasses[size]} rounded-3xl border border-border bg-surface text-foreground shadow-bento-xl overflow-hidden flex flex-col z-10 ${className}`}
           >
             {/* Header */}
             {(title || description) && (
-              <div className="flex items-start justify-between p-5 border-b border-white/10 bg-[#16192E]/40">
-                <div className="space-y-1 pr-6">
+              <div className="flex items-start justify-between p-6 border-b border-border bg-surface-elevated/40">
+                <div className="space-y-1.5 pr-6">
                   {title && (
-                    <h3 className="text-lg font-semibold text-white tracking-wide">
+                    <h3 className="text-lg font-semibold text-foreground tracking-tight">
                       {title}
                     </h3>
                   )}
                   {description && (
-                    <p className="text-xs text-slate-400 leading-relaxed">
+                    <p className="text-xs text-muted-foreground leading-relaxed">
                       {description}
                     </p>
                   )}
                 </div>
                 <button
                   onClick={onClose}
-                  className="p-1.5 text-slate-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
-                  aria-label="Close dialog"
+                  className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-xl transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                  aria-label="Close modal"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="w-4 h-4" />
                 </button>
               </div>
             )}
 
             {/* Body */}
-            <div className="p-6 overflow-y-auto max-h-[70vh] text-slate-200">
-              {children}
-            </div>
+            <div className="p-6 overflow-y-auto flex-1">{children}</div>
 
             {/* Footer */}
             {footer && (
-              <div className="flex items-center justify-end gap-3 p-4 border-t border-white/10 bg-[#16192E]/60">
+              <div className="p-4 px-6 border-t border-border bg-surface-elevated/40 flex items-center justify-end gap-3">
                 {footer}
               </div>
             )}
@@ -122,4 +120,3 @@ export function Modal({
     </AnimatePresence>
   );
 }
-

@@ -27,7 +27,7 @@ export function Tabs({
   if (variant === 'underline') {
     return (
       <div
-        className={`flex items-center space-x-1 border-b border-white/10 ${className}`}
+        className={`flex items-center space-x-1 border-b border-border ${className}`}
         role="tablist"
       >
         {tabs.map((tab) => {
@@ -39,22 +39,22 @@ export function Tabs({
               aria-selected={isActive}
               disabled={tab.disabled}
               onClick={() => onChange(tab.id)}
-              className={`relative px-4 py-2.5 text-sm font-medium transition-colors duration-200 flex items-center gap-2 select-none disabled:opacity-40 disabled:cursor-not-allowed ${
-                isActive ? 'text-cyan font-semibold' : 'text-slate-400 hover:text-slate-200'
+              className={`relative px-4 py-2.5 text-sm font-medium transition-colors duration-200 flex items-center gap-2 select-none disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand rounded-t-lg ${
+                isActive ? 'text-brand font-semibold' : 'text-muted-foreground hover:text-foreground'
               }`}
             >
               {tab.icon && <span className="w-4 h-4">{tab.icon}</span>}
               <span>{tab.label}</span>
               {tab.badge !== undefined && (
-                <span className="ml-1 px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-white/10 text-slate-300">
+                <span className="ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-mono bg-muted text-muted-foreground">
                   {tab.badge}
                 </span>
               )}
               {isActive && (
                 <motion.div
                   layoutId="tabs-underline"
-                  className="absolute bottom-0 left-0 right-0 h-0.5 bg-cyan shadow-[0_0_8px_rgba(34,211,238,0.8)]"
-                  transition={{ type: 'spring', stiffness: 450, damping: 32 }}
+                  className="absolute bottom-0 left-0 right-0 h-0.5 bg-brand"
+                  transition={{ type: 'spring', stiffness: 500, damping: 35 }}
                 />
               )}
             </button>
@@ -67,7 +67,7 @@ export function Tabs({
   // Pill variant
   return (
     <div
-      className={`inline-flex items-center p-1 rounded-xl bg-[#101222]/90 border border-white/10 backdrop-blur-md ${className}`}
+      className={`inline-flex items-center p-1 rounded-xl bg-zinc-100 dark:bg-zinc-800/80 border border-border ${className}`}
       role="tablist"
     >
       {tabs.map((tab) => {
@@ -79,15 +79,15 @@ export function Tabs({
             aria-selected={isActive}
             disabled={tab.disabled}
             onClick={() => onChange(tab.id)}
-            className={`relative px-3.5 py-1.5 text-xs font-medium rounded-lg transition-colors duration-200 flex items-center gap-2 select-none disabled:opacity-40 disabled:cursor-not-allowed z-10 ${
-              isActive ? 'text-void font-semibold' : 'text-slate-400 hover:text-white'
+            className={`relative px-3.5 py-1.5 text-xs font-medium rounded-lg transition-colors duration-200 flex items-center gap-2 select-none disabled:opacity-40 disabled:cursor-not-allowed z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${
+              isActive ? 'text-foreground font-semibold' : 'text-muted-foreground hover:text-foreground'
             }`}
           >
             {isActive && (
               <motion.div
                 layoutId="tabs-pill"
-                className="absolute inset-0 rounded-lg bg-cyan shadow-glow-cyan"
-                transition={{ type: 'spring', stiffness: 450, damping: 32 }}
+                className="absolute inset-0 rounded-lg bg-white dark:bg-zinc-700 shadow-sm"
+                transition={{ type: 'spring', stiffness: 500, damping: 35 }}
               />
             )}
             <span className="relative z-10 flex items-center gap-1.5">
@@ -96,7 +96,7 @@ export function Tabs({
               {tab.badge !== undefined && (
                 <span
                   className={`ml-1 px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
-                    isActive ? 'bg-void/25 text-void' : 'bg-white/10 text-slate-300'
+                    isActive ? 'bg-muted text-foreground' : 'bg-muted text-muted-foreground'
                   }`}
                 >
                   {tab.badge}
@@ -109,4 +109,3 @@ export function Tabs({
     </div>
   );
 }
-

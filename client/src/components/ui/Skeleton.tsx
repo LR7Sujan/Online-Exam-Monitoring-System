@@ -1,3 +1,5 @@
+import React from 'react';
+
 export interface SkeletonProps extends React.HTMLAttributes<HTMLDivElement> {
   variant?: 'rect' | 'circle' | 'text';
   width?: string | number;
@@ -13,7 +15,8 @@ export function Skeleton({
   style,
   ...props
 }: SkeletonProps) {
-  const baseClasses = 'animate-pulse bg-white/[0.07] border border-white/5';
+  const baseClasses =
+    'relative overflow-hidden bg-zinc-200/70 dark:bg-zinc-800/70 before:absolute before:inset-0 before:-translate-x-full before:animate-[shimmer_2s_infinite] before:bg-gradient-to-r before:from-transparent before:via-white/20 dark:before:via-white/10 before:to-transparent';
 
   const variantClasses = {
     rect: 'rounded-xl',
@@ -37,13 +40,13 @@ export function Skeleton({
 
 export function SkeletonCard({ className = '' }: { className?: string }) {
   return (
-    <div className={`p-5 rounded-2xl border border-white/10 bg-[#101222]/80 space-y-4 ${className}`}>
+    <div className={`p-5 rounded-[20px] border border-border bg-surface shadow-bento space-y-4 ${className}`}>
       <div className="flex items-center justify-between">
         <Skeleton variant="text" className="w-1/3 h-4" />
         <Skeleton variant="circle" className="w-8 h-8" />
       </div>
       <Skeleton variant="rect" className="w-1/2 h-8" />
-      <div className="pt-2 border-t border-white/5 flex justify-between items-center">
+      <div className="pt-2 border-t border-border flex justify-between items-center">
         <Skeleton variant="text" className="w-1/4 h-3" />
         <Skeleton variant="rect" className="w-16 h-4" />
       </div>
@@ -83,8 +86,8 @@ export function SkeletonTable({
   className?: string;
 }) {
   return (
-    <div className={`rounded-xl border border-white/10 bg-[#101222]/80 overflow-hidden ${className}`}>
-      <div className="p-4 bg-[#16192E]/90 border-b border-white/10 flex gap-4">
+    <div className={`rounded-[20px] border border-border bg-surface overflow-hidden shadow-bento ${className}`}>
+      <div className="p-4 bg-surface-elevated border-b border-border flex gap-4">
         {Array.from({ length: cols }).map((_, i) => (
           <Skeleton key={i} variant="text" className="h-3 flex-1" />
         ))}
@@ -104,8 +107,8 @@ export function SkeletonTable({
 
 export function PageSkeleton() {
   return (
-    <div className="space-y-6 max-w-7xl w-full mx-auto p-4 sm:p-6 animate-pulse" aria-hidden="true">
-      <div className="flex items-center justify-between pb-4 border-b border-white/5">
+    <div className="space-y-6 max-w-7xl w-full mx-auto p-4 sm:p-6" aria-hidden="true">
+      <div className="flex items-center justify-between pb-4 border-b border-border">
         <div className="space-y-2">
           <Skeleton variant="text" className="w-48 h-6" />
           <Skeleton variant="text" className="w-72 h-3" />
@@ -121,4 +124,3 @@ export function PageSkeleton() {
     </div>
   );
 }
-

@@ -15,36 +15,31 @@ const severityConfig: Record<
     border: string;
     bg: string;
     text: string;
-    glow: string;
     icon: React.ComponentType<{ className?: string }>;
   }
 > = {
   LOW: {
-    border: 'border-cyan-400/40',
-    bg: 'bg-cyan-500/10',
-    text: 'text-cyan-300',
-    glow: 'shadow-glow-cyan-sm',
+    border: 'border-sky-200 dark:border-sky-800/80',
+    bg: 'bg-sky-50 dark:bg-sky-950/40',
+    text: 'text-sky-700 dark:text-sky-300',
     icon: Info,
   },
   MEDIUM: {
-    border: 'border-amber-400/40',
-    bg: 'bg-amber-500/10',
-    text: 'text-amber-300',
-    glow: 'shadow-glow-amber-sm',
+    border: 'border-amber-200 dark:border-amber-800/80',
+    bg: 'bg-amber-50 dark:bg-amber-950/40',
+    text: 'text-amber-700 dark:text-amber-300',
     icon: AlertTriangle,
   },
   HIGH: {
-    border: 'border-orange-500/50',
-    bg: 'bg-orange-500/15',
-    text: 'text-orange-300',
-    glow: 'shadow-glow-amber-sm',
+    border: 'border-orange-200 dark:border-orange-800/80',
+    bg: 'bg-orange-50 dark:bg-orange-950/40',
+    text: 'text-orange-700 dark:text-orange-300',
     icon: AlertCircle,
   },
   CRITICAL: {
-    border: 'border-magenta-500/60',
-    bg: 'bg-magenta-500/20',
-    text: 'text-magenta-300',
-    glow: 'shadow-glow-magenta-sm',
+    border: 'border-rose-200 dark:border-rose-800/80',
+    bg: 'bg-rose-50 dark:bg-rose-950/40',
+    text: 'text-rose-700 dark:text-rose-300',
     icon: ShieldAlert,
   },
 };
@@ -55,7 +50,7 @@ export function SeverityBadge({
   showIcon = true,
   className = '',
 }: SeverityBadgeProps) {
-  const norm = severity.toUpperCase();
+  const norm = (severity || 'LOW').toUpperCase();
   const config = severityConfig[norm] ?? severityConfig.LOW;
   const IconComponent = config.icon;
 
@@ -66,17 +61,16 @@ export function SeverityBadge({
 
   return (
     <span
-      className={`inline-flex items-center font-mono font-medium uppercase tracking-wider rounded-md border ${config.border} ${config.bg} ${config.text} ${config.glow} ${sizeClasses} ${className}`}
+      className={`inline-flex items-center font-mono font-medium uppercase tracking-wider rounded-md border ${config.border} ${config.bg} ${config.text} ${sizeClasses} ${className}`}
     >
       {showIcon && <IconComponent className={size === 'sm' ? 'w-3 h-3' : 'w-3.5 h-3.5'} />}
       {norm === 'CRITICAL' && (
         <span className="relative flex h-1.5 w-1.5">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-magenta opacity-75"></span>
-          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-magenta"></span>
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-500 opacity-75" />
+          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-rose-600" />
         </span>
       )}
       <span>{norm}</span>
     </span>
   );
 }
-

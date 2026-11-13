@@ -8,36 +8,36 @@ export interface LiveDotProps {
   className?: string;
 }
 
-const colorMap: Record<LiveDotColor, { dot: string; ping: string; glow: string }> = {
+const colorMap: Record<LiveDotColor, { dot: string; ping: string; ring: string }> = {
   emerald: {
-    dot: 'bg-emerald-400',
+    dot: 'bg-emerald-500',
     ping: 'bg-emerald-400',
-    glow: 'shadow-[0_0_8px_rgba(16,185,129,0.8)]',
+    ring: 'ring-2 ring-emerald-500/20',
   },
   rose: {
-    dot: 'bg-magenta',
-    ping: 'bg-magenta',
-    glow: 'shadow-[0_0_8px_rgba(244,63,94,0.8)]',
+    dot: 'bg-rose-500',
+    ping: 'bg-rose-400',
+    ring: 'ring-2 ring-rose-500/20',
   },
   cyan: {
-    dot: 'bg-cyan',
-    ping: 'bg-cyan',
-    glow: 'shadow-[0_0_8px_rgba(34,211,238,0.8)]',
+    dot: 'bg-sky-500',
+    ping: 'bg-sky-400',
+    ring: 'ring-2 ring-sky-500/20',
   },
   amber: {
-    dot: 'bg-amber-400',
+    dot: 'bg-amber-500',
     ping: 'bg-amber-400',
-    glow: 'shadow-[0_0_8px_rgba(245,158,11,0.8)]',
+    ring: 'ring-2 ring-amber-500/20',
   },
   violet: {
-    dot: 'bg-violet',
-    ping: 'bg-violet',
-    glow: 'shadow-[0_0_8px_rgba(139,92,246,0.8)]',
+    dot: 'bg-violet-500',
+    ping: 'bg-violet-400',
+    ring: 'ring-2 ring-violet-500/20',
   },
   gray: {
-    dot: 'bg-slate-400',
-    ping: 'bg-slate-400',
-    glow: 'shadow-[0_0_8px_rgba(148,163,184,0.4)]',
+    dot: 'bg-zinc-400',
+    ping: 'bg-zinc-400',
+    ring: 'ring-2 ring-zinc-400/20',
   },
 };
 
@@ -62,18 +62,17 @@ export function LiveDot({
   pulse = true,
   className = '',
 }: LiveDotProps) {
-  const c = colorMap[color];
-  const s = sizeMap[size];
+  const c = colorMap[color] ?? colorMap.emerald;
+  const s = sizeMap[size] ?? sizeMap.md;
 
   return (
-    <span className={`relative inline-flex items-center justify-center ${s.container} ${className}`}>
+    <span className={`relative inline-flex items-center justify-center shrink-0 ${s.container} ${className}`}>
       {pulse && (
         <span
-          className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${c.ping}`}
+          className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-60 ${c.ping}`}
         />
       )}
-      <span className={`relative inline-flex rounded-full ${s.dot} ${c.dot} ${c.glow}`} />
+      <span className={`relative inline-flex rounded-full ${s.dot} ${c.dot} ${c.ring}`} />
     </span>
   );
 }
-

@@ -25,33 +25,33 @@ export function EmptyState({
 }: EmptyStateProps) {
   return (
     <div
-      className={`p-10 rounded-2xl border border-white/10 bg-[#101222]/60 backdrop-blur-md flex flex-col items-center justify-center text-center ${className}`}
+      className={`p-10 rounded-[20px] border border-border bg-surface text-foreground shadow-bento flex flex-col items-center justify-center text-center ${className}`}
     >
       <div className="relative mb-5 flex items-center justify-center">
-        {/* Radar concentric sweep */}
-        <div className="absolute w-28 h-28 rounded-full border border-cyan/20 animate-pulse-slow" />
-        <div className="absolute w-20 h-20 rounded-full border border-dashed border-violet/30 animate-spin [animation-duration:18s]" />
+        {/* Subtle decorative concentric rings */}
+        <div className="absolute w-24 h-24 rounded-full border border-border/60 animate-pulse-slow" />
+        <div className="absolute w-16 h-16 rounded-full border border-dashed border-border" />
 
-        {/* Center glowing icon */}
-        <div className="relative z-10 p-4 rounded-2xl bg-[#16192E] border border-cyan/40 text-cyan shadow-glow-cyan">
+        {/* Center icon container */}
+        <div className="relative z-10 p-4 rounded-2xl bg-surface-elevated border border-border text-brand shadow-sm">
           {icon ?? <Compass className="w-8 h-8" />}
         </div>
       </div>
 
       <motion.h3
-        initial={{ opacity: 0, y: 5 }}
+        initial={{ opacity: 0, y: 4 }}
         animate={{ opacity: 1, y: 0 }}
-        className="text-lg font-semibold text-white tracking-wide"
+        className="text-base font-semibold text-foreground tracking-tight"
       >
         {title}
       </motion.h3>
 
       {description && (
         <motion.p
-          initial={{ opacity: 0, y: 5 }}
+          initial={{ opacity: 0, y: 4 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.05 }}
-          className="mt-2 text-xs text-slate-400 max-w-sm leading-relaxed"
+          className="mt-1.5 text-xs text-muted-foreground max-w-sm leading-relaxed"
         >
           {description}
         </motion.p>
@@ -59,10 +59,10 @@ export function EmptyState({
 
       {action && (
         <motion.div
-          initial={{ opacity: 0, y: 5 }}
+          initial={{ opacity: 0, y: 4 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="mt-6"
+          className="mt-5"
         >
           <NeonButton
             variant={action.variant ?? 'primary'}
