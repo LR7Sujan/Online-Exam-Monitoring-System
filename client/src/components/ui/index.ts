@@ -19,3 +19,4 @@ export * from './BentoGrid';
 export * from './AvatarStack';
 export * from './ThemeToggle';
 export * from './OverlayPanel';
+export * from './ParticleBurst';

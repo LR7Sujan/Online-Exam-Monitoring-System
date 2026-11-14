@@ -55,6 +55,22 @@ interface NavItem {
   children?: NavSubItem[];
 }
 
+const STYLEGUIDE_NAV_CHILDREN: NavSubItem[] = [
+  { to: '/styleguide', label: 'Overview' },
+  { to: '/styleguide/tokens', label: 'Design Tokens' },
+  { to: '/styleguide/indicators', label: 'Live Indicators' },
+  { to: '/styleguide/bento', label: 'Bento Grid & Cards' },
+  { to: '/styleguide/buttons', label: 'Buttons' },
+  { to: '/styleguide/badges', label: 'Badges & Pills' },
+  { to: '/styleguide/stat-cards', label: 'Stat Cards' },
+  { to: '/styleguide/trust-ring', label: 'Trust Ring' },
+  { to: '/styleguide/tables', label: 'Data Tables' },
+  { to: '/styleguide/overlays', label: 'Drawers & Modals' },
+  { to: '/styleguide/charts', label: 'Charts' },
+  { to: '/styleguide/loading-empty', label: 'Loading & Empty States' },
+  { to: '/styleguide/motion', label: 'Motion' },
+];
+
 export function AppShell() {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
@@ -100,6 +116,13 @@ export function AppShell() {
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({
     '/styleguide': true,
   });
+
+  // Auto-expand group on initial load and route changes if on styleguide
+  useEffect(() => {
+    if (location.pathname.startsWith('/styleguide')) {
+      setExpandedGroups((prev) => ({ ...prev, '/styleguide': true }));
+    }
+  }, [location.pathname]);
 
   const toggleGroup = (key: string, e: React.MouseEvent) => {
     e.preventDefault();
@@ -167,9 +190,7 @@ export function AppShell() {
           label: 'UI Styleguide',
           icon: Palette,
           section: 'SYSTEM',
-          children: [
-            { to: '/styleguide', label: 'Bento Tokens & Specs' },
-          ],
+          children: STYLEGUIDE_NAV_CHILDREN,
         },
       ];
     }
@@ -178,14 +199,26 @@ export function AppShell() {
       return [
         { to: '/proctor', label: 'Live Monitor', icon: Radio, badge: violationCount > 0 ? violationCount : undefined, section: 'SURVEILLANCE' },
         { to: '/proctor/audit', label: 'Violation Audit', icon: ShieldAlert, section: 'SURVEILLANCE' },
-        { to: '/styleguide', label: 'UI Styleguide', icon: Palette, section: 'SYSTEM' },
+        {
+          to: '/styleguide',
+          label: 'UI Styleguide',
+          icon: Palette,
+          section: 'SYSTEM',
+          children: STYLEGUIDE_NAV_CHILDREN,
+        },
       ];
     }
 
     // STUDENT
     return [
       { to: '/student', label: 'Exams & Portal', icon: GraduationCap, section: 'EXAMINATIONS' },
-      { to: '/styleguide', label: 'UI Styleguide', icon: Palette, section: 'SYSTEM' },
+      {
+        to: '/styleguide',
+        label: 'UI Styleguide',
+        icon: Palette,
+        section: 'SYSTEM',
+        children: STYLEGUIDE_NAV_CHILDREN,
+      },
     ];
   }, [user, violationCount]);
 
@@ -316,12 +349,17 @@ export function AppShell() {
                 const isGroupOpen = expandedGroups[item.to] ?? false;
 
                 if (isCollapsed) {
-                  // Collapsed 72px square item (44px) with hover flyout
+                  // Collapsed 72px square item (44px) with interactive hover/click flyout
                   return (
                     <div key={item.to} className="relative group/navitem flex justify-center py-0.5">
                       <NavLink
                         to={item.to}
                         title={item.label}
+                        onClick={() => {
+                          if (hasChildren) {
+                            setExpandedGroups((prev) => ({ ...prev, [item.to]: true }));
+                          }
+                        }}
                         className={`w-11 h-11 flex items-center justify-center rounded-xl relative transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-brand ${
                           isActive
                             ? 'bg-brand/15 dark:bg-brand/20 text-brand shadow-sm font-semibold'
@@ -334,9 +372,9 @@ export function AppShell() {
                         <Icon className={`w-5 h-5 shrink-0 ${isActive ? 'text-brand' : 'text-muted-foreground group-hover/navitem:text-foreground'}`} />
                       </NavLink>
 
-                      {/* Hover Flyout Tooltip / Sub-menu */}
-                      <div className="opacity-0 group-hover/navitem:opacity-100 transition-opacity absolute left-full ml-3.5 top-1/2 -translate-y-1/2 z-[80] px-3 py-2 rounded-xl border border-border bg-surface dark:bg-[#12131d] text-foreground text-xs shadow-2xl pointer-events-none whitespace-nowrap space-y-1">
-                        <div className="flex items-center gap-2 font-medium">
+                      {/* Interactive Hover Flyout Sub-menu (pointer-events enabled on hover) */}
+                      <div className="opacity-0 group-hover/navitem:opacity-100 group-hover/navitem:pointer-events-auto transition-opacity duration-150 absolute left-full ml-3 top-1/2 -translate-y-1/2 z-[80] p-2 rounded-xl border border-border bg-surface dark:bg-[#12131d] text-foreground text-xs shadow-2xl pointer-events-none whitespace-nowrap min-w-[210px] max-h-[80vh] overflow-y-auto space-y-1 before:absolute before:-left-3.5 before:top-0 before:bottom-0 before:w-4 before:content-['']">
+                        <div className="flex items-center justify-between px-2.5 py-1.5 border-b border-border/60 font-semibold text-xs">
                           <span>{item.label}</span>
                           {item.badge !== undefined && (
                             <span className="px-1.5 py-0.2 rounded-full text-[9px] font-mono font-semibold bg-rose-500/15 text-rose-500 border border-rose-500/30">
@@ -345,12 +383,27 @@ export function AppShell() {
                           )}
                         </div>
                         {hasChildren && (
-                          <div className="pt-1 border-t border-border/60 space-y-1">
-                            {item.children?.map((sub) => (
-                              <div key={sub.to} className="text-[11px] text-muted-foreground font-mono">
-                                • {sub.label}
-                              </div>
-                            ))}
+                          <div className="space-y-0.5 pt-1">
+                            {item.children?.map((sub) => {
+                              const isSubActive =
+                                sub.to === '/styleguide'
+                                  ? location.pathname === '/styleguide'
+                                  : location.pathname === sub.to || location.pathname.startsWith(sub.to + '/');
+
+                              return (
+                                <NavLink
+                                  key={sub.to}
+                                  to={sub.to}
+                                  className={`block px-2.5 py-1.5 rounded-lg text-xs font-mono transition-colors ${
+                                    isSubActive
+                                      ? 'text-brand font-semibold bg-brand/10'
+                                      : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
+                                  }`}
+                                >
+                                  {sub.label}
+                                </NavLink>
+                              );
+                            })}
                           </div>
                         )}
                       </div>
@@ -364,6 +417,11 @@ export function AppShell() {
                     <div className="flex items-center gap-1">
                       <NavLink
                         to={item.to}
+                        onClick={() => {
+                          if (hasChildren) {
+                            setExpandedGroups((prev) => ({ ...prev, [item.to]: true }));
+                          }
+                        }}
                         className={`relative flex-1 flex items-center gap-3 px-3 h-10 rounded-xl text-xs font-medium transition-all select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 ${
                           isActive
                             ? 'bg-brand/10 dark:bg-brand/15 text-foreground font-semibold shadow-sm'
@@ -394,8 +452,9 @@ export function AppShell() {
                         <button
                           type="button"
                           onClick={(e) => toggleGroup(item.to, e)}
-                          className="h-10 w-7 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                          className="h-10 w-7 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand cursor-pointer"
                           aria-label="Toggle sub-menu"
+                          title={isGroupOpen ? 'Collapse sub-menu' : 'Expand sub-menu'}
                         >
                           <ChevronDown
                             className={`w-3.5 h-3.5 transition-transform duration-200 ${
@@ -406,26 +465,42 @@ export function AppShell() {
                       )}
                     </div>
 
-                    {/* Indented Children for Sub-Menu (Phase 13.6 expandable groups readiness) */}
-                    {hasChildren && isGroupOpen && (
-                      <div className="pl-8 space-y-1 pt-0.5">
-                        {item.children?.map((sub) => (
-                          <NavLink
-                            key={sub.to}
-                            to={sub.to}
-                            className={({ isActive: isSubActive }) =>
-                              `block px-2.5 py-1.5 rounded-lg text-[11px] font-mono transition-colors ${
-                                isSubActive
-                                  ? 'text-brand font-semibold bg-brand/10'
-                                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-                              }`
-                            }
-                          >
-                            {sub.label}
-                          </NavLink>
-                        ))}
-                      </div>
-                    )}
+                    {/* Indented Children with Vertical Guide Line & Active Dot */}
+                    <AnimatePresence initial={false}>
+                      {hasChildren && isGroupOpen && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          transition={{ duration: 0.2 }}
+                          className="ml-5 pl-3 border-l-2 border-border/70 space-y-0.5 pt-1 overflow-hidden"
+                        >
+                          {item.children?.map((sub) => {
+                            const isSubActive =
+                              sub.to === '/styleguide'
+                                ? location.pathname === '/styleguide'
+                                : location.pathname === sub.to || location.pathname.startsWith(sub.to + '/');
+
+                            return (
+                              <NavLink
+                                key={sub.to}
+                                to={sub.to}
+                                className={`block px-2.5 py-1.5 rounded-lg text-xs font-mono transition-all relative ${
+                                  isSubActive
+                                    ? 'text-brand font-semibold bg-brand/10 shadow-xs'
+                                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                                }`}
+                              >
+                                {isSubActive && (
+                                  <span className="absolute -left-[17px] top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-brand shadow-xs" />
+                                )}
+                                {sub.label}
+                              </NavLink>
+                            );
+                          })}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
                 );
               })}
@@ -931,28 +1006,74 @@ export function AppShell() {
                 )}
 
                 <nav className="space-y-1 pt-2 max-h-[60vh] overflow-y-auto">
-                  {navItems.map((item) => (
-                    <NavLink
-                      key={item.to}
-                      to={item.to}
-                      onClick={() => setMobileMenuOpen(false)}
-                      className={({ isActive }) =>
-                        `flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-colors ${
-                          isActive
-                            ? 'bg-brand/10 text-brand font-semibold'
-                            : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                        }`
-                      }
-                    >
-                      <item.icon className="w-5 h-5 text-brand" />
-                      <span>{item.label}</span>
-                      {item.badge !== undefined && (
-                        <span className="ml-auto px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-rose-500/15 text-rose-500 border border-rose-500/30">
-                          {item.badge}
-                        </span>
-                      )}
-                    </NavLink>
-                  ))}
+                  {navItems.map((item) => {
+                    const hasChildren = item.children && item.children.length > 0;
+                    const isGroupOpen = expandedGroups[item.to] ?? false;
+
+                    return (
+                      <div key={item.to} className="space-y-1">
+                        <div className="flex items-center gap-1">
+                          <NavLink
+                            to={item.to}
+                            onClick={() => {
+                              if (!hasChildren) setMobileMenuOpen(false);
+                            }}
+                            className={({ isActive }) =>
+                              `flex-1 flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-colors ${
+                                isActive
+                                  ? 'bg-brand/10 text-brand font-semibold'
+                                  : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                              }`
+                            }
+                          >
+                            <item.icon className="w-5 h-5 text-brand" />
+                            <span>{item.label}</span>
+                            {item.badge !== undefined && (
+                              <span className="ml-auto px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-rose-500/15 text-rose-500 border border-rose-500/30">
+                                {item.badge}
+                              </span>
+                            )}
+                          </NavLink>
+
+                          {hasChildren && (
+                            <button
+                              type="button"
+                              onClick={(e) => toggleGroup(item.to, e)}
+                              className="p-2 text-muted-foreground hover:text-foreground"
+                              aria-label="Toggle sub-menu"
+                            >
+                              <ChevronDown
+                                className={`w-4 h-4 transition-transform duration-200 ${
+                                  isGroupOpen ? 'rotate-180' : ''
+                                }`}
+                              />
+                            </button>
+                          )}
+                        </div>
+
+                        {hasChildren && isGroupOpen && (
+                          <div className="pl-9 pr-2 space-y-0.5 border-l-2 border-border/70 ml-4 py-1">
+                            {item.children?.map((sub) => (
+                              <NavLink
+                                key={sub.to}
+                                to={sub.to}
+                                onClick={() => setMobileMenuOpen(false)}
+                                className={({ isActive }) =>
+                                  `block px-2.5 py-1.5 rounded-lg text-xs font-mono transition-colors ${
+                                    isActive
+                                      ? 'text-brand font-semibold bg-brand/10'
+                                      : 'text-muted-foreground hover:text-foreground'
+                                  }`
+                                }
+                              >
+                                {sub.label}
+                              </NavLink>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </nav>
               </div>
 

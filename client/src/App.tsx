@@ -9,12 +9,27 @@ import { AppShell } from './components/layout/AppShell';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { PageSkeleton } from './components/ui/Skeleton';
-import { StyleguidePage } from './pages/StyleguidePage';
 import { useAuthStore } from './store/authStore';
 import type { UserRole } from './types/domain';
 
 // Lazy-loaded heavy pages and dashboard routes
 const LandingPage = lazy(() => import('./pages/LandingPage').then((m) => ({ default: m.LandingPage })));
+
+// Lazy-loaded Styleguide documentation routes
+const StyleguideLayout = lazy(() => import('./pages/styleguide/StyleguideLayout').then((m) => ({ default: m.StyleguideLayout })));
+const StyleguideOverview = lazy(() => import('./pages/styleguide/StyleguideOverview').then((m) => ({ default: m.StyleguideOverview })));
+const TokensSection = lazy(() => import('./pages/styleguide/sections/TokensSection').then((m) => ({ default: m.TokensSection })));
+const IndicatorsSection = lazy(() => import('./pages/styleguide/sections/IndicatorsSection').then((m) => ({ default: m.IndicatorsSection })));
+const BentoSection = lazy(() => import('./pages/styleguide/sections/BentoSection').then((m) => ({ default: m.BentoSection })));
+const ButtonsSection = lazy(() => import('./pages/styleguide/sections/ButtonsSection').then((m) => ({ default: m.ButtonsSection })));
+const BadgesSection = lazy(() => import('./pages/styleguide/sections/BadgesSection').then((m) => ({ default: m.BadgesSection })));
+const StatCardsSection = lazy(() => import('./pages/styleguide/sections/StatCardsSection').then((m) => ({ default: m.StatCardsSection })));
+const TrustRingSection = lazy(() => import('./pages/styleguide/sections/TrustRingSection').then((m) => ({ default: m.TrustRingSection })));
+const TablesSection = lazy(() => import('./pages/styleguide/sections/TablesSection').then((m) => ({ default: m.TablesSection })));
+const OverlaysSection = lazy(() => import('./pages/styleguide/sections/OverlaysSection').then((m) => ({ default: m.OverlaysSection })));
+const ChartsSection = lazy(() => import('./pages/styleguide/sections/ChartsSection').then((m) => ({ default: m.ChartsSection })));
+const LoadingEmptySection = lazy(() => import('./pages/styleguide/sections/LoadingEmptySection').then((m) => ({ default: m.LoadingEmptySection })));
+const MotionSection = lazy(() => import('./pages/styleguide/sections/MotionSection').then((m) => ({ default: m.MotionSection })));
 
 const AdminDashboardPage = lazy(() => import('./pages/AdminDashboardPage').then((m) => ({ default: m.AdminDashboardPage })));
 const SimulatorPage = lazy(() => import('./pages/SimulatorPage').then((m) => ({ default: m.SimulatorPage })));
@@ -80,8 +95,22 @@ export function App() {
 
                   {/* Mission Control Shell with Collapsible Sidebar, Top bar & Notifications */}
                   <Route element={<AppShell />}>
-                    {/* Styleguide available inside shell */}
-                    <Route path="/styleguide" element={<StyleguidePage />} />
+                    {/* Styleguide multi-page documentation hierarchy */}
+                    <Route path="/styleguide" element={<StyleguideLayout />}>
+                      <Route index element={<StyleguideOverview />} />
+                      <Route path="tokens" element={<TokensSection />} />
+                      <Route path="indicators" element={<IndicatorsSection />} />
+                      <Route path="bento" element={<BentoSection />} />
+                      <Route path="buttons" element={<ButtonsSection />} />
+                      <Route path="badges" element={<BadgesSection />} />
+                      <Route path="stat-cards" element={<StatCardsSection />} />
+                      <Route path="trust-ring" element={<TrustRingSection />} />
+                      <Route path="tables" element={<TablesSection />} />
+                      <Route path="overlays" element={<OverlaysSection />} />
+                      <Route path="charts" element={<ChartsSection />} />
+                      <Route path="loading-empty" element={<LoadingEmptySection />} />
+                      <Route path="motion" element={<MotionSection />} />
+                    </Route>
 
                     {/* Student routes */}
                     <Route
