@@ -11,6 +11,8 @@ import {
 } from 'lucide-react';
 import { SeverityBadge } from '../ui/SeverityBadge';
 import { TrustRing } from '../ui/TrustRing';
+import { Skeleton } from '../ui/Skeleton';
+import { ErrorState } from '../ui/EmptyState';
 import { api } from '../../lib/api';
 import type { ViolationType } from '../../types/domain';
 
@@ -141,7 +143,30 @@ export function ViolationRulesManager() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {violationTypes.map((vt) => {
+                {query.isLoading ? (
+                  Array.from({ length: 6 }).map((_, i) => (
+                    <tr key={`skel-${i}`}>
+                      <td className="p-3 space-y-1">
+                        <Skeleton className="h-4 w-28 rounded" />
+                        <Skeleton className="h-3 w-40 rounded" />
+                      </td>
+                      <td className="p-3"><Skeleton className="h-5 w-16 rounded-full" /></td>
+                      <td className="p-3 text-center"><Skeleton className="h-7 w-20 mx-auto rounded-lg" /></td>
+                      <td className="p-3 text-right"><Skeleton className="h-7 w-16 ml-auto rounded-lg" /></td>
+                    </tr>
+                  ))
+                ) : query.isError ? (
+                  <tr>
+                    <td colSpan={4} className="p-8">
+                      <ErrorState
+                        title="Failed to Load Infraction Rules"
+                        description="Could not read violation penalty weights from database. Please retry."
+                        onRetry={() => query.refetch()}
+                      />
+                    </td>
+                  </tr>
+                ) : (
+                  violationTypes.map((vt) => {
                   const currentPenalty = editedWeights[vt.id] ?? vt.penalty_points;
                   const isDirty = editedWeights[vt.id] !== undefined && editedWeights[vt.id] !== vt.penalty_points;
                   const isSaved = saveSuccessId === vt.id;
@@ -193,7 +218,8 @@ export function ViolationRulesManager() {
                       </td>
                     </tr>
                   );
-                })}
+                })
+              )}
               </tbody>
             </table>
           </div>

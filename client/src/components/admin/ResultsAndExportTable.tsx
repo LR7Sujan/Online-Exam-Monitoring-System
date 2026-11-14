@@ -4,9 +4,12 @@ import {
   FileSpreadsheet,
   Printer,
   Search,
+  Shield,
 } from 'lucide-react';
 import { StatusPill } from '../ui/StatusPill';
 import { NeonButton } from '../ui/NeonButton';
+import { Skeleton } from '../ui/Skeleton';
+import { EmptyState, ErrorState } from '../ui/EmptyState';
 import { api, axiosInstance } from '../../lib/api';
 import type { ExamItem, ResultRecord } from '../../types/domain';
 
@@ -181,10 +184,48 @@ export function ResultsAndExportTable() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border print:text-black">
-              {filteredResults.length === 0 ? (
+              {resultsQuery.isLoading ? (
+                Array.from({ length: 6 }).map((_, i) => (
+                  <tr key={`skel-${i}`}>
+                    <td className="p-3.5"><Skeleton className="h-4 w-10 mx-auto rounded" /></td>
+                    <td className="p-3.5 space-y-1">
+                      <Skeleton className="h-4 w-28 rounded" />
+                      <Skeleton className="h-3 w-36 rounded" />
+                    </td>
+                    <td className="p-3.5"><Skeleton className="h-4 w-32 rounded" /></td>
+                    <td className="p-3.5 text-center"><Skeleton className="h-4 w-14 mx-auto rounded" /></td>
+                    <td className="p-3.5 text-center"><Skeleton className="h-4 w-12 mx-auto rounded" /></td>
+                    <td className="p-3.5 text-center"><Skeleton className="h-4 w-12 mx-auto rounded" /></td>
+                    <td className="p-3.5"><Skeleton className="h-5 w-20 rounded-full" /></td>
+                    <td className="p-3.5 text-right"><Skeleton className="h-4 w-24 ml-auto rounded" /></td>
+                  </tr>
+                ))
+              ) : resultsQuery.isError ? (
                 <tr>
-                  <td colSpan={8} className="py-12 text-center text-muted-foreground">
-                    No examination results match the specified criteria.
+                  <td colSpan={8} className="p-8">
+                    <ErrorState
+                      title="Failed to Load Graded Results"
+                      description="Unable to fetch results ledger from MySQL. Verify connection and retry."
+                      onRetry={() => resultsQuery.refetch()}
+                    />
+                  </td>
+                </tr>
+              ) : filteredResults.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="p-8">
+                    <EmptyState
+                      icon={<Shield className="w-8 h-8 text-brand" />}
+                      title="No Graded Results Match Criteria"
+                      description="No examination records match the selected assessment or integrity status filter."
+                      action={{
+                        label: 'Reset Filters',
+                        onClick: () => {
+                          setSelectedExamId('ALL');
+                          setIntegrityFilter('ALL');
+                          setSearchQuery('');
+                        },
+                      }}
+                    />
                   </td>
                 </tr>
               ) : (

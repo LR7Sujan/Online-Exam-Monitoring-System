@@ -8,6 +8,8 @@ import {
 } from 'lucide-react';
 import { api } from '../../lib/api';
 import { ToggleSwitch } from '../ui/ToggleSwitch';
+import { Skeleton } from '../ui/Skeleton';
+import { EmptyState, ErrorState } from '../ui/EmptyState';
 import type { UserRole } from '../../types/domain';
 
 interface UserRecord {
@@ -105,10 +107,43 @@ export function UsersManagerTable() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {filteredUsers.length === 0 ? (
+              {usersQuery.isLoading ? (
+                Array.from({ length: 6 }).map((_, i) => (
+                  <tr key={`skel-${i}`}>
+                    <td className="p-3.5"><Skeleton className="h-4 w-8 mx-auto rounded" /></td>
+                    <td className="p-3.5"><Skeleton className="h-4 w-32 rounded" /></td>
+                    <td className="p-3.5"><Skeleton className="h-4 w-40 rounded" /></td>
+                    <td className="p-3.5"><Skeleton className="h-6 w-24 rounded-lg" /></td>
+                    <td className="p-3.5 text-center"><Skeleton className="h-5 w-20 rounded-full mx-auto" /></td>
+                    <td className="p-3.5"><Skeleton className="h-4 w-24 rounded" /></td>
+                    <td className="p-3.5 text-right"><Skeleton className="h-6 w-16 ml-auto rounded-lg" /></td>
+                  </tr>
+                ))
+              ) : usersQuery.isError ? (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-muted-foreground">
-                    No users found matching query.
+                  <td colSpan={7} className="p-8">
+                    <ErrorState
+                      title="Failed to Load User Directory"
+                      description="Could not query candidate and proctor accounts from database. Please retry."
+                      onRetry={() => usersQuery.refetch()}
+                    />
+                  </td>
+                </tr>
+              ) : filteredUsers.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="p-8">
+                    <EmptyState
+                      icon={<UserCheck className="w-8 h-8 text-brand" />}
+                      title="No Users Found"
+                      description="No user accounts matched the search criteria or selected role filter."
+                      action={{
+                        label: 'Reset Search & Filter',
+                        onClick: () => {
+                          setSearchQuery('');
+                          setRoleFilter('ALL');
+                        },
+                      }}
+                    />
                   </td>
                 </tr>
               ) : (

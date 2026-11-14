@@ -246,4 +246,72 @@ test.describe('Phase 13: UI Styleguide Documentation Architecture & Navigation A
     await page.waitForURL('**/styleguide/bento');
     await expect(page.getByRole('heading', { level: 1, name: 'Bento Grid & Cards' })).toBeVisible();
   });
+
+  // --------------------------------------------------------------------------
+  // 6. Loading & Empty States Interactive State Machine
+  // --------------------------------------------------------------------------
+  test('Loading & Empty States section operates as an interactive state machine (Loading, Loaded, Empty, Error, Auto Cycle & Retry)', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await loginAs(page, 'admin@proctoriq.io');
+    await page.goto('/styleguide/loading-empty');
+    await page.waitForLoadState('domcontentloaded');
+
+    await expect(page.getByRole('heading', { level: 1, name: 'Loading & Empty States' })).toBeVisible();
+
+    const interactiveCard = page.locator('#interactive-state-machine');
+
+    // 1. Initial / Loading state: row-shaped skeletons present
+    const loadingStateBtn = interactiveCard.getByRole('button', { name: /^Loading$/i });
+    const loadedStateBtn = interactiveCard.getByRole('button', { name: /^Loaded$/i });
+    const emptyStateBtn = interactiveCard.getByRole('button', { name: /^Empty$/i });
+    const errorStateBtn = interactiveCard.getByRole('button', { name: /^Error$/i });
+    const autoCycleBtn = interactiveCard.getByRole('button', { name: /Auto Cycle/i });
+
+    await expect(loadingStateBtn).toBeVisible();
+    await expect(loadedStateBtn).toBeVisible();
+    await expect(emptyStateBtn).toBeVisible();
+    await expect(errorStateBtn).toBeVisible();
+    await expect(autoCycleBtn).toBeVisible();
+
+    // In default Loading state, verify skeletons are rendered
+    await expect(interactiveCard.locator('text=STREAM BUFFERING')).toBeVisible();
+
+    // 2. Select Loaded state: real data rows appear
+    await loadedStateBtn.click();
+    await expect(interactiveCard.locator('text=5 INCIDENTS LOGGED')).toBeVisible();
+    await expect(interactiveCard.locator('text=Alex Rivera')).toBeVisible();
+    await expect(interactiveCard.locator('text=Sarah Chen')).toBeVisible();
+    await expect(interactiveCard.locator('text=Marcus Vance')).toBeVisible();
+
+    // 3. Select Empty state: empty illustration and action appear
+    await emptyStateBtn.click();
+    await expect(interactiveCard.locator('text=ALL CLEAR')).toBeVisible();
+    await expect(interactiveCard.locator('text=No Active Violations')).toBeVisible();
+    await expect(interactiveCard.getByRole('button', { name: /Simulate Candidate Infraction/i })).toBeVisible();
+
+    // 4. Select Error state: error message and retry button appear
+    await errorStateBtn.click();
+    await expect(interactiveCard.locator('text=DISCONNECTED')).toBeVisible();
+    await expect(interactiveCard.locator('text=Telemetry Synchronization Failed')).toBeVisible();
+    const retryBtn = interactiveCard.getByRole('button', { name: /Retry Request/i });
+    await expect(retryBtn).toBeVisible();
+
+    // Click Retry: switches back to Loading, then auto-transitions to Loaded
+    await retryBtn.click();
+    await expect(interactiveCard.locator('text=STREAM BUFFERING')).toBeVisible();
+    await page.waitForTimeout(1400);
+    await expect(interactiveCard.locator('text=5 INCIDENTS LOGGED')).toBeVisible();
+    await expect(interactiveCard.locator('text=Alex Rivera')).toBeVisible();
+
+    // 5. Test Auto Cycle button: Loading (1.5s) -> Loaded
+    await autoCycleBtn.click();
+    await expect(interactiveCard.locator('text=STREAM BUFFERING')).toBeVisible();
+    await page.waitForTimeout(1700);
+    await expect(interactiveCard.locator('text=5 INCIDENTS LOGGED')).toBeVisible();
+
+    // 6. Screenshot in Dark and Light modes
+    await page.screenshot({
+      path: path.join(screenshotDir, 'styleguide_loading_empty_interactive_dark.png'),
+    });
+  });
 });

@@ -19,6 +19,8 @@ import {
 import { StatusPill } from '../components/ui/StatusPill';
 import { SeverityBadge } from '../components/ui/SeverityBadge';
 import { TrustRing } from '../components/ui/TrustRing';
+import { SkeletonCard } from '../components/ui/Skeleton';
+import { ErrorState } from '../components/ui/EmptyState';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { api } from '../lib/api';
 import type {
@@ -62,8 +64,8 @@ export function StudentResultPage() {
   if (query.isLoading) {
     return (
       <div className="max-w-4xl mx-auto py-12 px-4 space-y-6">
-        <div className="rounded-3xl border border-border bg-surface/60 h-80 animate-pulse p-8" />
-        <div className="rounded-3xl border border-border bg-surface/60 h-64 animate-pulse p-8" />
+        <SkeletonCard className="h-80" />
+        <SkeletonCard className="h-64" />
       </div>
     );
   }
@@ -71,14 +73,16 @@ export function StudentResultPage() {
   if (query.isError || !query.data) {
     return (
       <div className="max-w-xl mx-auto py-16 px-4">
-        <div className="p-8 rounded-3xl border border-border bg-surface/90 text-center space-y-4 shadow-layered-md">
-          <AlertTriangle className="w-10 h-10 text-rose-500 mx-auto" />
-          <h2 className="text-xl font-bold text-foreground">Integrity Report Unavailable</h2>
-          <p className="text-xs text-muted-foreground">
-            {query.error instanceof Error
+        <ErrorState
+          title="Integrity Report Unavailable"
+          description={
+            query.error instanceof Error
               ? query.error.message
-              : 'This exam session has not been submitted or graded yet.'}
-          </p>
+              : 'This exam session has not been submitted or graded yet.'
+          }
+          onRetry={() => query.refetch()}
+        />
+        <div className="text-center mt-4">
           <button
             type="button"
             onClick={() => navigate('/student')}

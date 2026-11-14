@@ -29,6 +29,8 @@ import {
 } from 'recharts';
 import { StatCard } from '../ui/StatCard';
 import { StatusPill } from '../ui/StatusPill';
+import { SkeletonCard } from '../ui/Skeleton';
+import { ErrorState } from '../ui/EmptyState';
 import { useTheme } from '../../context/ThemeContext';
 import { api } from '../../lib/api';
 
@@ -115,6 +117,32 @@ export function AdminOverviewDashboard() {
     queryFn: () => api.get<DashboardData>(`/analytics/dashboard?days=${daysWindow}`),
     refetchInterval: 20000,
   });
+
+  if (query.isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <SkeletonCard key={i} className="h-32" />
+          ))}
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <SkeletonCard className="h-80" />
+          <SkeletonCard className="h-80" />
+        </div>
+      </div>
+    );
+  }
+
+  if (query.isError) {
+    return (
+      <ErrorState
+        title="Failed to Load Operational Telemetry"
+        description="Could not aggregate metrics from MySQL telemetry views. Please verify database connection and retry."
+        onRetry={() => query.refetch()}
+      />
+    );
+  }
 
   const data = query.data;
   const kpis = data?.kpis ?? {

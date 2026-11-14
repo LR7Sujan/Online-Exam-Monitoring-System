@@ -17,6 +17,8 @@ import { ViolationRulesManager } from '../components/admin/ViolationRulesManager
 import { UsersManagerTable } from '../components/admin/UsersManagerTable';
 import { ResultsAndExportTable } from '../components/admin/ResultsAndExportTable';
 import { NeonButton } from '../components/ui/NeonButton';
+import { SkeletonCard } from '../components/ui/Skeleton';
+import { EmptyState, ErrorState } from '../components/ui/EmptyState';
 import { api } from '../lib/api';
 import type { DbTelemetry, ExamItem, QuestionItem } from '../types/domain';
 
@@ -176,7 +178,33 @@ export function AdminDashboardPage({
             </div>
 
             {/* Exam Cards Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {examsQuery.isLoading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                {[1, 2, 3, 4, 5, 6].map((i) => (
+                  <SkeletonCard key={i} className="h-44" />
+                ))}
+              </div>
+            ) : examsQuery.isError ? (
+              <ErrorState
+                title="Failed to Load Examinations"
+                description="Unable to query assessment catalog from MySQL database. Please verify connection and retry."
+                onRetry={() => examsQuery.refetch()}
+              />
+            ) : exams.length === 0 ? (
+              <EmptyState
+                icon={<GraduationCap className="w-8 h-8 text-brand" />}
+                title="No Examinations Configured"
+                description="No assessment blueprints have been authored yet. Initialize a new examination to get started."
+                action={{
+                  label: 'Architect New Examination',
+                  onClick: () => {
+                    setEditingExam(null);
+                    setWizardOpen(true);
+                  },
+                }}
+              />
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
               {exams.map((exam) => {
                 const isPublished = Boolean(exam.is_published);
                 const isSelected = selectedExamId === exam.id;
@@ -279,7 +307,8 @@ export function AdminDashboardPage({
                   </div>
                 );
               })}
-            </div>
+              </div>
+            )}
 
             {/* Questions Inspection Panel */}
             {selectedExamId && selectedExamData && (

@@ -14,7 +14,7 @@ import {
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { TrustRing } from '../components/ui/TrustRing';
-import { LiveDot } from '../components/ui';
+import { LiveDot, Skeleton, ErrorState } from '../components/ui';
 import { Modal } from '../components/ui/Modal';
 import { useProctoring, type ViolationReportResponse } from '../hooks/useProctoring';
 import { useFaceDetection } from '../hooks/useFaceDetection';
@@ -330,6 +330,44 @@ export function StudentExamPage() {
   // Screen-edge glow styles based on trust score
   const isCriticalRisk = trustScore < minTrustScore;
   const isWarningRisk = trustScore < 80;
+
+  if (sessionQuery.isLoading) {
+    return (
+      <div className="min-h-screen bg-background text-foreground flex flex-col p-6 max-w-5xl mx-auto space-y-6">
+        <div className="flex items-center justify-between border-b border-border pb-4">
+          <Skeleton className="h-8 w-48 rounded-lg" />
+          <Skeleton className="h-8 w-32 rounded-lg" />
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-4">
+            <Skeleton className="h-40 w-full rounded-2xl" />
+            <Skeleton className="h-16 w-full rounded-xl" />
+            <Skeleton className="h-16 w-full rounded-xl" />
+            <Skeleton className="h-16 w-full rounded-xl" />
+            <Skeleton className="h-16 w-full rounded-xl" />
+          </div>
+          <div className="space-y-4">
+            <Skeleton className="h-48 w-full rounded-2xl" />
+            <Skeleton className="h-40 w-full rounded-2xl" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (sessionQuery.isError) {
+    return (
+      <div className="min-h-screen bg-background text-foreground flex items-center justify-center p-6">
+        <div className="max-w-md w-full">
+          <ErrorState
+            title="Failed to Load Examination Session"
+            description="Could not securely initialize assessment telemetry and questions. Please check connection and retry."
+            onRetry={() => sessionQuery.refetch()}
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div

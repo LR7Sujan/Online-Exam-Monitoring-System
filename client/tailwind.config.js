@@ -119,8 +119,13 @@ export default {
         'border-flow': 'border-flow 6s ease infinite',
         'radar-sweep': 'radar-sweep 4s linear infinite',
         'scanline': 'scanline 8s linear infinite',
+        shimmer: 'shimmer 1.8s ease-in-out infinite',
       },
       keyframes: {
+        shimmer: {
+          '0%': { transform: 'translateX(-100%)' },
+          '100%': { transform: 'translateX(100%)' },
+        },
         'border-flow': {
           '0%, 100%': { backgroundPosition: '0% 50%' },
           '50%': { backgroundPosition: '100% 50%' },
