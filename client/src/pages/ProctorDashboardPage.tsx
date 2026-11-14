@@ -30,6 +30,11 @@ export function ProctorDashboardPage({ initialTab = 'monitor' }: { initialTab?: 
     initialTab === 'audit' || initialTab === 'queue' ? 'queue' : 'monitor'
   );
 
+  // Synchronize active tab when URL route changes (e.g. /proctor <-> /proctor/audit)
+  useEffect(() => {
+    setActiveTab(initialTab === 'audit' || initialTab === 'queue' ? 'queue' : 'monitor');
+  }, [initialTab]);
+
   // Filters
   const [selectedExamId, setSelectedExamId] = useState<string>('ALL');
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');

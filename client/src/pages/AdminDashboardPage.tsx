@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -38,6 +38,15 @@ export function AdminDashboardPage({
       ? 'overview'
       : (initialTab as 'exams' | 'rules' | 'users' | 'results' | 'db')
   );
+
+  // Synchronize active tab when URL route changes (e.g. /admin <-> /admin/exams <-> /admin/analytics)
+  useEffect(() => {
+    if (initialTab === 'analytics' || initialTab === 'overview') {
+      setActiveTab('overview');
+    } else if (initialTab) {
+      setActiveTab(initialTab as 'exams' | 'rules' | 'users' | 'results' | 'db');
+    }
+  }, [initialTab]);
 
   // Exam Management States
   const [wizardOpen, setWizardOpen] = useState(false);

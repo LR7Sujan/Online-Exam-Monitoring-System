@@ -92,6 +92,15 @@ export default {
         sans: ['Geist', 'Inter', 'system-ui', '-apple-system', 'sans-serif'],
         mono: ['Geist Mono', 'JetBrains Mono', 'ui-monospace', 'SFMono-Regular', 'monospace'],
       },
+      zIndex: {
+        '0': '0',
+        '30': '30',
+        '40': '40',
+        '50': '50',
+        '60': '60',
+        '70': '70',
+        '80': '80',
+      },
       borderRadius: {
         '2xl': '20px',
         '3xl': '24px',

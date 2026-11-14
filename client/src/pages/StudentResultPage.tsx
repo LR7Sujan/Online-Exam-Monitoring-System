@@ -228,13 +228,21 @@ export function StudentResultPage() {
                       ))}
                     </Pie>
                     <Tooltip
-                      contentStyle={{
-                        backgroundColor: 'var(--surface-elevated, #18181B)',
-                        borderColor: 'var(--border, #27272A)',
-                        color: 'var(--foreground, #FAFAFA)',
-                        borderRadius: '12px',
-                        fontSize: '11px',
-                        fontFamily: 'Geist Mono, monospace',
+                      content={({ active, payload }) => {
+                        if (active && payload && payload.length) {
+                          const data = payload[0];
+                          return (
+                            <div className="rounded-xl border border-border bg-surface dark:bg-[#12131d] px-3 py-2 text-xs font-mono shadow-2xl space-y-0.5 z-50 pointer-events-none">
+                              <p className="font-semibold text-xs" style={{ color: (data.payload as { color?: string })?.color ?? 'var(--brand)' }}>
+                                {data.name}
+                              </p>
+                              <p className="text-foreground text-[11px] font-bold">
+                                {data.value} Marks
+                              </p>
+                            </div>
+                          );
+                        }
+                        return null;
                       }}
                     />
                   </PieChart>
