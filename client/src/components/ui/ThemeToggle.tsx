@@ -35,9 +35,9 @@ export function ThemeToggle({ className = '', showLabel = false }: ThemeTogglePr
     <button
       type="button"
       onClick={cycleTheme}
-      className={`relative inline-flex items-center gap-2 px-2.5 py-1.5 rounded-xl border border-white/10 dark:border-white/10 border-zinc-200 bg-white/5 dark:bg-white/5 bg-zinc-100 hover:bg-white/10 dark:hover:bg-white/10 hover:bg-zinc-200 text-foreground transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand shadow-sm ${className}`}
+      className={`relative inline-flex items-center justify-center gap-2 h-[38px] px-2.5 rounded-xl border border-border bg-surface hover:bg-muted text-muted-foreground hover:text-foreground transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand shadow-xs cursor-pointer ${className}`}
       aria-label={`Current theme: ${theme}. Click to change theme.`}
-      title={`Theme: ${getLabel()} (click to cycle)`}
+      title={`Interface Theme: ${getLabel()} (click to cycle)`}
     >
       <div className="relative w-4 h-4 flex items-center justify-center">
         <AnimatePresence mode="wait" initial={false}>
@@ -55,7 +55,7 @@ export function ThemeToggle({ className = '', showLabel = false }: ThemeTogglePr
       </div>
 
       {showLabel && (
-        <span className="text-xs font-mono font-medium tracking-wide">
+        <span className="text-xs font-mono font-medium tracking-wide text-foreground">
           {getLabel()}
         </span>
       )}

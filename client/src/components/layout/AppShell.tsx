@@ -19,7 +19,6 @@ import {
   X,
   Radio,
   Clock,
-  Sparkles,
   Zap,
   Volume2,
   VolumeX,
@@ -116,6 +115,41 @@ export function AppShell() {
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({
     '/styleguide': true,
   });
+
+  // Dynamic route document.title updates
+  useEffect(() => {
+    const ROUTE_TITLES: Record<string, string> = {
+      '/admin': 'Mission Overview | ProctorIQ',
+      '/admin/exams': 'Exam Catalog | ProctorIQ',
+      '/admin/analytics': 'Telemetry & Heatmap | ProctorIQ',
+      '/admin/simulator': 'Demo Simulator | ProctorIQ',
+      '/proctor': 'Live Monitor | ProctorIQ',
+      '/proctor/audit': 'Violation Audit | ProctorIQ',
+      '/student': 'Student Examinations | ProctorIQ',
+      '/styleguide': 'UI Component Styleguide | ProctorIQ',
+      '/styleguide/tokens': 'Design Tokens | UI Styleguide',
+      '/styleguide/indicators': 'Live Indicators | UI Styleguide',
+      '/styleguide/bento': 'Bento Grid & Cards | UI Styleguide',
+      '/styleguide/buttons': 'Buttons | UI Styleguide',
+      '/styleguide/badges': 'Badges & Pills | UI Styleguide',
+      '/styleguide/stat-cards': 'Stat Cards | UI Styleguide',
+      '/styleguide/trust-ring': 'Trust Ring | UI Styleguide',
+      '/styleguide/tables': 'Data Tables | UI Styleguide',
+      '/styleguide/overlays': 'Drawers & Modals | UI Styleguide',
+      '/styleguide/charts': 'Charts | UI Styleguide',
+      '/styleguide/loading-empty': 'Loading & Empty States | UI Styleguide',
+      '/styleguide/motion': 'Motion | UI Styleguide',
+    };
+
+    const matched = ROUTE_TITLES[location.pathname];
+    if (matched) {
+      document.title = matched;
+    } else if (location.pathname.startsWith('/student/results/')) {
+      document.title = 'Forensic Exam Results | ProctorIQ';
+    } else if (location.pathname.startsWith('/styleguide')) {
+      document.title = 'UI Component Styleguide | ProctorIQ';
+    }
+  }, [location.pathname]);
 
   // Auto-expand group on initial load and route changes if on styleguide
   useEffect(() => {
@@ -583,7 +617,7 @@ export function AppShell() {
           <div className="flex items-center gap-3">
             <button
               onClick={() => setMobileMenuOpen(true)}
-              className="lg:hidden p-2 text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted focus:outline-none focus:ring-2 focus:ring-brand"
+              className="lg:hidden h-[38px] w-[38px] flex items-center justify-center text-muted-foreground hover:text-foreground rounded-xl border border-border bg-surface hover:bg-muted focus:outline-none focus:ring-2 focus:ring-brand shadow-xs"
               aria-label="Open navigation menu"
             >
               <Menu className="w-5 h-5" />
@@ -595,7 +629,27 @@ export function AppShell() {
               </span>
               <span className="text-muted-foreground text-xs hidden sm:inline">/</span>
               <span className="font-semibold text-sm text-foreground tracking-tight capitalize">
-                {location.pathname.replace('/', '').replace(/-/g, ' ') || 'Overview'}
+                {location.pathname === '/admin'
+                  ? 'Mission Overview'
+                  : location.pathname === '/admin/exams'
+                  ? 'Exam Catalog'
+                  : location.pathname === '/admin/analytics'
+                  ? 'Telemetry & Heatmap'
+                  : location.pathname === '/admin/simulator'
+                  ? 'Demo Simulator'
+                  : location.pathname === '/proctor'
+                  ? 'Live Monitor'
+                  : location.pathname === '/proctor/audit'
+                  ? 'Violation Audit'
+                  : location.pathname === '/student'
+                  ? 'Exams & Portal'
+                  : location.pathname.startsWith('/student/results')
+                  ? 'Exam Results'
+                  : location.pathname === '/styleguide'
+                  ? 'UI Styleguide'
+                  : location.pathname.startsWith('/styleguide/')
+                  ? `Styleguide / ${location.pathname.split('/')[2].replace(/-/g, ' ')}`
+                  : location.pathname.replace('/', '').replace(/-/g, ' ') || 'Overview'}
               </span>
             </div>
           </div>
@@ -604,7 +658,7 @@ export function AppShell() {
           <button
             type="button"
             onClick={() => setCommandPaletteOpen(true)}
-            className="hidden lg:flex items-center justify-between flex-1 max-w-md mx-6 px-3.5 py-1.5 rounded-xl border border-border bg-surface-elevated/70 hover:bg-muted text-xs text-muted-foreground transition-all focus:outline-none focus:ring-2 focus:ring-brand shadow-sm"
+            className="hidden lg:flex items-center justify-between flex-1 max-w-md mx-6 h-[38px] px-3.5 rounded-xl border border-border bg-surface-elevated/70 hover:bg-muted text-xs text-muted-foreground transition-all focus:outline-none focus:ring-2 focus:ring-brand shadow-xs"
           >
             <div className="flex items-center gap-2.5">
               <Search className="w-3.5 h-3.5 text-muted-foreground" />
@@ -615,43 +669,37 @@ export function AppShell() {
             </kbd>
           </button>
 
-          {/* Right: Quick actions, Theme Toggle, Bell, Profile Menu */}
-          <div className="flex items-center gap-3">
-            <NavLink
-              to="/styleguide"
-              className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border bg-surface-elevated/60 text-foreground hover:bg-muted text-xs font-mono transition-colors shadow-sm"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-brand" />
-              <span>Styleguide</span>
-            </NavLink>
+          {/* Right: Theme Toggle, Audio Toggle, Bell, Profile Menu */}
+          <div className="flex items-center gap-2.5">
+            {/* Theme Toggle (Light / Dark / System) with 38px height */}
+            <ThemeToggle className="h-[38px] px-2.5" />
 
-            {/* Theme Toggle (Light / Dark / System) */}
-            <ThemeToggle />
-
-            {/* Audio Alert Pings Toggle */}
+            {/* Audio Alert Pings Toggle - Subtle 38px Icon Button with Tooltip */}
             <button
+              type="button"
               onClick={handleToggleAudio}
-              className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-xs font-mono transition-all ${
+              className={`h-[38px] w-[38px] rounded-xl border flex items-center justify-center text-xs transition-all cursor-pointer shadow-xs ${
                 audioMuted
-                  ? 'border-border bg-surface text-muted-foreground hover:text-foreground'
-                  : 'border-brand/40 bg-brand/10 text-brand shadow-sm'
+                  ? 'border-border bg-surface text-muted-foreground hover:text-foreground hover:bg-muted'
+                  : 'border-brand/40 bg-brand/10 text-brand hover:bg-brand/15 shadow-sm'
               }`}
-              title={audioMuted ? 'Sound Alerts: Disabled (Click to Enable)' : 'Sound Alerts: Active'}
+              title={audioMuted ? 'Audio alerts muted (Click to enable)' : 'Audio alerts active (Click to mute)'}
               aria-label={audioMuted ? 'Muted, click to enable sound alerts' : 'Audio On, click to mute sound alerts'}
             >
-              {audioMuted ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
-              <span className="hidden md:inline text-[11px] font-medium">{audioMuted ? 'Muted' : 'Audio On'}</span>
+              {audioMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
             </button>
 
-            {/* Notification Bell with Defined z-50 Popover and Solid Opaque Background */}
+            {/* Notification Bell with 38px height */}
             <div className="relative" ref={notifRef}>
               <button
+                type="button"
                 onClick={() => {
                   setNotificationsOpen(!notificationsOpen);
                   if (userMenuOpen) setUserMenuOpen(false);
                 }}
-                className="relative p-2 rounded-xl border border-border bg-surface text-muted-foreground hover:text-foreground hover:border-brand/40 transition-all shadow-sm focus:outline-none focus:ring-2 focus:ring-brand"
+                className="relative h-[38px] w-[38px] rounded-xl border border-border bg-surface text-muted-foreground hover:text-foreground hover:border-brand/40 transition-all shadow-xs flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-brand cursor-pointer"
                 aria-label="Notifications"
+                title="Violation Telemetry Feed"
               >
                 <Bell className="w-4 h-4" />
                 {violationCount > 0 && (
@@ -809,18 +857,20 @@ export function AppShell() {
             {user ? (
               <div className="relative" ref={userRef}>
                 <button
+                  type="button"
                   onClick={() => {
                     setUserMenuOpen(!userMenuOpen);
                     if (notificationsOpen) setNotificationsOpen(false);
                   }}
-                  className="flex items-center gap-2.5 p-1.5 rounded-xl border border-border bg-surface hover:border-brand/40 transition-all select-none shadow-sm focus:outline-none focus:ring-2 focus:ring-brand"
+                  className="h-[38px] flex items-center gap-2.5 pl-1.5 pr-3 rounded-xl border border-border bg-surface hover:bg-muted/70 transition-all focus:outline-none focus:ring-2 focus:ring-brand shadow-xs cursor-pointer select-none"
                   aria-label="User account menu"
+                  title="Operator Menu"
                 >
-                  <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-indigo-500/20 to-fuchsia-500/20 border border-brand/30 flex items-center justify-center font-bold text-xs text-foreground">
+                  <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-brand to-violet-500 text-white flex items-center justify-center font-bold text-xs shadow-xs shrink-0">
                     {user.fullName.charAt(0).toUpperCase()}
                   </div>
-                  <div className="hidden sm:flex flex-col text-left">
-                    <span className="text-xs font-semibold text-foreground leading-tight">
+                  <div className="hidden sm:flex flex-col text-left leading-tight">
+                    <span className="text-xs font-semibold text-foreground leading-tight truncate max-w-[120px]">
                       {user.fullName}
                     </span>
                     <span className="text-[10px] font-mono text-muted-foreground leading-tight">
@@ -940,7 +990,7 @@ export function AppShell() {
         {/* ============================================================== */}
         {/* PAGE CONTENT WITH SKELETON SUSPENSE & ERROR BOUNDARY SAFETY    */}
         {/* ============================================================== */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto relative z-0">
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-[1440px] w-full mx-auto relative z-0">
           <AnimatePresence mode="wait" initial={false}>
             <motion.div
               key={location.pathname}

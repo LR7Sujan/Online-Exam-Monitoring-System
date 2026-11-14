@@ -14,6 +14,7 @@ import {
 import { Link, useNavigate } from 'react-router-dom';
 import { AuthLayout } from '../components/layout/AuthLayout';
 import { FloatingInput } from '../components/ui/FloatingInput';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { api } from '../lib/api';
 import { useAuthStore } from '../store/authStore';
 import type { AuthUser } from '../types/domain';
@@ -44,6 +45,7 @@ function getPasswordStrength(pwd: string): { score: number; label: string; color
 }
 
 export function RegisterPage() {
+  useDocumentTitle('Create Account | ProctorIQ');
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
   const setAuth = useAuthStore((s) => s.setAuth);

@@ -23,6 +23,7 @@ import { StatusPill } from '../components/ui/StatusPill';
 import { TrustRing } from '../components/ui/TrustRing';
 import { LiveDot } from '../components/ui/LiveDot';
 import { api } from '../lib/api';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import type { ExamItem } from '../types/domain';
 
 interface SimCandidate {
@@ -67,6 +68,7 @@ interface SimulatorStatusResponse {
 }
 
 export const SimulatorPage: React.FC = () => {
+  useDocumentTitle('Swarm Simulator | ProctorIQ');
   const queryClient = useQueryClient();
 
   // Local form state
@@ -127,8 +129,8 @@ export const SimulatorPage: React.FC = () => {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2.5">
-              <span className="p-2 rounded-xl bg-cyan/10 border border-cyan/30 text-cyan">
+            <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2.5">
+              <span className="p-2 rounded-xl bg-brand/10 border border-brand/30 text-brand">
                 <Zap className="w-5 h-5" />
               </span>
               <span>Candidate Swarm Demo Simulator</span>
@@ -140,7 +142,7 @@ export const SimulatorPage: React.FC = () => {
               </span>
             )}
           </div>
-          <p className="text-xs font-mono text-slate-400 mt-1">
+          <p className="text-sm text-muted-foreground mt-1 font-sans">
             Spawn virtual examinees to simulate live exam telemetry, optical violations, and real-time Socket.IO broadcasts.
           </p>
         </div>
@@ -151,7 +153,7 @@ export const SimulatorPage: React.FC = () => {
             <NeonButton variant="outline" size="sm" className="flex items-center gap-2">
               <Activity className="w-4 h-4 text-magenta" />
               <span>Open Proctor Monitor</span>
-              <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
+              <ExternalLink className="w-3.5 h-3.5 text-muted-foreground" />
             </NeonButton>
           </Link>
         </div>
@@ -160,20 +162,20 @@ export const SimulatorPage: React.FC = () => {
       {/* 2. Top KPI Strip */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <GlassCard className="p-4 space-y-1">
-          <div className="flex items-center justify-between text-slate-400 text-xs font-mono">
+          <div className="flex items-center justify-between text-muted-foreground text-xs font-mono">
             <span>ACTIVE SWARM</span>
             <Users className="w-4 h-4 text-cyan" />
           </div>
-          <div className="text-2xl font-bold font-mono text-white">
+          <div className="text-2xl font-bold font-mono text-foreground">
             {sim?.stats.activeCount ?? 0}
-            <span className="text-xs text-slate-500 font-sans ml-1">
+            <span className="text-xs text-muted-foreground font-sans ml-1">
               / {sim?.candidates.length ?? studentCount} candidates
             </span>
           </div>
         </GlassCard>
 
         <GlassCard className="p-4 space-y-1">
-          <div className="flex items-center justify-between text-slate-400 text-xs font-mono">
+          <div className="flex items-center justify-between text-muted-foreground text-xs font-mono">
             <span>ANSWERS DISPATCHED</span>
             <CheckCircle2 className="w-4 h-4 text-emerald" />
           </div>
@@ -183,7 +185,7 @@ export const SimulatorPage: React.FC = () => {
         </GlassCard>
 
         <GlassCard className="p-4 space-y-1">
-          <div className="flex items-center justify-between text-slate-400 text-xs font-mono">
+          <div className="flex items-center justify-between text-muted-foreground text-xs font-mono">
             <span>INFRACTIONS LOGGED</span>
             <AlertTriangle className="w-4 h-4 text-amber" />
           </div>
@@ -193,7 +195,7 @@ export const SimulatorPage: React.FC = () => {
         </GlassCard>
 
         <GlassCard className="p-4 space-y-1">
-          <div className="flex items-center justify-between text-slate-400 text-xs font-mono">
+          <div className="flex items-center justify-between text-muted-foreground text-xs font-mono">
             <span>DISQUALIFIED (TERMINATED)</span>
             <ShieldAlert className="w-4 h-4 text-rose" />
           </div>
@@ -205,13 +207,13 @@ export const SimulatorPage: React.FC = () => {
 
       {/* 3. Controls & Configuration Panel */}
       <GlassCard className="p-6 space-y-6">
-        <div className="flex items-center justify-between border-b border-white/5 pb-4">
+        <div className="flex items-center justify-between border-b border-border pb-4">
           <div className="space-y-0.5">
-            <h3 className="text-sm font-bold uppercase tracking-wider text-white flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-cyan" />
+            <h3 className="text-sm font-bold tracking-tight text-foreground flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-brand" />
               <span>Simulation Controls & Scenario Tuning</span>
             </h3>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-muted-foreground">
               Tune candidate volume, response velocity, and anti-cheating chaos intensity.
             </p>
           </div>
@@ -273,29 +275,29 @@ export const SimulatorPage: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           {/* Target Exam */}
           <div className="space-y-2">
-            <label className="text-xs font-mono text-slate-300 block">
+            <label className="text-xs font-medium text-foreground block">
               TARGET EXAMINATION
             </label>
             <select
               disabled={isRunning}
               value={selectedExamId}
               onChange={(e) => setSelectedExamId(Number(e.target.value))}
-              className="w-full rounded-xl border border-white/10 bg-[#0A0B16] px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan disabled:opacity-50"
+              className="w-full rounded-xl border border-border bg-surface px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-brand disabled:opacity-50 transition-all"
             >
               {exams.map((ex) => (
-                <option key={ex.id} value={ex.id}>
+                <option key={ex.id} value={ex.id} className="bg-surface text-foreground">
                   #{ex.id}: {ex.title}
                 </option>
               ))}
-              {exams.length === 0 && <option value={1}>Exam #1 (Default)</option>}
+              {exams.length === 0 && <option value={1} className="bg-surface text-foreground">Exam #1 (Default)</option>}
             </select>
           </div>
 
           {/* Student Count Slider */}
           <div className="space-y-2">
             <div className="flex items-center justify-between text-xs font-mono">
-              <span className="text-slate-300">CANDIDATES (N)</span>
-              <span className="text-cyan font-bold px-2 py-0.5 rounded bg-cyan/10 border border-cyan/30">
+              <span className="text-muted-foreground">CANDIDATES (N)</span>
+              <span className="text-brand font-bold px-2 py-0.5 rounded bg-brand/10 border border-brand/30">
                 {studentCount} Students
               </span>
             </div>
@@ -307,9 +309,9 @@ export const SimulatorPage: React.FC = () => {
               disabled={isRunning}
               value={studentCount}
               onChange={(e) => setStudentCount(Number(e.target.value))}
-              className="w-full accent-cyan cursor-pointer disabled:opacity-50"
+              className="w-full accent-indigo-500 cursor-pointer disabled:opacity-50"
             />
-            <div className="flex justify-between text-[10px] font-mono text-slate-500">
+            <div className="flex justify-between text-[10px] font-mono text-muted-foreground">
               <span>1</span>
               <span>30</span>
               <span>60</span>
@@ -319,7 +321,7 @@ export const SimulatorPage: React.FC = () => {
           {/* Speed Multiplier Slider */}
           <div className="space-y-2">
             <div className="flex items-center justify-between text-xs font-mono">
-              <span className="text-slate-300">SPEED MULTIPLIER</span>
+              <span className="text-muted-foreground">SPEED MULTIPLIER</span>
               <span className="text-emerald font-bold px-2 py-0.5 rounded bg-emerald/10 border border-emerald/30">
                 {speed.toFixed(1)}x Velocity
               </span>
@@ -334,7 +336,7 @@ export const SimulatorPage: React.FC = () => {
               onChange={(e) => setSpeed(Number(e.target.value))}
               className="w-full accent-emerald cursor-pointer disabled:opacity-50"
             />
-            <div className="flex justify-between text-[10px] font-mono text-slate-500">
+            <div className="flex justify-between text-[10px] font-mono text-muted-foreground">
               <span>0.5x</span>
               <span>2.5x</span>
               <span>5.0x</span>
@@ -343,7 +345,7 @@ export const SimulatorPage: React.FC = () => {
 
           {/* Chaos Level Selector */}
           <div className="space-y-2">
-            <label className="text-xs font-mono text-slate-300 block">
+            <label className="text-xs font-medium text-foreground block">
               CHAOS PROFILE
             </label>
             <div className="grid grid-cols-3 gap-2">
@@ -354,7 +356,7 @@ export const SimulatorPage: React.FC = () => {
                 className={`py-2 px-2 rounded-xl border text-xs font-mono font-bold transition-all ${
                   chaos === 'low'
                     ? 'border-emerald/60 bg-emerald/20 text-emerald shadow-[0_0_15px_rgba(16,185,129,0.2)]'
-                    : 'border-white/10 bg-[#0A0B16] text-slate-400 hover:text-white'
+                    : 'border-border bg-surface text-muted-foreground hover:text-foreground hover:bg-muted'
                 } disabled:opacity-50`}
               >
                 LOW
@@ -366,7 +368,7 @@ export const SimulatorPage: React.FC = () => {
                 className={`py-2 px-2 rounded-xl border text-xs font-mono font-bold transition-all ${
                   chaos === 'medium'
                     ? 'border-amber/60 bg-amber/20 text-amber shadow-[0_0_15px_rgba(245,158,11,0.2)]'
-                    : 'border-white/10 bg-[#0A0B16] text-slate-400 hover:text-white'
+                    : 'border-border bg-surface text-muted-foreground hover:text-foreground hover:bg-muted'
                 } disabled:opacity-50`}
               >
                 MED
@@ -378,7 +380,7 @@ export const SimulatorPage: React.FC = () => {
                 className={`py-2 px-2 rounded-xl border text-xs font-mono font-bold transition-all ${
                   chaos === 'high'
                     ? 'border-rose/60 bg-rose/20 text-rose shadow-[0_0_15px_rgba(244,63,94,0.3)]'
-                    : 'border-white/10 bg-[#0A0B16] text-slate-400 hover:text-white'
+                    : 'border-border bg-surface text-muted-foreground hover:text-foreground hover:bg-muted'
                 } disabled:opacity-50`}
               >
                 HIGH 🔥
@@ -393,22 +395,22 @@ export const SimulatorPage: React.FC = () => {
         {/* Left 2 Cols: Live Candidate Grid */}
         <div className="lg:col-span-2 space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
-              <Users className="w-4 h-4 text-cyan" />
+            <h3 className="text-sm font-bold tracking-tight text-foreground flex items-center gap-2">
+              <Users className="w-4 h-4 text-brand" />
               <span>Simulated Candidates ({sim?.candidates.length ?? 0})</span>
             </h3>
-            <span className="text-xs font-mono text-slate-500">
+            <span className="text-xs font-mono text-muted-foreground">
               Live Trust Scores & Telemetry
             </span>
           </div>
 
           {(!sim?.candidates || sim.candidates.length === 0) && (
             <GlassCard className="p-12 text-center space-y-3">
-              <Users className="w-10 h-10 text-slate-600 mx-auto" />
-              <div className="text-sm font-mono text-slate-400">
+              <Users className="w-10 h-10 text-muted-foreground/50 mx-auto" />
+              <div className="text-sm font-medium text-foreground">
                 No active candidate swarm running.
               </div>
-              <p className="text-xs text-slate-500 max-w-sm mx-auto">
+              <p className="text-xs text-muted-foreground max-w-sm mx-auto">
                 Configure your target parameters above and click <strong>"Launch Swarm"</strong> to spawn virtual examinees.
               </p>
             </GlassCard>
@@ -432,17 +434,17 @@ export const SimulatorPage: React.FC = () => {
                         ? 'border-rose/40 bg-rose/10 shadow-[0_0_20px_rgba(244,63,94,0.15)]'
                         : isLow
                         ? 'border-amber/40 bg-amber/10'
-                        : 'border-white/10 bg-[#0A0B16]/80'
+                        : 'border-border bg-surface/90 hover:border-brand/40 shadow-sm'
                     }`}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
-                          <span className="font-bold text-sm text-white truncate">
+                          <span className="font-bold text-sm text-foreground truncate">
                             {c.fullName}
                           </span>
                         </div>
-                        <span className="text-[10px] font-mono text-slate-400 block truncate">
+                        <span className="text-[10px] font-mono text-muted-foreground block truncate">
                           Session #{c.sessionId} • {c.email}
                         </span>
                       </div>
@@ -458,9 +460,9 @@ export const SimulatorPage: React.FC = () => {
                     </div>
 
                     {/* Stats & Status Pills */}
-                    <div className="mt-3 flex items-center justify-between text-[11px] font-mono border-t border-white/5 pt-2">
+                    <div className="mt-3 flex items-center justify-between text-[11px] font-mono border-t border-border pt-2">
                       <StatusPill status={c.status} size="sm" />
-                      <div className="flex items-center gap-2 text-slate-400">
+                      <div className="flex items-center gap-2 text-muted-foreground">
                         <span>Ans: <strong className="text-cyan">{c.answersCount}</strong></span>
                         <span>•</span>
                         <span>Inf: <strong className="text-amber">{c.violationsCount}</strong></span>
@@ -468,7 +470,7 @@ export const SimulatorPage: React.FC = () => {
                     </div>
 
                     {/* Last Action ticker */}
-                    <div className="mt-2 text-[10px] font-mono text-slate-400 bg-black/40 rounded px-2 py-1 truncate">
+                    <div className="mt-2 text-[10px] font-mono text-muted-foreground bg-muted/60 rounded px-2 py-1 truncate">
                       {c.lastAction}
                     </div>
                   </motion.div>
@@ -481,7 +483,7 @@ export const SimulatorPage: React.FC = () => {
         {/* Right Col: Live Activity Stream / Terminal */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
+            <h3 className="text-sm font-bold tracking-tight text-foreground flex items-center gap-2">
               <Terminal className="w-4 h-4 text-emerald" />
               <span>Real-Time Activity Stream</span>
             </h3>
@@ -491,9 +493,9 @@ export const SimulatorPage: React.FC = () => {
             </span>
           </div>
 
-          <GlassCard className="p-4 bg-[#05060E] border-white/10 font-mono text-xs max-h-[560px] overflow-y-auto space-y-2">
+          <GlassCard className="p-4 bg-surface-elevated/70 border-border font-mono text-xs max-h-[560px] overflow-y-auto space-y-2">
             {(!sim?.activityLogs || sim.activityLogs.length === 0) && (
-              <div className="py-12 text-center text-slate-500 text-xs">
+              <div className="py-12 text-center text-muted-foreground text-xs">
                 Awaiting simulation events...
               </div>
             )}
@@ -510,11 +512,11 @@ export const SimulatorPage: React.FC = () => {
                       ? 'border-rose/50 bg-rose/15 text-rose'
                       : isViol
                       ? 'border-amber/30 bg-amber/10 text-amber'
-                      : 'border-white/5 bg-white/5 text-slate-300'
+                      : 'border-border bg-surface/80 text-foreground'
                   }`}
                 >
-                  <div className="flex items-center justify-between text-[10px] text-slate-400 pb-1 mb-1 border-b border-white/5">
-                    <span className="font-bold text-white flex items-center gap-1">
+                  <div className="flex items-center justify-between text-[10px] text-muted-foreground pb-1 mb-1 border-b border-border">
+                    <span className="font-bold text-foreground flex items-center gap-1">
                       {isTerm ? (
                         <ShieldAlert className="w-3 h-3 text-rose" />
                       ) : isViol ? (

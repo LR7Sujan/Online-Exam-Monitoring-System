@@ -21,6 +21,7 @@ import { useFaceDetection } from '../hooks/useFaceDetection';
 import { ViolationWarningOverlay } from '../components/student/ViolationWarningOverlay';
 import { FullscreenExitOverlay } from '../components/student/FullscreenExitOverlay';
 import { CameraDeniedBlocker } from '../components/student/CameraDeniedBlocker';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { api } from '../lib/api';
 import { getSocket } from '../lib/socket';
 import { useAuthStore } from '../store/authStore';
@@ -66,6 +67,7 @@ function formatExamTimer(seconds: number): string {
 }
 
 export function StudentExamPage() {
+  useDocumentTitle('Live Kiosk Examination | ProctorIQ');
   const { sessionId } = useParams<{ sessionId: string }>();
   const numericSessionId = Number(sessionId);
   const navigate = useNavigate();

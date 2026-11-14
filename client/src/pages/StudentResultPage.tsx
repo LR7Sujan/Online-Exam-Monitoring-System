@@ -19,6 +19,7 @@ import {
 import { StatusPill } from '../components/ui/StatusPill';
 import { SeverityBadge } from '../components/ui/SeverityBadge';
 import { TrustRing } from '../components/ui/TrustRing';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { api } from '../lib/api';
 import type {
   ExamSession,
@@ -34,6 +35,7 @@ interface ResultResponse {
 }
 
 export function StudentResultPage() {
+  useDocumentTitle('Forensic Exam Results | ProctorIQ');
   const { sessionId } = useParams<{ sessionId: string }>();
   const numericSessionId = Number(sessionId);
   const navigate = useNavigate();

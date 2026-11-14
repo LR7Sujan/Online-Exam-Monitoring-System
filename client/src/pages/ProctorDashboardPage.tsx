@@ -290,10 +290,7 @@ export function ProctorDashboardPage({ initialTab = 'monitor' }: { initialTab?: 
   };
 
   return (
-    <div
-      className="min-h-screen bg-background text-foreground flex flex-col"
-      data-source="vw_ProctorLiveMonitor"
-    >
+    <div className="space-y-6" data-source="vw_ProctorLiveMonitor">
       {/* 1. EMERGENCY BANNER (full-width top alert) */}
       <EmergencyBanner
         criticalAlert={criticalAlert}
@@ -304,9 +301,8 @@ export function ProctorDashboardPage({ initialTab = 'monitor' }: { initialTab?: 
         }}
       />
 
-      <div className="flex-1 max-w-[1600px] w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
-        {/* Header Bar with Live Socket Status & Tabs */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-5">
+      {/* Header Bar with Live Socket Status & Tabs */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-6">
           <div className="space-y-1">
             <div className="flex items-center gap-2.5">
               <span className="flex h-2.5 w-2.5 relative">
@@ -504,7 +500,6 @@ export function ProctorDashboardPage({ initialTab = 'monitor' }: { initialTab?: 
             </div>
           </div>
         )}
-      </div>
 
       {/* 4. STUDENT DETAIL DRAWER (Inspect Candidate) */}
       <StudentDetailDrawer

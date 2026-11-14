@@ -92,10 +92,9 @@ export function AdminDashboardPage({
   const selectedExamData = examDetailQuery.data;
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col">
-      <div className="flex-1 max-w-[1600px] w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
-        {/* Top Header & Navigation Tabs */}
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-border pb-5">
+    <div className="space-y-8">
+      {/* Top Header & Navigation Tabs */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-border pb-6">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               <span className="flex h-2.5 w-2.5 relative">
@@ -158,8 +157,8 @@ export function AdminDashboardPage({
                   <GraduationCap className="w-5 h-5 text-brand" />
                   <span>Curated Assessment Directory</span>
                 </h2>
-                <p className="text-xs font-mono text-muted-foreground mt-0.5">
-                  Configure assessment windows, duration, questions, and authoritative integrity thresholds
+                <p className="text-sm text-muted-foreground mt-1">
+                  Configure assessment windows, duration, questions, and authoritative integrity thresholds.
                 </p>
               </div>
 
@@ -452,7 +451,6 @@ export function AdminDashboardPage({
             </div>
           </div>
         )}
-      </div>
 
       {/* EXAM WIZARD MODAL */}
       <ExamWizardModal

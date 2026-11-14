@@ -18,6 +18,7 @@ import { ThemeToggle } from '../components/ui/ThemeToggle';
 import { LiveDot } from '../components/ui/LiveDot';
 import { MockDashboardCard } from '../components/landing/MockDashboardCard';
 import { FeatureBento } from '../components/landing/FeatureBento';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 
 const VIOLATION_MATRIX = [
   { code: 'COPY_PASTE', penalty: '-10 pts', severity: 'LOW' as const, desc: 'Clipboard snooping attempt intercepted' },
@@ -60,6 +61,7 @@ const STATS = [
 ];
 
 export function LandingPage() {
+  useDocumentTitle('ProctorIQ | AI-Powered Exam Integrity & Surveillance Engine');
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
 

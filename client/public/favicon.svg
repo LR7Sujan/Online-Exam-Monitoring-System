@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none">
+  <defs>
+    <linearGradient id="shieldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6366F1" />
+      <stop offset="50%" stop-color="#8B5CF6" />
+      <stop offset="100%" stop-color="#D946EF" />
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#8B5CF6" flood-opacity="0.4" />
+    </filter>
+  </defs>
+  <rect width="48" height="48" rx="12" fill="#0c0d14" />
+  <path
+    d="M24 8L12 13V22C12 30.5 17.1 38.3 24 40C30.9 38.3 36 30.5 36 22V13L24 8Z"
+    fill="url(#shieldGrad)"
+    filter="url(#glow)"
+  />
+  <path
+    d="M24 16V28M24 32V32.01"
+    stroke="#ffffff"
+    stroke-width="3"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+</svg>

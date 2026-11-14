@@ -63,6 +63,20 @@ export function ReviewQueueTable({ onInspectStudent }: ReviewQueueTableProps) {
     );
   });
 
+  // Client-side pagination for snappy performance
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const pageSize = 12;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, reviewFilter, severityFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredLogs.length / pageSize));
+  const paginatedLogs = filteredLogs.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
+
   // Single review mutation
   const reviewMutation = useMutation({
     mutationFn: (vars: { logId: number; reviewStatus: ReviewStatus }) =>
@@ -275,7 +289,7 @@ export function ReviewQueueTable({ onInspectStudent }: ReviewQueueTableProps) {
       <div className="rounded-2xl border border-border bg-surface shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs font-mono">
-            <thead className="border-b border-border bg-surface-elevated text-[11px] uppercase tracking-wider text-muted-foreground">
+            <thead className="sticky top-0 z-10 border-b border-border bg-surface-elevated/95 backdrop-blur-md text-[11px] uppercase tracking-wider text-muted-foreground shadow-xs">
               <tr>
                 <th className="p-3.5 w-10 text-center">
                   <input
@@ -368,7 +382,7 @@ export function ReviewQueueTable({ onInspectStudent }: ReviewQueueTableProps) {
                   </td>
                 </tr>
               ) : (
-                filteredLogs.map((log, idx) => {
+                paginatedLogs.map((log, idx) => {
                   const isSelected = selectedIds.includes(log.log_id);
                   const isFocused = idx === activeRowIndex;
                   const isPending = log.proctor_review_status === 'PENDING';
@@ -522,6 +536,38 @@ export function ReviewQueueTable({ onInspectStudent }: ReviewQueueTableProps) {
             </tbody>
           </table>
         </div>
+
+        {/* Pagination Bar */}
+        {filteredLogs.length > pageSize && (
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3.5 border-t border-border bg-surface-elevated/40 text-xs font-mono text-muted-foreground">
+            <div>
+              Showing <strong className="text-foreground">{(currentPage - 1) * pageSize + 1}</strong> to{' '}
+              <strong className="text-foreground">{Math.min(currentPage * pageSize, filteredLogs.length)}</strong> of{' '}
+              <strong className="text-foreground">{filteredLogs.length}</strong> incidents
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                className="px-3 py-1 rounded-lg border border-border bg-surface text-foreground hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+              >
+                Previous
+              </button>
+              <span className="px-2 font-medium">
+                {currentPage} / {totalPages}
+              </span>
+              <button
+                type="button"
+                disabled={currentPage >= totalPages}
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                className="px-3 py-1 rounded-lg border border-border bg-surface text-foreground hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
