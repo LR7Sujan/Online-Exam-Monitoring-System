@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, Suspense } from 'react';
 import { NavLink, useLocation, useNavigate, Outlet } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import {
   Shield,
   Activity,
@@ -54,6 +54,7 @@ export function AppShell() {
   const logout = useAuthStore((s) => s.logout);
   const location = useLocation();
   const navigate = useNavigate();
+  const shouldReduceMotion = useReducedMotion();
 
   const { isConnected, violationCount, recentAlerts, clearAlerts, markAlertRead } =
     useSocketContext();
@@ -721,10 +722,10 @@ export function AppShell() {
           <AnimatePresence mode="wait" initial={false}>
             <motion.div
               key={location.pathname}
-              initial={{ opacity: 0, y: 8 }}
+              initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.2, ease: 'easeOut' }}
+              exit={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: -8 }}
+              transition={shouldReduceMotion ? { duration: 0 } : { duration: 0.2, ease: 'easeOut' }}
             >
               <RouteErrorBoundary>
                 <Suspense fallback={<PageSkeleton />}>

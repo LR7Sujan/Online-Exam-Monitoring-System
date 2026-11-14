@@ -228,6 +228,27 @@ test.describe('Phase 13: Sidebar Redesign, Overlay Safety & Seamless Route Navig
       }
     }
 
+    // 3. Test STUDENT Navigation (Exams & Portal <-> UI Styleguide)
+    await loginAs(page, 'student@proctoriq.io');
+
+    const studentRoutes = [
+      { href: '/student', expectedHeading: 'Candidate Examination Console' },
+      { href: '/styleguide', expectedHeading: 'UI Component Styleguide' },
+    ];
+
+    // Execute 3 full continuous cycles
+    for (let cycle = 1; cycle <= 3; cycle++) {
+      for (const target of studentRoutes) {
+        const link = page.locator(`aside a[href="${target.href}"]`).first();
+        await link.click();
+        await page.waitForURL(`**${target.href}`, { timeout: 10000 });
+
+        // Verify content area is NOT blank and contains expected heading (with web-first auto-retry)
+        await expect(page.locator('main')).toBeVisible();
+        await expect(page.locator('main')).toContainText(target.expectedHeading, { ignoreCase: true, timeout: 5000 });
+      }
+    }
+
     // Zero unexpected console errors across all cycles
     expect(consoleErrors).toEqual([]);
   });
