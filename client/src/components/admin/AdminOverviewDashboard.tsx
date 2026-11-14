@@ -311,18 +311,23 @@ export function AdminOverviewDashboard() {
             </p>
           </div>
 
-          <div className="h-44 w-full">
+          <div className="h-52 w-full relative">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
-                  data={data?.violationDistribution ?? []}
+                  data={
+                    (data?.violationDistribution?.length ?? 0) === 0
+                      ? [{ code: 'NO_DATA', label: 'No data', count: 1, isPlaceholder: true }]
+                      : data?.violationDistribution
+                  }
                   dataKey="count"
                   nameKey="code"
                   cx="50%"
                   cy="50%"
-                  innerRadius={46}
-                  outerRadius={70}
-                  paddingAngle={3}
+                  innerRadius={50}
+                  outerRadius={75}
+                  paddingAngle={(data?.violationDistribution?.length ?? 0) === 0 ? 0 : 3}
+                  cornerRadius={(data?.violationDistribution?.length ?? 0) === 0 ? 0 : 6}
                 >
                   {(data?.violationDistribution ?? []).map((_, idx) => (
                     <Cell
@@ -330,15 +335,24 @@ export function AdminOverviewDashboard() {
                       fill={DONUT_COLORS[idx % DONUT_COLORS.length]}
                     />
                   ))}
+                  {(data?.violationDistribution?.length ?? 0) === 0 && (
+                    <Cell fill="#3f3f46" />
+                  )}
                 </Pie>
                 <Tooltip
+                  offset={20}
                   content={({ active, payload }) => {
                     if (active && payload && payload.length) {
                       const item = payload[0].payload;
+                      if (item.isPlaceholder) return null;
+                      const total = (data?.violationDistribution ?? []).reduce((acc, v) => acc + Number(v.count || 0), 0);
+                      const pct = total > 0 ? Math.round((Number(item.count || 0) / total) * 100) : 0;
                       return (
-                        <div className="rounded-xl border border-border bg-surface/98 p-2.5 text-xs font-mono shadow-xl">
-                          <p className="text-foreground font-bold">{item.label}</p>
-                          <p className="text-brand font-medium">{item.code}: {item.count} incidents</p>
+                        <div className="rounded-xl border border-border bg-surface dark:bg-[#12131d] p-2.5 text-sm font-sans shadow-2xl z-50 pointer-events-none space-y-1">
+                          <p className="text-foreground font-semibold text-sm">{item.label}</p>
+                          <p className="text-xs text-muted-foreground font-mono">
+                            <strong className="text-brand font-bold">{item.count}</strong> incidents ({pct}%)
+                          </p>
                         </div>
                       );
                     }
@@ -347,21 +361,35 @@ export function AdminOverviewDashboard() {
                 />
               </PieChart>
             </ResponsiveContainer>
+            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none select-none">
+              <span className="text-xl font-bold font-mono tracking-tight tabular-nums text-foreground">
+                {(data?.violationDistribution ?? []).reduce((acc, v) => acc + Number(v.count || 0), 0)}
+              </span>
+              <span className="text-[9px] font-mono uppercase tracking-wider text-muted-foreground">
+                ALERTS
+              </span>
+            </div>
           </div>
 
-          <div className="space-y-1.5 text-xs font-mono max-h-24 overflow-y-auto scrollbar-thin">
-            {(data?.violationDistribution ?? []).map((item, idx) => (
-              <div key={item.code} className="flex items-center justify-between text-muted-foreground">
-                <div className="flex items-center gap-2 truncate">
-                  <span
-                    className="w-2.5 h-2.5 rounded-full shrink-0"
-                    style={{ backgroundColor: DONUT_COLORS[idx % DONUT_COLORS.length] }}
-                  />
-                  <span className="truncate">{item.label}</span>
+          <div className="space-y-2 text-sm font-sans max-h-32 overflow-y-auto scrollbar-thin">
+            {(data?.violationDistribution ?? []).map((item, idx) => {
+              const total = (data?.violationDistribution ?? []).reduce((acc, v) => acc + Number(v.count || 0), 0);
+              const pct = total > 0 ? Math.round((Number(item.count || 0) / total) * 100) : 0;
+              return (
+                <div key={item.code} className="flex items-center justify-between text-muted-foreground hover:text-foreground transition-colors">
+                  <div className="flex items-center gap-2 truncate">
+                    <span
+                      className="w-3 h-3 rounded-full shrink-0"
+                      style={{ backgroundColor: DONUT_COLORS[idx % DONUT_COLORS.length] }}
+                    />
+                    <span className="truncate text-foreground font-medium text-sm">{item.label}</span>
+                  </div>
+                  <span className="font-mono text-xs text-muted-foreground pl-2 shrink-0">
+                    <strong className="text-foreground">{item.count}</strong> ({pct}%)
+                  </span>
                 </div>
-                <span className="font-bold text-foreground pl-2">{item.count}</span>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </div>

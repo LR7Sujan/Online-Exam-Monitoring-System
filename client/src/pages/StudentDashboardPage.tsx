@@ -13,6 +13,8 @@ import { useNavigate } from 'react-router-dom';
 import { StatusPill } from '../components/ui/StatusPill';
 import { Tabs } from '../components/ui/Tabs';
 import { PreExamChecklistModal } from '../components/student/PreExamChecklistModal';
+import { ErrorState } from '../components/ui/EmptyState';
+import { Skeleton } from '../components/ui/Skeleton';
 import { api } from '../lib/api';
 import { useAuthStore } from '../store/authStore';
 import type { ExamItem, ExamSession } from '../types/domain';
@@ -207,10 +209,27 @@ export function StudentDashboardPage() {
       {/* Exam Grid */}
       {examsQuery.isLoading ? (
         <div className="grid gap-6 md:grid-cols-2">
-          {[1, 2].map((i) => (
-            <div key={i} className="rounded-2xl border border-border bg-surface/60 h-64 animate-pulse p-6" />
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="rounded-2xl border border-border bg-surface p-6 space-y-4">
+              <div className="flex justify-between items-center">
+                <Skeleton className="h-4 w-24 rounded" />
+                <Skeleton className="h-5 w-20 rounded-full" />
+              </div>
+              <Skeleton className="h-6 w-3/4 rounded" />
+              <Skeleton className="h-14 w-full rounded-xl" />
+              <div className="flex justify-between items-center pt-2">
+                <Skeleton className="h-4 w-28 rounded" />
+                <Skeleton className="h-9 w-28 rounded-xl" />
+              </div>
+            </div>
           ))}
         </div>
+      ) : examsQuery.isError ? (
+        <ErrorState
+          title="Unable to Load Assessments"
+          description="Failed to retrieve examination schedule from server. Please retry."
+          onRetry={() => examsQuery.refetch()}
+        />
       ) : filteredExams.length === 0 ? (
         <div className="p-12 text-center rounded-2xl border border-border bg-surface/80 space-y-3">
           <Calendar className="w-10 h-10 text-muted-foreground mx-auto" />

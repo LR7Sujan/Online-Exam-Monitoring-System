@@ -761,6 +761,9 @@ Phase 11 conducted an exhaustive, multi-tier Quality Assurance and Error Sweep a
 - **BUG-021 (Low):** Wrapped CSS animations and Framer Motion transitions in `@media (prefers-reduced-motion)` queries.
 - **BUG-022 (Medium):** Added performance indexes on `Results(graded_at)` and `Exam_Sessions(status, server_deadline)` and eliminated N+1 review loops with SQL batch updates.
 - **BUG-023 (Medium):** Standardized HTML landmark structure (`<main>`), heading hierarchies (`h1` -> `h3`), ARIA meter attributes on `TrustRing`, and accessible labels on select controls.
+- **BUG-024 (High):** Fixed page-transition key stability and route suspense boundaries preventing blank screens on navigation; added `RouteErrorBoundary` and prefers-reduced-motion bypass.
+- **BUG-025 (Medium):** Standardized `OverlayPanel` with solid surface backgrounds (`bg-surface dark:bg-[#12131d]`), z-50 layering, 40px profile dropdown items, and 420px segmented notification feed eliminating bleed-through.
+- **BUG-026 (Medium):** Fixed Donut/Pie chart center score readability, 14px legends with percentages, custom solid tooltips; restored `@keyframes shimmer` and high-contrast skeleton loaders; decoupled Loading, Error, and Empty states so seeded DB data renders across all 6 data pages without false empty masks.
 
 ---
 

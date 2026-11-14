@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Compass } from 'lucide-react';
+import { Compass, AlertTriangle, RotateCcw } from 'lucide-react';
 import { NeonButton } from './NeonButton';
 
 export interface EmptyStateProps {
@@ -73,6 +73,44 @@ export function EmptyState({
             {action.label}
           </NeonButton>
         </motion.div>
+      )}
+    </div>
+  );
+}
+
+export interface ErrorStateProps {
+  title?: string;
+  description?: string;
+  onRetry?: () => void;
+  className?: string;
+}
+
+export function ErrorState({
+  title = 'Failed to Load Data',
+  description = 'An error occurred while connecting to the telemetry service. Please retry.',
+  onRetry,
+  className = '',
+}: ErrorStateProps) {
+  return (
+    <div
+      className={`p-10 rounded-[20px] border border-rose-500/30 bg-rose-500/5 dark:bg-rose-950/20 text-foreground shadow-bento flex flex-col items-center justify-center text-center ${className}`}
+    >
+      <div className="relative mb-4 p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-500 shadow-sm">
+        <AlertTriangle className="w-8 h-8" />
+      </div>
+      <h3 className="text-base font-semibold text-foreground tracking-tight">{title}</h3>
+      <p className="mt-1.5 text-xs text-muted-foreground max-w-sm leading-relaxed">{description}</p>
+      {onRetry && (
+        <div className="mt-5">
+          <NeonButton
+            variant="primary"
+            size="sm"
+            onClick={onRetry}
+            leftIcon={<RotateCcw className="w-4 h-4" />}
+          >
+            Retry Request
+          </NeonButton>
+        </div>
       )}
     </div>
   );

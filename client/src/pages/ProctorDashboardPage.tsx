@@ -15,6 +15,8 @@ import { StudentTile } from '../components/proctor/StudentTile';
 import { LiveFeedSidebar, type LiveViolationItem } from '../components/proctor/LiveFeedSidebar';
 import { StudentDetailDrawer } from '../components/proctor/StudentDetailDrawer';
 import { ReviewQueueTable } from '../components/proctor/ReviewQueueTable';
+import { SkeletonCard } from '../components/ui/Skeleton';
+import { EmptyState, ErrorState } from '../components/ui/EmptyState';
 import { api } from '../lib/api';
 import { getSocket } from '../lib/socket';
 import { useAuthStore } from '../store/authStore';
@@ -445,14 +447,33 @@ export function ProctorDashboardPage({ initialTab = 'monitor' }: { initialTab?: 
               {/* Student Tiles Grid (2 cols on md, 2 or 3 cols on xl) */}
               <div className="lg:col-span-2 xl:col-span-3">
                 <h2 className="sr-only">Active Candidate Surveillance Grid</h2>
-                {displaySessions.length === 0 ? (
-                  <div className="rounded-3xl border border-border bg-surface p-16 text-center space-y-3">
-                    <Shield className="w-10 h-10 text-brand/40 mx-auto" />
-                    <h3 className="text-base font-bold text-foreground">No active candidate sessions match</h3>
-                    <p className="text-xs font-mono text-muted-foreground max-w-sm mx-auto">
-                      Adjust your exam or status filters to view active candidates.
-                    </p>
+                {monitorQuery.isLoading ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                    {[1, 2, 3, 4, 5, 6].map((i) => (
+                      <SkeletonCard key={i} />
+                    ))}
                   </div>
+                ) : monitorQuery.isError ? (
+                  <ErrorState
+                    title="Failed to Load Live Candidate Telemetry"
+                    description="Could not establish connection with proctor monitoring API. Please retry."
+                    onRetry={() => monitorQuery.refetch()}
+                  />
+                ) : displaySessions.length === 0 ? (
+                  <EmptyState
+                    icon={<Shield className="w-8 h-8" />}
+                    title="No active candidate sessions match"
+                    description="No active sessions match the selected assessment, status, or severity filter. Telemetry streaming is nominal."
+                    action={{
+                      label: 'Reset Filters',
+                      onClick: () => {
+                        setSelectedExamId('ALL');
+                        setSelectedStatus('ALL');
+                        setSelectedSeverity('ALL');
+                        setSearchQuery('');
+                      },
+                    }}
+                  />
                 ) : (
                   <motion.div
                     layout

@@ -16,7 +16,7 @@ export function Skeleton({
   ...props
 }: SkeletonProps) {
   const baseClasses =
-    'relative overflow-hidden bg-zinc-200/70 dark:bg-zinc-800/70 before:absolute before:inset-0 before:-translate-x-full before:animate-[shimmer_2s_infinite] before:bg-gradient-to-r before:from-transparent before:via-white/20 dark:before:via-white/10 before:to-transparent';
+    'relative overflow-hidden bg-zinc-300/80 dark:bg-zinc-700/80 before:absolute before:inset-0 before:-translate-x-full before:animate-[shimmer_1.8s_infinite] before:bg-gradient-to-r before:from-transparent before:via-white/40 dark:before:via-white/20 before:to-transparent';
 
   const variantClasses = {
     rect: 'rounded-xl',

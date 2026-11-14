@@ -102,6 +102,12 @@ export function StudentResultPage() {
     { name: 'Marks Awarded', value: rawScore, color: '#10B981' },
     { name: 'Marks Deducted/Lost', value: wrongOrLostMarks, color: '#F43F5E' },
   ];
+  const isAllZero = chartData.every((d) => d.value === 0);
+  const displayChartData = isAllZero
+    ? [{ name: 'No data', value: 1, color: '#3f3f46' }]
+    : chartData;
+  const earnedPct = totalMarks > 0 ? Math.round((rawScore / totalMarks) * 100) : 0;
+  const lostPct = totalMarks > 0 ? Math.round((wrongOrLostMarks / totalMarks) * 100) : 0;
 
   return (
     <div className="max-w-5xl mx-auto py-8 px-4 sm:px-6 space-y-8 pb-20">
@@ -205,39 +211,45 @@ export function StudentResultPage() {
             {/* 2. Donut Breakdown Chart */}
             <div
               role="region"
-              aria-label={`Performance breakdown chart: ${rawScore} marks earned, ${wrongOrLostMarks} marks lost out of ${totalMarks} total marks`}
-              className="flex flex-col items-center justify-center text-center p-6 rounded-2xl border border-border bg-surface-elevated/70 space-y-2"
+              aria-label={`Performance breakdown chart: ${rawScore} marks earned (${earnedPct}%), ${wrongOrLostMarks} marks lost (${lostPct}%) out of ${totalMarks} total marks`}
+              className="flex flex-col items-center justify-center text-center p-6 rounded-2xl border border-border bg-surface-elevated/70 space-y-3"
             >
               <span className="text-xs font-mono uppercase tracking-wider text-muted-foreground">
                 Performance Breakdown
               </span>
-              <div className="w-36 h-36 relative" aria-hidden="true">
+              <div className="w-44 h-44 relative" aria-hidden="true">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
-                      data={chartData}
+                      data={displayChartData}
                       dataKey="value"
                       cx="50%"
                       cy="50%"
-                      innerRadius={38}
-                      outerRadius={56}
-                      paddingAngle={4}
+                      innerRadius={46}
+                      outerRadius={66}
+                      paddingAngle={isAllZero ? 0 : 4}
+                      cornerRadius={isAllZero ? 0 : 6}
                     >
-                      {chartData.map((entry, index) => (
+                      {displayChartData.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.color} />
                       ))}
                     </Pie>
                     <Tooltip
+                      offset={24}
                       content={({ active, payload }) => {
-                        if (active && payload && payload.length) {
+                        if (active && payload && payload.length && !isAllZero) {
                           const data = payload[0];
+                          const val = Number(data.value ?? 0);
+                          const pct = totalMarks > 0 ? Math.round((val / totalMarks) * 100) : 0;
+                          const color = (data.payload as { color?: string })?.color ?? 'var(--brand)';
                           return (
-                            <div className="rounded-xl border border-border bg-surface dark:bg-[#12131d] px-3 py-2 text-xs font-mono shadow-2xl space-y-0.5 z-50 pointer-events-none">
-                              <p className="font-semibold text-xs" style={{ color: (data.payload as { color?: string })?.color ?? 'var(--brand)' }}>
-                                {data.name}
-                              </p>
-                              <p className="text-foreground text-[11px] font-bold">
-                                {data.value} Marks
+                            <div className="rounded-xl border border-border bg-surface dark:bg-[#12131d] p-2.5 text-sm font-sans shadow-2xl space-y-1 z-50 pointer-events-none">
+                              <div className="flex items-center gap-2">
+                                <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: color }} />
+                                <span className="font-semibold text-foreground text-sm">{data.name}</span>
+                              </div>
+                              <p className="text-muted-foreground text-xs font-mono pl-5">
+                                <strong className="text-foreground">{val} Marks</strong> ({pct}%)
                               </p>
                             </div>
                           );
@@ -247,23 +259,35 @@ export function StudentResultPage() {
                     />
                   </PieChart>
                 </ResponsiveContainer>
-                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                  <span className="text-xs font-mono font-bold text-foreground">{rawScore}</span>
-                  <span className="text-[9px] font-mono text-muted-foreground">PTS</span>
+                {/* Center score label (large bold tabular number + PTS caption, always visible) */}
+                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none select-none">
+                  {isAllZero ? (
+                    <span className="text-xs font-mono font-medium text-muted-foreground">No data</span>
+                  ) : (
+                    <>
+                      <span className="text-2xl font-bold font-mono tracking-tight tabular-nums text-foreground leading-none">
+                        {rawScore}
+                      </span>
+                      <span className="text-[10px] font-mono tracking-wider text-muted-foreground uppercase mt-0.5">
+                        PTS
+                      </span>
+                    </>
+                  )}
                 </div>
               </div>
               {/* Screen reader summary */}
               <div className="sr-only">
-                {rawScore} marks earned ({percentage}%), ${wrongOrLostMarks} marks lost.
+                {rawScore} marks earned ({earnedPct}%), {wrongOrLostMarks} marks lost ({lostPct}%).
               </div>
-              <div className="flex items-center gap-3 text-[10px] font-mono text-muted-foreground">
-                <span className="flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500" aria-hidden="true" />
-                  <span>Earned: {rawScore}</span>
+              {/* 14px High-Contrast Legend */}
+              <div className="flex items-center gap-4 text-sm font-sans font-medium text-foreground">
+                <span className="flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0" aria-hidden="true" />
+                  <span>Earned {rawScore} ({earnedPct}%)</span>
                 </span>
-                <span className="flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full bg-rose-500" aria-hidden="true" />
-                  <span>Lost: {wrongOrLostMarks}</span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-rose-500 shrink-0" aria-hidden="true" />
+                  <span>Lost {wrongOrLostMarks} ({lostPct}%)</span>
                 </span>
               </div>
             </div>

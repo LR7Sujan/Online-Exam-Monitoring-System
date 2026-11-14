@@ -10,6 +10,8 @@ import {
 import { SeverityBadge } from '../ui/SeverityBadge';
 import { StatusPill } from '../ui/StatusPill';
 import { NeonButton } from '../ui/NeonButton';
+import { Skeleton } from '../ui/Skeleton';
+import { EmptyState, ErrorState } from '../ui/EmptyState';
 import { ParticleBurst } from '../ui/ParticleBurst';
 import { api } from '../../lib/api';
 import { playPingSound } from '../../utils/audioAlert';
@@ -299,11 +301,70 @@ export function ReviewQueueTable({ onInspectStudent }: ReviewQueueTableProps) {
             </thead>
 
             <tbody className="divide-y divide-border">
-              {filteredLogs.length === 0 ? (
+              {auditQuery.isLoading ? (
+                Array.from({ length: 6 }).map((_, i) => (
+                  <tr key={`skeleton-${i}`}>
+                    <td className="p-3.5 text-center">
+                      <Skeleton className="h-4 w-4 mx-auto rounded" />
+                    </td>
+                    <td className="p-3.5 space-y-1">
+                      <Skeleton className="h-4 w-28 rounded" />
+                      <Skeleton className="h-3 w-16 rounded" />
+                    </td>
+                    <td className="p-3.5">
+                      <Skeleton className="h-4 w-24 rounded" />
+                    </td>
+                    <td className="p-3.5">
+                      <Skeleton className="h-4 w-32 rounded" />
+                    </td>
+                    <td className="p-3.5">
+                      <Skeleton className="h-5 w-16 rounded-full" />
+                    </td>
+                    <td className="p-3.5 text-center">
+                      <Skeleton className="h-4 w-8 mx-auto rounded" />
+                    </td>
+                    <td className="p-3.5 text-center">
+                      <Skeleton className="h-4 w-12 mx-auto rounded" />
+                    </td>
+                    <td className="p-3.5">
+                      <Skeleton className="h-3 w-20 rounded" />
+                    </td>
+                    <td className="p-3.5">
+                      <Skeleton className="h-5 w-20 rounded-full" />
+                    </td>
+                    <td className="p-3.5 text-right">
+                      <Skeleton className="h-7 w-16 ml-auto rounded" />
+                    </td>
+                  </tr>
+                ))
+              ) : auditQuery.isError ? (
                 <tr>
-                  <td colSpan={10} className="py-16 text-center text-muted-foreground">
-                    <Shield className="w-8 h-8 mx-auto mb-2 text-brand/40" />
-                    No violations match the specified queue filters.
+                  <td colSpan={10} className="p-8">
+                    <ErrorState
+                      title="Failed to Load Violation Audit Report"
+                      description="Unable to fetch incident telemetry from MySQL. Verify server connection and retry."
+                      onRetry={() => auditQuery.refetch()}
+                    />
+                  </td>
+                </tr>
+              ) : filteredLogs.length === 0 ? (
+                <tr>
+                  <td colSpan={10} className="p-8">
+                    <EmptyState
+                      icon={<Shield className="w-8 h-8 text-brand" />}
+                      title="No Violations Match Filters"
+                      description="No incidents matched your search query or filter selection in the audit queue."
+                      action={{
+                        label: 'Reset Queue Filters',
+                        onClick: () => {
+                          setReviewFilter('ALL');
+                          setSeverityFilter('ALL');
+                          setSearchQuery('');
+                        },
+                        icon: <RotateCcw className="w-4 h-4" />,
+                        variant: 'secondary',
+                      }}
+                    />
                   </td>
                 </tr>
               ) : (
