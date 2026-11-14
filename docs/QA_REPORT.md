@@ -764,6 +764,7 @@ Phase 11 conducted an exhaustive, multi-tier Quality Assurance and Error Sweep a
 - **BUG-024 (High):** Fixed page-transition key stability and route suspense boundaries preventing blank screens on navigation; added `RouteErrorBoundary` and prefers-reduced-motion bypass.
 - **BUG-025 (Medium):** Standardized `OverlayPanel` with solid surface backgrounds (`bg-surface dark:bg-[#12131d]`), z-50 layering, 40px profile dropdown items, and 420px segmented notification feed eliminating bleed-through.
 - **BUG-026 (Medium):** Fixed Donut/Pie chart center score readability, 14px legends with percentages, custom solid tooltips; restored `@keyframes shimmer` and high-contrast skeleton loaders; decoupled Loading, Error, and Empty states so seeded DB data renders across all 6 data pages without false empty masks.
+- **BUG-027 (Low):** Restructured combined landing/auth screen into 3 professional dedicated routes (`/` public marketing landing, `/login` split-screen sign in, `/register` candidate self-registration) with `AuthLayout`, password strength meter, terms consent, and role-based redirect protection.
 
 ---
 

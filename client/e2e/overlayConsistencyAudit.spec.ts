@@ -15,6 +15,8 @@ test.describe('Phase 13: Overlay Consistency, Solid Backgrounds & Z-Index Safety
 
   async function loginAs(page: any, email: string) {
     await page.goto('/login');
+    await page.evaluate(() => localStorage.clear());
+    await page.goto('/login');
     await page.waitForLoadState('domcontentloaded');
     await page.fill('input[type="email"]', email);
     await page.fill('input[type="password"]', 'ProctorIQ#2026');
