@@ -145,10 +145,10 @@ export function AdminDashboardPage({
           <div className="space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-2xl border border-border bg-surface p-5 shadow-sm">
               <div>
-                <h3 className="text-base font-bold text-foreground flex items-center gap-2">
+                <h2 className="text-base font-bold text-foreground flex items-center gap-2">
                   <GraduationCap className="w-5 h-5 text-brand" />
                   <span>Curated Assessment Directory</span>
-                </h3>
+                </h2>
                 <p className="text-xs font-mono text-muted-foreground mt-0.5">
                   Configure assessment windows, duration, questions, and authoritative integrity thresholds
                 </p>
@@ -363,10 +363,10 @@ export function AdminDashboardPage({
         {activeTab === 'db' && (
           <div className="space-y-6 font-mono text-xs">
             <div className="rounded-2xl border border-border bg-surface p-5 shadow-sm">
-              <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+              <h2 className="text-sm font-bold text-foreground flex items-center gap-2">
                 <Database className="w-4 h-4 text-brand" />
                 <span>Authoritative MySQL DBMS Telemetry (Information Schema)</span>
-              </h3>
+              </h2>
               <p className="text-[11px] text-muted-foreground mt-0.5">
                 Live introspection of triggers, stored procedures, SQL views, and physical tables
               </p>

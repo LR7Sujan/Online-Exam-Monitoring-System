@@ -222,7 +222,7 @@ async function main() {
     console.log('\n====================================================');
     console.log(' 🎉 ALL ACCEPTANCE CRITERIA VERIFIED SUCCESSFULLY!');
     console.log('   - Tailwind Mission-Control Design Tokens: APPLIED');
-    console.log('   - 13 UI Components in /client/src/components/ui: BUILT');
+    console.log('   - 13 UI Components in client/src/components/ui: BUILT');
     console.log('   - App Shell (Sidebar, Top Bar, Notifications): BUILT');
     console.log('   - Role-Based Routing (ADMIN, PROCTOR, STUDENT): VERIFIED');
     console.log('   - Axios + React Query + Socket.IO + Zustand: INTEGRATED');

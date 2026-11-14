@@ -9,7 +9,10 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '..', '..');
 const distDir = path.resolve(rootDir, 'client', 'dist');
-const uploadsDir = path.resolve(rootDir, 'server', 'uploads');
+// Resolve uploads directory relative to project root
+const uploadsDir = process.env.UPLOADS_DIR
+  ? path.resolve(rootDir, process.env.UPLOADS_DIR)
+  : path.resolve(rootDir, 'server', 'uploads');
 
 const API_BASE = 'http://localhost:4000/api';
 const SOCKET_URL = 'http://localhost:4000';
@@ -172,7 +175,7 @@ async function main() {
     `snapshot_url must start with /uploads/snapshot- (got ${violReport.data.snapshot_url})`
   );
 
-  // Verify file was written to disk in /server/uploads
+  // Verify file was written to disk in server/uploads
   const savedFilename = path.basename(violReport.data.snapshot_url);
   const diskPath = path.join(uploadsDir, savedFilename);
   assert.ok(fs.existsSync(diskPath), `Uploaded JPEG snapshot file must exist at ${diskPath}`);

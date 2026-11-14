@@ -5,6 +5,7 @@ import { Router } from 'express';
 import type { RowDataPacket } from 'mysql2/promise';
 import { z } from 'zod';
 import { executeSql, pool, queryRows } from '../config/db.js';
+import { env } from '../config/env.js';
 import { requireAuth, requireRole, type AuthenticatedRequest } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 import {
@@ -41,27 +42,85 @@ const upsertAnswerSchema = z.object({
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const uploadsDir = path.resolve(__dirname, '../../uploads');
+// Resolve uploads directory relative to project root or script location
+const projectRootDir = path.resolve(__dirname, '../../../');
+const uploadsDir = env.UPLOADS_DIR
+  ? path.resolve(projectRootDir, env.UPLOADS_DIR)
+  : path.resolve(__dirname, '../../uploads');
+
+// QA Security Fix (Sub-Phase 11.4): Reject non-images and oversized uploads (> 2MB)
+export const MAX_SNAPSHOT_BYTES = 2 * 1024 * 1024; // 2MB
+
+export function isValidImageBuffer(buffer: Buffer): boolean {
+  if (buffer.length < 4) return false;
+  // JPEG: FF D8 FF
+  if (buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) return true;
+  // PNG: 89 50 4E 47
+  if (buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4e && buffer[3] === 0x47) return true;
+  // WebP: RIFF (bytes 0-3) and WEBP (bytes 8-11)
+  if (
+    buffer.length >= 12 &&
+    buffer[0] === 0x52 && buffer[1] === 0x49 && buffer[2] === 0x46 && buffer[3] === 0x46 &&
+    buffer[8] === 0x57 && buffer[9] === 0x45 && buffer[10] === 0x42 && buffer[11] === 0x50
+  ) {
+    return true;
+  }
+  return false;
+}
 
 export function saveSnapshotImage(sessionId: number, snapshot: string | null | undefined): string | null {
   if (!snapshot) return null;
   const trimmed = snapshot.trim();
-  if (trimmed.startsWith('/uploads/') || trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+
+  if (trimmed.startsWith('/uploads/')) {
+    if (trimmed.includes('..') || trimmed.includes('\\')) {
+      throw new AppError(400, 'INVALID_SNAPSHOT_PATH', 'Path traversal in snapshot URL is forbidden.');
+    }
     return trimmed;
+  }
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+    return trimmed;
+  }
+
+  // Validate data URI prefix if present
+  if (trimmed.startsWith('data:')) {
+    const isImage =
+      trimmed.startsWith('data:image/jpeg') ||
+      trimmed.startsWith('data:image/png') ||
+      trimmed.startsWith('data:image/webp') ||
+      trimmed.startsWith('data:image/jpg');
+    if (!isImage) {
+      throw new AppError(
+        400,
+        'INVALID_SNAPSHOT_FORMAT',
+        'Snapshot upload must be an image format (JPEG, PNG, or WebP).'
+      );
+    }
+  }
+
+  let base64Data = trimmed;
+  if (trimmed.includes('base64,')) {
+    base64Data = trimmed.split('base64,')[1];
+  }
+  const cleanB64 = base64Data.replace(/[^A-Za-z0-9+/=]/g, '');
+  const buffer = Buffer.from(cleanB64, 'base64');
+
+  if (buffer.length > MAX_SNAPSHOT_BYTES) {
+    throw new AppError(400, 'SNAPSHOT_OVERSIZED', 'Snapshot file exceeds maximum allowed size of 2MB.');
+  }
+
+  if (buffer.length >= 32 && !isValidImageBuffer(buffer)) {
+    throw new AppError(400, 'INVALID_SNAPSHOT_FORMAT', 'Snapshot content is not a valid JPEG, PNG, or WebP image.');
   }
 
   try {
     if (!fs.existsSync(uploadsDir)) {
       fs.mkdirSync(uploadsDir, { recursive: true });
     }
-    let base64Data = trimmed;
-    if (trimmed.includes('base64,')) {
-      base64Data = trimmed.split('base64,')[1];
-    }
-    const cleanB64 = base64Data.replace(/[^A-Za-z0-9+/=]/g, '');
-    const filename = `snapshot-${sessionId}-${Date.now()}-${Math.floor(Math.random() * 10000)}.jpg`;
+    const ext = buffer[0] === 0x89 ? 'png' : (buffer[0] === 0x52 ? 'webp' : 'jpg');
+    const filename = `snapshot-${sessionId}-${Date.now()}-${Math.floor(Math.random() * 10000)}.${ext}`;
     const filePath = path.join(uploadsDir, filename);
-    fs.writeFileSync(filePath, Buffer.from(cleanB64, 'base64'));
+    fs.writeFileSync(filePath, buffer);
     return `/uploads/${filename}`;
   } catch (err) {
     console.warn('[Snapshot] Failed to write snapshot image:', err);
@@ -281,13 +340,16 @@ sessionsRouter.get(
       );
 
       const row = rows[0];
+      // QA Fix (Sub-Phase 11.3): Expose both camelCase and snake_case aliases for clock & remaining seconds
       sendSuccess(res, {
         sessionId: session.id,
         status: row.status,
         trustScore: Number(row.trust_score),
         secondsLeft: row.status === 'IN_PROGRESS' ? Number(row.seconds_left) : 0,
+        secondsRemaining: row.status === 'IN_PROGRESS' ? Number(row.seconds_left) : 0,
         serverDeadline: row.server_deadline,
         serverNow: row.server_now,
+        serverTime: row.server_now,
       });
     } catch (err) {
       next(err);
@@ -343,6 +405,31 @@ sessionsRouter.put(
   handleUpsertAnswer
 );
 
+// QA Fix (Sub-Phase 11.3): Support POST aliases for answer and response submission
+sessionsRouter.post(
+  '/:sessionId/answer',
+  requireAuth,
+  requireRole('STUDENT'),
+  validate({ params: sessionIdParamSchema, body: upsertAnswerSchema }),
+  handleUpsertAnswer
+);
+
+sessionsRouter.post(
+  '/:sessionId/response',
+  requireAuth,
+  requireRole('STUDENT'),
+  validate({ params: sessionIdParamSchema, body: upsertAnswerSchema }),
+  handleUpsertAnswer
+);
+
+sessionsRouter.post(
+  '/:sessionId/responses',
+  requireAuth,
+  requireRole('STUDENT'),
+  validate({ params: sessionIdParamSchema, body: upsertAnswerSchema }),
+  handleUpsertAnswer
+);
+
 // POST /api/sessions/:sessionId/violation — rate-limited + 3s debounced + trigger-enforced
 sessionsRouter.post(
   '/:sessionId/violation',
@@ -358,6 +445,28 @@ sessionsRouter.post(
 
       const session = await assertSessionAccess(sessionId, req.user);
 
+      const typeRows = await queryRows<ViolationTypeRow[]>(
+        'SELECT id, code, label, penalty_points, severity FROM Violation_Types WHERE code = ? LIMIT 1',
+        [code]
+      );
+      const vType = typeRows[0];
+      if (!vType) {
+        throw new AppError(400, 'INVALID_VIOLATION_CODE', `Unknown violation code: ${code}`);
+      }
+
+      const meta = body.evidenceMeta as Record<string, unknown> | undefined;
+      const rawSnapshot = body.snapshot || (typeof meta?.snapshot === 'string' ? meta.snapshot : undefined);
+      const explicitUrl =
+        body.snapshot_url ||
+        body.snapshotUrl ||
+        (typeof meta?.snapshot_url === 'string' ? meta.snapshot_url : undefined) ||
+        (typeof meta?.snapshotUrl === 'string' ? meta.snapshotUrl : undefined);
+
+      // QA Security Fix (Sub-Phase 11.4): Validate snapshot payload before debounce check so malformed/oversized uploads are rejected immediately (400)
+      const savedSnapshotUrl = explicitUrl
+        ? saveSnapshotImage(sessionId, explicitUrl)
+        : saveSnapshotImage(sessionId, rawSnapshot);
+
       if (shouldDebounceViolation(sessionId, code)) {
         sendSuccess(res, {
           sessionId,
@@ -369,23 +478,6 @@ sessionsRouter.post(
         });
         return;
       }
-
-      const typeRows = await queryRows<ViolationTypeRow[]>(
-        'SELECT id, code, label, penalty_points, severity FROM Violation_Types WHERE code = ? LIMIT 1',
-        [code]
-      );
-      const vType = typeRows[0];
-      if (!vType) {
-        throw new AppError(400, 'INVALID_VIOLATION_CODE', `Unknown violation code: ${code}`);
-      }
-
-      const rawSnapshot = body.snapshot || (body.evidenceMeta as any)?.snapshot;
-      const explicitUrl =
-        body.snapshot_url ||
-        body.snapshotUrl ||
-        (body.evidenceMeta as any)?.snapshot_url ||
-        (body.evidenceMeta as any)?.snapshotUrl;
-      const savedSnapshotUrl = explicitUrl || saveSnapshotImage(sessionId, rawSnapshot);
 
       const evidencePayload = JSON.stringify({
         ...(body.evidenceMeta ?? {}),
@@ -578,7 +670,8 @@ sessionsRouter.post(
         }
       );
 
-      sendSuccess(res, result);
+      // QA Fix (Sub-Phase 11.3): Return result payload directly and with result property alias
+      sendSuccess(res, { ...(result ?? {}), result });
     } catch (err) {
       next(err);
     }

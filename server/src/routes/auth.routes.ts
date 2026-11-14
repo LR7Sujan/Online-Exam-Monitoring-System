@@ -15,7 +15,7 @@ export const authRouter = Router();
 
 export const authRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 100,
+  max: process.env.NODE_ENV === 'test' ? 10000 : 2500,
   standardHeaders: true,
   legacyHeaders: false,
   message: {
@@ -187,12 +187,13 @@ authRouter.post('/refresh', authRateLimiter, validate({ body: refreshSchema }), 
         role: user.role,
       },
     });
-  } catch (err: any) {
-    if (err?.name === 'TokenExpiredError') {
+  } catch (err: unknown) {
+    const error = err as { name?: string };
+    if (error?.name === 'TokenExpiredError') {
       next(new AppError(401, 'REFRESH_TOKEN_EXPIRED', 'Refresh token has expired. Please sign in again.'));
       return;
     }
-    if (err?.name === 'JsonWebTokenError') {
+    if (error?.name === 'JsonWebTokenError') {
       next(new AppError(401, 'INVALID_REFRESH_TOKEN', 'Malformed or invalid refresh token signature.'));
       return;
     }

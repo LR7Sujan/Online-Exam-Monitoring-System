@@ -10,6 +10,7 @@ import {
 import { useTheme } from '../../context/ThemeContext';
 
 export type { ToastOptions, ToastVariant, ToastItem };
+// eslint-disable-next-line react-refresh/only-export-components
 export { sonnerToast as toast };
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {

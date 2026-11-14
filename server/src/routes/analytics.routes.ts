@@ -143,7 +143,8 @@ analyticsRouter.get('/overview', async (_req, res, next) => {
       }
     );
 
-    sendSuccess(res, { summary, exams });
+    // QA Fix (Sub-Phase 11.3): Spread summary properties at top-level while maintaining summary sub-object
+    sendSuccess(res, { ...summary, summary, exams });
   } catch (err) {
     next(err);
   }

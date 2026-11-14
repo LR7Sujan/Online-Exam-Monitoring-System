@@ -190,6 +190,7 @@ export function StudentExamPage() {
   // 4. Submit Examination Mutation
   const submitMutation = useMutation({
     mutationFn: async () => {
+      await flushRetryQueue();
       return api.post<{ result: unknown }>(`/sessions/${numericSessionId}/submit`);
     },
     onSuccess: () => {

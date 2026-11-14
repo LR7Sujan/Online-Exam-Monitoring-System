@@ -1,6 +1,6 @@
 # ProctorIQ DBMS Verification Guide
 
-Run these SQL checks directly against MySQL 8.0+ after initializing `/db/schema.sql` and `/db/seed.sql` to verify every database-enforced rule.
+Run these SQL checks directly against MySQL 8.0+ (run from the project root) after initializing `db/schema.sql` and `db/seed.sql` (e.g., `SOURCE db/schema.sql;` and `SOURCE db/seed.sql;` using forward slashes) to verify every database-enforced rule.
 
 ## 1. Verify Schema Objects Exist
 

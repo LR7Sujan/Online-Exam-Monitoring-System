@@ -302,7 +302,7 @@ export const SimulatorPage: React.FC = () => {
             <input
               type="range"
               min={1}
-              max={30}
+              max={60}
               step={1}
               disabled={isRunning}
               value={studentCount}
@@ -311,8 +311,8 @@ export const SimulatorPage: React.FC = () => {
             />
             <div className="flex justify-between text-[10px] font-mono text-slate-500">
               <span>1</span>
-              <span>15</span>
               <span>30</span>
+              <span>60</span>
             </div>
           </div>
 

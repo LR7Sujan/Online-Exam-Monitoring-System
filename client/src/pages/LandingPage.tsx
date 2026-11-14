@@ -89,8 +89,8 @@ export function LandingPage() {
         </div>
       </header>
 
-      {/* Main Container */}
-      <div className="relative z-10 max-w-7xl mx-auto px-4 pb-24 pt-8 sm:px-6 lg:pt-14 space-y-20 sm:space-y-24">
+      {/* Main Container Landmark */}
+      <main className="relative z-10 max-w-7xl mx-auto px-4 pb-24 pt-8 sm:px-6 lg:pt-14 space-y-20 sm:space-y-24">
         {/* ========================================================== */}
         {/* HERO SPLIT SECTION */}
         {/* ========================================================== */}
@@ -200,7 +200,7 @@ export function LandingPage() {
         <section className="space-y-6">
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
-              <div className="flex items-center gap-2 font-mono text-xs uppercase tracking-wider text-brand font-semibold">
+              <div className="flex items-center gap-2 font-mono text-xs uppercase tracking-wider text-indigo-400 dark:text-indigo-400 font-semibold">
                 <Cpu className="h-4 w-4" />
                 Database Rule Table
               </div>
@@ -209,7 +209,7 @@ export function LandingPage() {
               </h2>
             </div>
             <p className="text-xs text-muted-foreground max-w-md">
-              Penalties are read strictly from MySQL <code className="text-brand font-mono">Violation_Types</code> on insert.
+              Penalties are read strictly from MySQL <code className="text-indigo-400 dark:text-indigo-400 font-mono">Violation_Types</code> on insert.
               Client-supplied penalty points are ignored.
             </p>
           </div>
@@ -259,9 +259,9 @@ export function LandingPage() {
         >
           <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500" />
           <Terminal className="w-10 h-10 text-brand mx-auto animate-pulse" />
-          <h3 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
             Ready to Initialize Assessment Session?
-          </h3>
+          </h2>
           <p className="text-sm text-muted-foreground max-w-xl mx-auto leading-relaxed">
             Test candidate workflows, live proctoring telemetry, or administrative schema views with
             seeded demo credentials in one click.
@@ -281,7 +281,7 @@ export function LandingPage() {
             </Link>
           </div>
         </motion.div>
-      </div>
+      </main>
     </div>
   );
 }

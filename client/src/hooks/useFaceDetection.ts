@@ -38,7 +38,7 @@ export function useFaceDetection({
 
   // Initialize MediaPipe detector in background
   useEffect(() => {
-    initMediaPipeDetector().catch(() => {});
+    initMediaPipeDetector().catch(() => { });
   }, []);
 
   // Camera start / restart logic
@@ -65,17 +65,27 @@ export function useFaceDetection({
       });
 
       streamRef.current = stream;
+
+      // Handle optical track ending mid-exam (unplugged, disabled, hardware disconnect)
+      stream.getVideoTracks().forEach((track) => {
+        track.onended = () => {
+          setCameraActive(false);
+          setCameraDenied(true);
+        };
+      });
+
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        await videoRef.current.play().catch(() => {});
+        await videoRef.current.play().catch(() => { });
       }
       setCameraActive(true);
       setCameraDenied(false);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.warn('[FaceDetection] Camera initialization issue:', err);
+      const error = err as { name?: string };
       if (
-        err?.name === 'NotAllowedError' ||
-        err?.name === 'PermissionDeniedError' ||
+        error?.name === 'NotAllowedError' ||
+        error?.name === 'PermissionDeniedError' ||
         String(err).includes('Permission') ||
         String(err).includes('denied')
       ) {
@@ -99,11 +109,12 @@ export function useFaceDetection({
           ctx.fill();
         }
 
-        const capture = (canvas as any).captureStream?.(10);
+        const canvasWithCapture = canvas as HTMLCanvasElement & { captureStream?(fps?: number): MediaStream };
+        const capture = canvasWithCapture.captureStream?.(10);
         if (capture && videoRef.current) {
           streamRef.current = capture;
           videoRef.current.srcObject = capture;
-          await videoRef.current.play().catch(() => {});
+          await videoRef.current.play().catch(() => { });
           setCameraActive(true);
           setCameraDenied(false);
         } else {

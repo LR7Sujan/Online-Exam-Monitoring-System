@@ -21,8 +21,32 @@ export interface DetectionResult {
   detectorType: 'mediapipe' | 'native' | 'optical';
 }
 
+interface MediaPipeDetectionItem {
+  boundingBox: { xCenter: number; yCenter: number; width: number; height: number };
+}
+
+interface MediaPipeDetectorInstance {
+  setOptions(opts: { model: string; minDetectionConfidence: number }): void;
+  initialize(): Promise<void>;
+  onResults(cb: (res: { detections?: MediaPipeDetectionItem[] }) => void): void;
+  send(input: { image: HTMLVideoElement | HTMLCanvasElement }): Promise<void>;
+  close?(): Promise<void>;
+}
+
+interface DetectedFaceItem {
+  boundingBox: { x: number; y: number; width: number; height: number };
+}
+
+interface NativeFaceDetectorInstance {
+  detect(image: ImageBitmapSource): Promise<DetectedFaceItem[]>;
+}
+
+type WindowWithFaceDetector = Window & typeof globalThis & {
+  FaceDetector?: new (options?: { fastMode?: boolean; maxDetectedFaces?: number }) => NativeFaceDetectorInstance;
+};
+
 // MediaPipe instance cache
-let mpFaceDetector: any = null;
+let mpFaceDetector: MediaPipeDetectorInstance | null = null;
 let mpInitAttempted = false;
 let mpInitSuccess = false;
 
@@ -32,7 +56,10 @@ export async function initMediaPipeDetector(): Promise<boolean> {
 
   try {
     const mp = await import('@mediapipe/face_detection');
-    const FaceDetectionClass = mp.FaceDetection || (mp as any).default?.FaceDetection;
+    const FaceDetectionClass =
+      mp.FaceDetection ||
+      (mp as unknown as { default?: { FaceDetection?: new (opts: unknown) => MediaPipeDetectorInstance } }).default
+        ?.FaceDetection;
     if (!FaceDetectionClass) return false;
 
     const detector = new FaceDetectionClass({
@@ -159,25 +186,27 @@ export async function detectFacesInVideo(video: HTMLVideoElement): Promise<Detec
   // 2. Try native FaceDetector if available (Chromium high-performance native pipeline)
   if (typeof window !== 'undefined' && 'FaceDetector' in window) {
     try {
-      const NativeFaceDetector = (window as any).FaceDetector;
-      const nativeDetector = new NativeFaceDetector({ fastMode: true, maxDetectedFaces: 5 });
-      const detected = await nativeDetector.detect(video);
-      if (Array.isArray(detected)) {
-        const boxes: BoundingBox[] = detected.map((f: any) => ({
-          x: f.boundingBox.x,
-          y: f.boundingBox.y,
-          width: f.boundingBox.width,
-          height: f.boundingBox.height,
-          score: 0.95,
-        }));
-        return {
-          faces: boxes,
-          faceCount: boxes.length,
-          isCoveredOrDark: false,
-          averageLuminance: optical.avgLum,
-          confidence: 0.95,
-          detectorType: 'native',
-        };
+      const NativeFaceDetector = (window as unknown as WindowWithFaceDetector).FaceDetector;
+      if (NativeFaceDetector) {
+        const nativeDetector = new NativeFaceDetector({ fastMode: true, maxDetectedFaces: 5 });
+        const detected = await nativeDetector.detect(video);
+        if (Array.isArray(detected)) {
+          const boxes: BoundingBox[] = detected.map((f: DetectedFaceItem) => ({
+            x: f.boundingBox.x,
+            y: f.boundingBox.y,
+            width: f.boundingBox.width,
+            height: f.boundingBox.height,
+            score: 0.95,
+          }));
+          return {
+            faces: boxes,
+            faceCount: boxes.length,
+            isCoveredOrDark: false,
+            averageLuminance: optical.avgLum,
+            confidence: 0.95,
+            detectorType: 'native',
+          };
+        }
       }
     } catch {
       // Fall through to MediaPipe or optical
@@ -187,9 +216,9 @@ export async function detectFacesInVideo(video: HTMLVideoElement): Promise<Detec
   // 3. Try MediaPipe FaceDetection if initialized
   if (mpFaceDetector) {
     try {
-      let rawDetections: any[] = [];
+      let rawDetections: MediaPipeDetectionItem[] = [];
       const onResultsPromise = new Promise<void>((resolve) => {
-        mpFaceDetector.onResults((res: any) => {
+        mpFaceDetector!.onResults((res: { detections?: MediaPipeDetectionItem[] }) => {
           rawDetections = res.detections || [];
           resolve();
         });
@@ -201,14 +230,14 @@ export async function detectFacesInVideo(video: HTMLVideoElement): Promise<Detec
         new Promise((r) => setTimeout(r, 400)), // timeout safety
       ]);
 
-      const boxes: BoundingBox[] = rawDetections.map((d: any) => {
+      const boxes: BoundingBox[] = rawDetections.map((d: MediaPipeDetectionItem) => {
         const b = d.boundingBox;
         return {
           x: b.xCenter * width - (b.width * width) / 2,
           y: b.yCenter * height - (b.height * height) / 2,
           width: b.width * width,
           height: b.height * height,
-          score: d.score?.[0] ?? 0.9,
+          score: 0.9,
         };
       });
 

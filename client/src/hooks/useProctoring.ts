@@ -45,7 +45,20 @@ export function useProctoring({
 
   useEffect(() => {
     isTerminatedRef.current = sessionStatus === 'TERMINATED_CHEATING';
-  }, [sessionStatus]);
+    if (sessionStatus === 'TERMINATED_CHEATING') {
+      setActiveWarning((prev) => {
+        if (prev?.isTerminated) return prev;
+        return {
+          sessionId,
+          trustScore: 0,
+          minTrustScore: 50,
+          status: 'TERMINATED_CHEATING',
+          isTerminated: true,
+          violationCode: 'CHEATING_LIMIT_BREACHED' as ViolationCode,
+        };
+      });
+    }
+  }, [sessionStatus, sessionId]);
 
   const reportViolation = useCallback(
     async (

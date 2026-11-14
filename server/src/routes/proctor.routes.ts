@@ -86,51 +86,62 @@ const bulkReviewBodySchema = z.object({
   message: 'status or reviewStatus is required.',
 });
 
-// POST /api/proctor/sessions/:sessionId/warn — dispatch direct proctor intervention warning
+// POST /api/proctor/sessions/:sessionId/warn & /message — dispatch direct proctor intervention warning
+const handleProctorWarning = async (req: AuthenticatedRequest, res: Parameters<typeof sendSuccess>[0], next: (e?: unknown) => void) => {
+  try {
+    const { sessionId } = req.params as unknown as z.infer<typeof sessionIdParamSchema>;
+    const { message } = req.body as z.infer<typeof warnBodySchema>;
+
+    const sessions = await queryRows<ExamSessionRow[]>(
+      'SELECT * FROM Exam_Sessions WHERE id = ? LIMIT 1',
+      [sessionId]
+    );
+    const session = sessions[0];
+    if (!session) {
+      throw new AppError(404, 'SESSION_NOT_FOUND', 'Exam session not found.');
+    }
+
+    const warningPayload = {
+      sessionId,
+      studentId: session.student_id,
+      message,
+      proctorName: req.user!.fullName,
+      issuedAt: new Date().toISOString(),
+    };
+
+    emitToStudent(session.student_id, sessionId, 'session:warning', warningPayload);
+    emitToProctors('session:warning_issued', warningPayload);
+
+    // QA Fix (Sub-Phase 11.3): Ensure delivered flag is returned for proctor warning confirmations
+    sendSuccess(res, {
+      sessionId,
+      warned: true,
+      delivered: true,
+      message,
+      proctorName: req.user!.fullName,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 proctorRouter.post(
   '/sessions/:sessionId/warn',
   validate({ params: sessionIdParamSchema, body: warnBodySchema }),
-  async (req: AuthenticatedRequest, res, next) => {
-    try {
-      const { sessionId } = req.params as unknown as z.infer<typeof sessionIdParamSchema>;
-      const { message } = req.body as z.infer<typeof warnBodySchema>;
+  handleProctorWarning
+);
 
-      const sessions = await queryRows<ExamSessionRow[]>(
-        'SELECT * FROM Exam_Sessions WHERE id = ? LIMIT 1',
-        [sessionId]
-      );
-      const session = sessions[0];
-      if (!session) {
-        throw new AppError(404, 'SESSION_NOT_FOUND', 'Exam session not found.');
-      }
-
-      const warningPayload = {
-        sessionId,
-        studentId: session.student_id,
-        message,
-        proctorName: req.user!.fullName,
-        issuedAt: new Date().toISOString(),
-      };
-
-      emitToStudent(session.student_id, sessionId, 'session:warning', warningPayload);
-      emitToProctors('session:warning_issued', warningPayload);
-
-      sendSuccess(res, {
-        sessionId,
-        warned: true,
-        message,
-        proctorName: req.user!.fullName,
-      });
-    } catch (err) {
-      next(err);
-    }
-  }
+proctorRouter.post(
+  '/sessions/:sessionId/message',
+  validate({ params: sessionIdParamSchema, body: warnBodySchema }),
+  handleProctorWarning
 );
 
 // POST /api/proctor/sessions/:sessionId/reinstate — un-terminate cheating session after proctor approval
 proctorRouter.post(
   '/sessions/:sessionId/reinstate',
-  validate({ params: sessionIdParamSchema }),
+  // Validate both route parameter and optional reinstatement reason payload
+  validate({ params: sessionIdParamSchema, body: reinstateBodySchema }),
   async (req: AuthenticatedRequest, res, next) => {
     try {
       const { sessionId } = req.params as unknown as z.infer<typeof sessionIdParamSchema>;
@@ -202,17 +213,17 @@ proctorRouter.post(
       const notes = body.reviewNotes ?? `Bulk review marked ${status}`;
       const logIds = body.logIds;
 
-      for (const logId of logIds) {
-        await executeSql(
-          `UPDATE Proctoring_Logs
-              SET proctor_review_status = ?,
-                  reviewed_by = ?,
-                  reviewed_at = NOW(),
-                  review_notes = ?
-            WHERE id = ?`,
-          [status, req.user!.sub, notes, logId]
-        );
-      }
+      // Single batched query instead of N+1 roundtrips
+      const placeholders = logIds.map(() => '?').join(',');
+      await executeSql(
+        `UPDATE Proctoring_Logs
+            SET proctor_review_status = ?,
+                reviewed_by = ?,
+                reviewed_at = NOW(),
+                review_notes = ?
+          WHERE id IN (${placeholders})`,
+        [status, req.user!.sub, notes, ...logIds]
+      );
 
       // Fetch updated rows from vw_ViolationAuditReport to broadcast new trust scores
       const updatedRows = await queryRows<RowDataPacket[]>(
@@ -287,6 +298,43 @@ proctorRouter.get(
   }
 );
 
+// QA Fix (Sub-Phase 11.3): Alias GET /api/proctor/sessions returning wrapped session list
+proctorRouter.get(
+  '/sessions',
+  validate({ query: liveMonitorQuerySchema }),
+  async (req, res, next) => {
+    try {
+      const { examId, status } = req.query as unknown as z.infer<typeof liveMonitorQuerySchema>;
+      const conditions: string[] = [];
+      const params: (string | number)[] = [];
+
+      if (examId !== undefined) {
+        conditions.push('exam_id = ?');
+        params.push(examId);
+      }
+      if (status !== undefined) {
+        conditions.push('status = ?');
+        params.push(status);
+      }
+
+      const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+      const rows = await queryRows<RowDataPacket[]>(
+        `SELECT *
+           FROM vw_ProctorLiveMonitor
+           ${whereClause}
+          ORDER BY FIELD(status, 'IN_PROGRESS', 'TERMINATED_CHEATING', 'TIMED_OUT', 'SUBMITTED'),
+                   trust_score ASC,
+                   started_at DESC`,
+        params
+      );
+
+      sendSuccess(res, { sessions: rows });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
 // GET /api/proctor/audit-report — queries SQL view vw_ViolationAuditReport
 proctorRouter.get(
   '/audit-report',
@@ -328,6 +376,52 @@ proctorRouter.get(
       );
 
       sendSuccess(res, rows);
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// QA Fix (Sub-Phase 11.3): Alias GET /api/proctor/logs returning wrapped logs list
+proctorRouter.get(
+  '/logs',
+  validate({ query: auditQuerySchema }),
+  async (req, res, next) => {
+    try {
+      const { examId, sessionId, reviewStatus, severity, limit } = req.query as unknown as z.infer<
+        typeof auditQuerySchema
+      >;
+      const conditions: string[] = [];
+      const params: (string | number)[] = [];
+
+      if (examId !== undefined) {
+        conditions.push('exam_id = ?');
+        params.push(examId);
+      }
+      if (sessionId !== undefined) {
+        conditions.push('session_id = ?');
+        params.push(sessionId);
+      }
+      if (reviewStatus !== undefined) {
+        conditions.push('proctor_review_status = ?');
+        params.push(reviewStatus);
+      }
+      if (severity !== undefined) {
+        conditions.push('severity = ?');
+        params.push(severity);
+      }
+
+      const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+      const rows = await queryRows<RowDataPacket[]>(
+        `SELECT *
+           FROM vw_ViolationAuditReport
+           ${whereClause}
+          ORDER BY occurred_at DESC, log_id DESC
+          LIMIT ${Number(limit ?? 100)}`,
+        params
+      );
+
+      sendSuccess(res, { logs: rows });
     } catch (err) {
       next(err);
     }

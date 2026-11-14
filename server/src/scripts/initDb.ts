@@ -48,9 +48,15 @@ export function parseSqlScript(sqlText: string): string[] {
 }
 
 async function run(): Promise<void> {
+  // Resolve db folder relative to script location so it runs from any CWD
+  const projectRootDir = path.resolve(__dirname, '../../../');
   const dbDir = path.resolve(__dirname, '../../../db');
-  const migrationsDir = path.join(dbDir, 'migrations');
-  const seedPath = path.join(dbDir, 'seed.sql');
+  const migrationsDir = env.DB_MIGRATIONS_DIR
+    ? path.resolve(projectRootDir, env.DB_MIGRATIONS_DIR)
+    : path.join(dbDir, 'migrations');
+  const seedPath = env.DB_SEED_PATH
+    ? path.resolve(projectRootDir, env.DB_SEED_PATH)
+    : path.join(dbDir, 'seed.sql');
 
   const migrationFiles = readdirSync(migrationsDir)
     .filter((f) => f.endsWith('.sql'))
@@ -67,14 +73,14 @@ async function run(): Promise<void> {
   try {
     for (const file of migrationFiles) {
       const filePath = path.join(migrationsDir, file);
-      console.log(`[db:init] Applying migration /db/migrations/${file}...`);
+      console.log(`[db:init] Applying migration db/migrations/${file}...`);
       const sqlText = readFileSync(filePath, 'utf8');
       for (const stmt of parseSqlScript(sqlText)) {
         await conn.query(stmt);
       }
     }
 
-    console.log('[db:init] Applying /db/seed.sql...');
+    console.log('[db:init] Applying db/seed.sql...');
     const seedSql = readFileSync(seedPath, 'utf8');
     for (const stmt of parseSqlScript(seedSql)) {
       await conn.query(stmt);

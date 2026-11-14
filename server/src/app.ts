@@ -4,8 +4,9 @@ import { fileURLToPath } from 'url';
 import express from 'express';
 import helmet from 'helmet';
 import jwt from 'jsonwebtoken';
+import type { RowDataPacket } from 'mysql2/promise';
 import swaggerUi from 'swagger-ui-express';
-import { testDbConnection } from './config/db.js';
+import { queryRows, testDbConnection } from './config/db.js';
 import { env } from './config/env.js';
 import { openApiSpec } from './docs/openapi.js';
 import { corsMiddleware } from './middleware/cors.js';
@@ -24,7 +25,11 @@ import { sendSuccess } from './utils/response.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-export const serverUploadsDir = path.resolve(__dirname, '../uploads');
+// Resolve uploads directory relative to project root or script location
+const projectRootDir = path.resolve(__dirname, '../../');
+export const serverUploadsDir = env.UPLOADS_DIR
+  ? path.resolve(projectRootDir, env.UPLOADS_DIR)
+  : path.resolve(__dirname, '../uploads');
 if (!fs.existsSync(serverUploadsDir)) {
   fs.mkdirSync(serverUploadsDir, { recursive: true });
 }
@@ -42,9 +47,10 @@ export function createApp() {
   app.use(express.json({ limit: '10mb' }));
 
   // Protected static snapshots route: requires valid JWT in Bearer header or ?token= query parameter
+  // QA Security Fix (Sub-Phase 11.4): Restrict snapshot access to PROCTOR, ADMIN, or the session examinee (IDOR protection)
   app.use(
     '/uploads',
-    (req, res, next) => {
+    async (req, res, next) => {
       const authHeader = req.headers.authorization;
       const token =
         (authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null) ||
@@ -63,8 +69,34 @@ export function createApp() {
       }
 
       try {
-        jwt.verify(token, env.JWT_SECRET);
-        next();
+        const decoded = jwt.verify(token, env.JWT_SECRET) as { sub?: number; role?: string };
+        if (decoded.role === 'PROCTOR' || decoded.role === 'ADMIN') {
+          next();
+          return;
+        }
+
+        // If STUDENT, strictly enforce IDOR check: only allow viewing their own session snapshots
+        const match = req.path.match(/^\/snapshot-(\d+)-/);
+        if (match && decoded.role === 'STUDENT' && decoded.sub) {
+          const snapshotSessionId = Number(match[1]);
+          const rows = await queryRows<RowDataPacket[]>(
+            'SELECT student_id FROM Exam_Sessions WHERE id = ? LIMIT 1',
+            [snapshotSessionId]
+          );
+          if (rows[0] && Number(rows[0].student_id) === Number(decoded.sub)) {
+            next();
+            return;
+          }
+        }
+
+        res.status(403).json({
+          success: false,
+          data: null,
+          error: {
+            code: 'FORBIDDEN',
+            message: 'Forensic snapshots are restricted to authorized proctors and the verified session examinee.',
+          },
+        });
       } catch {
         res.status(401).json({
           success: false,
@@ -74,7 +106,6 @@ export function createApp() {
             message: 'Invalid or expired snapshot authorization token.',
           },
         });
-        return;
       }
     },
     express.static(serverUploadsDir)

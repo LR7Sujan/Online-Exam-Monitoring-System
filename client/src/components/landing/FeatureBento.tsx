@@ -60,13 +60,13 @@ export function FeatureBento() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <span className="text-[11px] font-mono uppercase tracking-wider text-brand font-semibold flex items-center gap-1.5">
+          <span className="text-[11px] font-mono uppercase tracking-wider text-indigo-400 dark:text-indigo-400 font-semibold flex items-center gap-1.5">
             <Sparkles className="w-3.5 h-3.5" />
             Core Capabilities
           </span>
-          <h3 className="text-xl font-bold tracking-tight text-foreground mt-0.5">
+          <h2 className="text-xl font-bold tracking-tight text-foreground mt-0.5">
             Zero-Trust Architectural Foundation
-          </h3>
+          </h2>
         </div>
         <span className="text-xs font-mono text-muted-foreground hidden sm:inline">
           MySQL 8.0 + MediaPipe + React 19

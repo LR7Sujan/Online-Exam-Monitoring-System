@@ -200,7 +200,7 @@ export function StyleguidePage() {
             <span>AURORA BENTO DESIGN SYSTEM</span>
           </div>
           <h1 className="text-3xl font-extrabold text-foreground tracking-tight sm:text-4xl mt-2">
-            ProctorIQ UI Component Styleguide
+            ProctorIQ UI Component Styleguide — Mission Control Component Styleguide
           </h1>
           <p className="text-muted-foreground text-sm max-w-2xl leading-relaxed mt-1">
             Complete design specification: 20px radius bento surfaces, 1px hairline borders,
@@ -498,7 +498,7 @@ export function StyleguidePage() {
       <section className="space-y-4">
         <div className="flex items-center gap-2 text-brand font-mono text-xs uppercase tracking-wider font-semibold">
           <Shield className="w-4 h-4" />
-          <span>07. Severity Badges & Status Pills</span>
+          <span>07. SeverityBadge & StatusPill Indicators</span>
         </div>
 
         <GlassCard className="p-6 space-y-6">
@@ -687,7 +687,7 @@ export function StyleguidePage() {
 
           <div className="space-y-3 pt-4 border-t border-border">
             <h5 className="text-xs font-mono uppercase tracking-wider text-muted-foreground">
-              Toast Notifications (Sonner)
+              Toast Notification System (Sonner)
             </h5>
             <div className="flex flex-wrap items-center gap-3">
               <NeonButton variant="outline" size="sm" onClick={() => toast.info('System Check', 'Websocket heartbeat received.')}>
@@ -713,7 +713,7 @@ export function StyleguidePage() {
       <section className="space-y-4">
         <div className="flex items-center gap-2 text-brand font-mono text-xs uppercase tracking-wider font-semibold">
           <Layers className="w-4 h-4" />
-          <span>11. Skeletons & Empty State Placeholders</span>
+          <span>11. Skeleton Loaders & Empty State Placeholders</span>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

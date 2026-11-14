@@ -160,12 +160,12 @@ export function MockDashboardCard() {
           >
             {violations}
           </motion.div>
-          <div className="text-[9px] text-rose-500/80 font-medium">Auto-deducted</div>
+          <div className="text-[9px] text-rose-400 font-semibold">Auto-deducted</div>
         </div>
 
         <div className="p-2 rounded-xl bg-surface-elevated/60 border border-border/40">
           <div className="text-[10px] font-mono uppercase text-muted-foreground">DB Lock</div>
-          <div className="text-lg font-bold font-mono text-brand tracking-tight">ACID</div>
+          <div className="text-lg font-bold font-mono text-indigo-400 dark:text-indigo-400 tracking-tight">ACID</div>
           <div className="text-[9px] text-muted-foreground font-mono">FOR UPDATE</div>
         </div>
       </div>

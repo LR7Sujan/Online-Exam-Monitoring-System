@@ -42,17 +42,17 @@ logsRouter.post(
         throw new AppError(400, 'INVALID_BODY', 'logIds array and status are required.');
       }
 
-      for (const logId of logIds) {
-        await executeSql(
-          `UPDATE Proctoring_Logs
-              SET proctor_review_status = ?,
-                  reviewed_by = ?,
-                  reviewed_at = NOW(),
-                  review_notes = ?
-            WHERE id = ?`,
-          [finalStatus, req.user!.sub, reviewNotes ?? `Bulk review: ${finalStatus}`, logId]
-        );
-      }
+      // Single batched query instead of N+1 roundtrips
+      const placeholders = logIds.map(() => '?').join(',');
+      await executeSql(
+        `UPDATE Proctoring_Logs
+            SET proctor_review_status = ?,
+                reviewed_by = ?,
+                reviewed_at = NOW(),
+                review_notes = ?
+          WHERE id IN (${placeholders})`,
+        [finalStatus, req.user!.sub, reviewNotes ?? `Bulk review: ${finalStatus}`, ...logIds]
+      );
 
       const updatedRows = await queryRows<RowDataPacket[]>(
         `SELECT * FROM vw_ViolationAuditReport WHERE log_id IN (${logIds.map(() => '?').join(',')})`,

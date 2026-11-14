@@ -204,7 +204,7 @@ They prevent slow table scans and ensure sub-millisecond query execution under h
 
 ### 20. Why are violation snapshot images stored on the filesystem instead of as BLOBs in MySQL?
 1. **Database Sizing & Performance:** High-resolution JPEG images range from 100KB to 2MB. Storing millions of images as `LONGBLOB` in MySQL inflates database tablespaces, exhausts buffer pools, slows backups, and degrades query cache efficiency.
-2. **High-Performance Static Delivery:** Storing images on disk (`/server/uploads`) allows Node.js / Nginx to serve them via streaming file descriptors with HTTP caching headers, while the database only stores lightweight string paths (`snapshot_url`).
+2. **High-Performance Static Delivery:** Storing images on disk (`server/uploads`) allows Node.js / Nginx to serve them via streaming file descriptors with HTTP caching headers, while the database only stores lightweight string paths (`snapshot_url`).
 3. **Forensic Security:** Access to the static `/uploads` route is protected behind JWT authentication middleware, preventing unauthorized public access.
 
 ---

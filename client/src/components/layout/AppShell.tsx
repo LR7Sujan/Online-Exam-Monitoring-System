@@ -384,7 +384,7 @@ export function AppShell() {
                   : 'border-brand/40 bg-brand/10 text-brand shadow-sm'
               }`}
               title={audioMuted ? 'Sound Alerts: Disabled (Click to Enable)' : 'Sound Alerts: Active'}
-              aria-label={audioMuted ? 'Enable Sound Alerts' : 'Mute Sound Alerts'}
+              aria-label={audioMuted ? 'Muted, click to enable sound alerts' : 'Audio On, click to mute sound alerts'}
             >
               {audioMuted ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
               <span className="hidden md:inline text-[11px] font-medium">{audioMuted ? 'Muted' : 'Audio On'}</span>

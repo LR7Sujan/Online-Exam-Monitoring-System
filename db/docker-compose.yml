@@ -15,7 +15,11 @@ services:
       - ./migrations/001_init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
       - ./migrations/002_improvements.sql:/docker-entrypoint-initdb.d/02-improvements.sql:ro
       - ./migrations/003_session_security.sql:/docker-entrypoint-initdb.d/03-session-security.sql:ro
-      - ./seed.sql:/docker-entrypoint-initdb.d/04-seed.sql:ro
+      # Mount migration 004 so snapshot forensic support & triggers are applied before seed.sql
+      - ./migrations/004_snapshot_support.sql:/docker-entrypoint-initdb.d/04-snapshot-support.sql:ro
+      # Mount migration 005 performance indexes
+      - ./migrations/005_performance_indexes.sql:/docker-entrypoint-initdb.d/05-performance-indexes.sql:ro
+      - ./seed.sql:/docker-entrypoint-initdb.d/06-seed.sql:ro
     command:
       - --default-authentication-plugin=mysql_native_password
       - --character-set-server=utf8mb4

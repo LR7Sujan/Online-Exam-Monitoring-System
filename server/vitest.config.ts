@@ -6,8 +6,13 @@ export default defineConfig({
       'tests/scoring.test.ts',
       'tests/sqlGuarantees.test.ts',
       'tests/apiSecurity.test.ts',
+      'tests/allEndpoints.api.test.ts',
+      'tests/securityProbes.test.ts',
+      'tests/realtimeAndLoad.test.ts',
+      'tests/regressionBugAudit.test.ts',
     ],
     testTimeout: 25000,
+    fileParallelism: false,
   },
 });
 

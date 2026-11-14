@@ -156,6 +156,31 @@ adminRouter.get('/audit-report/export', async (_req, res, next) => {
   }
 });
 
+// QA Fix (Sub-Phase 11.3): GET /api/admin/system-stats — table counts and health diagnostics
+adminRouter.get('/system-stats', async (_req, res, next) => {
+  try {
+    const [userCount, examCount, sessionCount, logCount] = await Promise.all([
+      queryRows<RowDataPacket[]>('SELECT COUNT(*) AS c FROM Users'),
+      queryRows<RowDataPacket[]>('SELECT COUNT(*) AS c FROM Exams'),
+      queryRows<RowDataPacket[]>('SELECT COUNT(*) AS c FROM Exam_Sessions'),
+      queryRows<RowDataPacket[]>('SELECT COUNT(*) AS c FROM Proctoring_Logs'),
+    ]);
+
+    sendSuccess(res, {
+      status: 'healthy',
+      database: env.DB_NAME,
+      tableCounts: {
+        Users: Number(userCount[0]?.c ?? 0),
+        Exams: Number(examCount[0]?.c ?? 0),
+        Exam_Sessions: Number(sessionCount[0]?.c ?? 0),
+        Proctoring_Logs: Number(logCount[0]?.c ?? 0),
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // GET /api/admin/db-telemetry — live DBMS inspection (triggers, procedures, views, table stats)
 adminRouter.get('/db-telemetry', async (_req, res, next) => {
   try {

@@ -152,6 +152,7 @@ export function AdminOverviewDashboard() {
 
   return (
     <div className="space-y-6">
+      <h2 className="sr-only">Assessment Telemetry & Integrity Analytics Overview</h2>
       {/* 1. TOP KPI CARDS (Bento Row) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
@@ -193,7 +194,11 @@ export function AdminOverviewDashboard() {
       {/* 2. VIOLATIONS OVER TIME (2/3) + VIOLATION TYPE DISTRIBUTION (1/3) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Area Chart: Violations Over Time */}
-        <div className="lg:col-span-2 rounded-2xl border border-border bg-surface p-5 shadow-sm space-y-4">
+        <div
+          role="region"
+          aria-label="Violations telemetry timeline area chart"
+          className="lg:col-span-2 rounded-2xl border border-border bg-surface p-5 shadow-sm space-y-4"
+        >
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
@@ -291,7 +296,11 @@ export function AdminOverviewDashboard() {
         </div>
 
         {/* Animated Donut: Violation Type Distribution */}
-        <div className="rounded-2xl border border-border bg-surface p-5 shadow-sm space-y-4">
+        <div
+          role="region"
+          aria-label="Violation categories distribution chart"
+          className="rounded-2xl border border-border bg-surface p-5 shadow-sm space-y-4"
+        >
           <div>
             <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
               <PieChartIcon className="w-4 h-4 text-violet-500" />
@@ -424,7 +433,11 @@ export function AdminOverviewDashboard() {
       {/* 4. INTEGRITY STATUS PER EXAM (stacked bars) + TRUST SCORE HISTOGRAM */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Stacked Bar Chart: Integrity Status Split Per Exam */}
-        <div className="rounded-2xl border border-border bg-surface p-5 shadow-sm space-y-4">
+        <div
+          role="region"
+          aria-label="Integrity status split per assessment stacked bar chart"
+          className="rounded-2xl border border-border bg-surface p-5 shadow-sm space-y-4"
+        >
           <div>
             <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
               <Layers className="w-4 h-4 text-emerald-500" />
@@ -435,7 +448,7 @@ export function AdminOverviewDashboard() {
             </p>
           </div>
 
-          <div className="h-64 w-full">
+          <div className="h-64 w-full" aria-hidden="true">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
                 data={data?.integritySplit ?? []}
@@ -473,10 +486,17 @@ export function AdminOverviewDashboard() {
               </BarChart>
             </ResponsiveContainer>
           </div>
+          <div className="sr-only">
+            {(data?.integritySplit ?? []).map((e) => `${e.exam_title}: ${e.clean_count} clean, ${e.flagged_count} flagged, ${e.disqualified_count} disqualified`).join('; ')}
+          </div>
         </div>
 
         {/* Histogram: Average Trust Score Distribution */}
-        <div className="rounded-2xl border border-border bg-surface p-5 shadow-sm space-y-4">
+        <div
+          role="region"
+          aria-label="Candidate trust score distribution histogram"
+          className="rounded-2xl border border-border bg-surface p-5 shadow-sm space-y-4"
+        >
           <div>
             <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
               <BarChart3 className="w-4 h-4 text-brand" />
@@ -487,7 +507,7 @@ export function AdminOverviewDashboard() {
             </p>
           </div>
 
-          <div className="h-64 w-full">
+          <div className="h-64 w-full" aria-hidden="true">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
                 data={histogramData}
@@ -517,6 +537,9 @@ export function AdminOverviewDashboard() {
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
+          </div>
+          <div className="sr-only">
+            {histogramData.map((h) => `Score ${h.range}: ${h.count} candidates`).join('; ')}
           </div>
         </div>
       </div>

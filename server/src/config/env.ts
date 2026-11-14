@@ -6,11 +6,13 @@ import { z } from 'zod';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Load .env from /server/.env or monorepo root /.env using Node 22 built-in loader
+// Resolve .env candidate paths relative to script location / project root
 const candidateEnvPaths = [
+  process.env.ENV_FILE,
+  process.env.DOTENV_CONFIG_PATH,
   path.resolve(__dirname, '../../.env'),
   path.resolve(__dirname, '../../../.env'),
-];
+].filter(Boolean) as string[];
 
 for (const envPath of candidateEnvPaths) {
   if (existsSync(envPath)) {
@@ -35,6 +37,11 @@ const envSchema = z.object({
     .default('dev-proctoriq-jwt-secret-change-in-production'),
   JWT_EXPIRES_IN: z.string().default('8h'),
   BCRYPT_ROUNDS: z.coerce.number().int().min(8).max(14).default(10),
+  // Configurable paths relative to project root
+  DB_SCHEMA_PATH: z.string().default('./db/schema.sql'),
+  DB_MIGRATIONS_DIR: z.string().default('./db/migrations'),
+  DB_SEED_PATH: z.string().default('./db/seed.sql'),
+  UPLOADS_DIR: z.string().default('./server/uploads'),
 });
 
 const parsed = envSchema.safeParse(process.env);

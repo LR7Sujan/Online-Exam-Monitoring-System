@@ -70,7 +70,7 @@ sequenceDiagram
     ClientHook->>API: POST /api/sessions/:id/violation (JWT, code, snapshot)
     
     API->>API: Check 3-second debounce window
-    API->>API: Write snapshot to /server/uploads/snapshot-*.jpg
+    API->>API: Write snapshot to server/uploads/snapshot-*.jpg
     
     API->>MySQL: INSERT INTO Proctoring_Logs (session_id, violation_type_id, snapshot_url)
     activate MySQL
@@ -204,7 +204,7 @@ erDiagram
 2. **MediaPipe Face Detection Integration:** Utilizes MediaPipe BlazeFace (`@mediapipe/face_detection`) client-side with native fallback to `window.FaceDetector` and optical contrast analysis.
 3. **5-Second Consecutive Rule:** If 0 faces are detected across 5 consecutive samples (5 seconds), the engine flags a `NO_FACE` violation.
 4. **Multi-Candidate Detection:** If 2 or more faces are detected in a single frame, a `MULTIPLE_FACES` violation (-35 PTS) is triggered immediately.
-5. **Snapshot Ingestion:** On each violation, a compressed JPEG snapshot is converted to base64, transmitted to `/api/sessions/:id/violation`, written to `/server/uploads/snapshot-*.jpg`, and stored as `snapshot_url`.
+5. **Snapshot Ingestion:** On each violation, a compressed JPEG snapshot is converted to base64, transmitted to `/api/sessions/:id/violation`, written to `server/uploads/snapshot-*.jpg`, and stored as `snapshot_url`.
 6. **Authenticated Static Serving:** The static route `/uploads` is protected with JWT verification middleware (`Authorization: Bearer <token>` or `?token=<jwt>`), preventing unauthenticated public scraping of student photos.
 
 ---

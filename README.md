@@ -8,7 +8,7 @@ All core academic integrity invariants—penalty deductions, dynamic trust score
 
 ## ⚡ Quick Start (Under 5 Commands)
 
-Get the complete system running locally with seeded mock exams and virtual students in under 2 minutes:
+Get the complete system running locally with seeded mock exams and virtual students in under 2 minutes (run all commands from the project root):
 
 ```bash
 # 1. Install dependencies across monorepo
@@ -116,19 +116,68 @@ For complete architectural details, sequence diagrams, and concurrency locking s
 
 ---
 
-## 🧪 Automated Testing Suite
+## 🧪 How to Run Tests
 
-ProctorIQ features comprehensive unit, integration, SQL guarantee, and end-to-end browser tests:
+ProctorIQ features a multi-tiered automated verification matrix covering database integrity, API security contracts, realtime invariants, Playwright end-to-end browser journeys, and Google Lighthouse production audits.
+
+All test suites can be executed from the monorepo root:
+
+### 1. Database & DBMS Invariants Verification Suite
+Verifies all 8 domain tables, referential foreign key cascades, domain CHECK constraints, trigger-level score deductions, anti-tamper locks, `sp_SubmitAndGradeExam` negative marking, and audit log immutability (SQLSTATE 45000):
 
 ```bash
-# Run Vitest test suites (Scoring logic, SQL triggers, API security)
-npm run test:vitest
+# Initialize and seed database
+npm run db:init
 
-# Run backend unit and contract tests (Node test runner)
+# Run all 41 database guarantee tests
+npm run test:db
+```
+
+### 2. Server Unit, Integration, Security & Regression Suites
+Executes 144 server tests covering Zod validation, JWT RBAC, OWASP security probes (SQLi, IDOR, XSS, rate limiting), 50-student chaos load simulator, and permanent regression verification:
+
+```bash
+# Run Node.js TAP contract & migration parity tests (8 tests)
 npm run test:server
 
-# Run Playwright E2E browser test (Login -> Exam -> Violations -> Auto-terminate -> Result)
+# Run Vitest test suites including security probes & bug regressions (136 tests)
+npm run test:vitest
+
+# Or run both server suites consecutively:
+npm --prefix server test
+```
+
+### 3. End-to-End Playwright Browser Journeys
+Executes 29 browser tests using headless Chromium with virtual webcam emulation. Tests cover all role user journeys, fullscreen kiosk lock, devtools detection, offline answer queuing, and visual responsive audits:
+
+```bash
+# Run all Playwright E2E suites sequentially across all roles
 npm run test:e2e
+
+# Or run Playwright with UI inspector
+npm --prefix client run test:e2e -- --ui
+```
+
+### 4. Google Lighthouse Production Audits
+Audits Performance ($\ge 85$), Accessibility ($\ge 95$), and Best Practices ($\ge 90$) across all 4 key views (`/`, `/student/session/1`, `/proctor`, `/admin`):
+
+```bash
+# Run headless Lighthouse audit runner against production preview server
+node client/tests/scripts/runLighthouseSuite.mjs
+```
+
+### 5. Static Code Quality, Typecheck & Production Build
+Ensures zero linting warnings, zero TypeScript errors, and verifies tree-shaken production bundles:
+
+```bash
+# ESLint across client and server
+npm run lint
+
+# TypeScript strict type checking
+npm run typecheck
+
+# Full production build (tsc compilation + Vite production bundle)
+npm run build
 ```
 
 ---

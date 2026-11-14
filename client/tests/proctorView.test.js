@@ -10,10 +10,14 @@
 // ============================================================================
 
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import path, { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { io as ClientIO } from 'socket.io-client';
 import { executeSql } from '../../server/dist/config/db.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const API_URL = process.env.VITE_API_URL || 'http://localhost:4000/api';
 const SOCKET_URL = process.env.VITE_SOCKET_URL || 'http://localhost:4000';
@@ -223,7 +227,11 @@ async function testProctorMissionControl() {
 
   // Step 6: Verify Bundled Client Frontend Assets
   console.log('\n[6/6] Verifying Bundled Frontend Assets for Proctor View...');
-  const distAssetsDir = join(process.cwd(), 'client', 'dist', 'assets');
+  // Resolve client dist assets directory relative to project root or current working directory
+  const rootDir = path.resolve(__dirname, '..', '..');
+  const distAssetsDir = existsSync(join(rootDir, 'client', 'dist', 'assets'))
+    ? join(rootDir, 'client', 'dist', 'assets')
+    : join(process.cwd(), 'dist', 'assets');
   const files = readdirSync(distAssetsDir);
   const jsFiles = files.filter((f) => f.endsWith('.js'));
   assert.ok(jsFiles.length > 0, 'Production JS bundles must exist');

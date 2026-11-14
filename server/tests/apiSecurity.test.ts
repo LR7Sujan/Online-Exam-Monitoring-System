@@ -1,4 +1,8 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import type { Server } from 'node:http';
+import { createServer } from 'node:http';
+import { createApp } from '../src/app.js';
+import { initSocketServer } from '../src/realtime/socket.js';
 
 const API_BASE = 'http://localhost:4000/api';
 
@@ -6,6 +10,27 @@ describe('API Security & Forensic Access Enforcement', () => {
   let studentToken: string;
   let refreshToken: string;
   let activeSessionId: number;
+  let serverInstance: Server | null = null;
+
+  // Ensure test server is listening on port 4000 if not already running externally
+  beforeAll(async () => {
+    try {
+      const res = await fetch('http://localhost:4000/api/health');
+      if (res.ok) return;
+    } catch {
+      // Port 4000 not listening; boot in-process server instance
+    }
+    const app = createApp();
+    serverInstance = createServer(app);
+    initSocketServer(serverInstance);
+    await new Promise<void>((resolve) => serverInstance!.listen(4000, '127.0.0.1', resolve));
+  });
+
+  afterAll(async () => {
+    if (serverInstance) {
+      await new Promise<void>((resolve) => serverInstance!.close(() => resolve()));
+    }
+  });
 
   it('enforces Helmet secure HTTP headers on all API responses', async () => {
     const res = await fetch('http://localhost:4000/api/health');

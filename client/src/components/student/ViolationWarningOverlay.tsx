@@ -26,19 +26,17 @@ export function ViolationWarningOverlay({
       return;
     }
 
+    if (countdown <= 0) {
+      onProceedToResult?.();
+      return;
+    }
+
     const timer = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          onProceedToResult?.();
-          return 0;
-        }
-        return prev - 1;
-      });
+      setCountdown((prev) => Math.max(0, prev - 1));
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [isTerminated, onProceedToResult]);
+  }, [isTerminated, countdown, onProceedToResult]);
 
   if (!warning) return null;
 

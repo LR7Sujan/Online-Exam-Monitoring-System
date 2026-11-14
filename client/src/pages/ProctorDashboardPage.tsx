@@ -187,7 +187,6 @@ export function ProctorDashboardPage({ initialTab = 'monitor' }: { initialTab?: 
     socket.on('connect', onConnect);
     socket.on('disconnect', onDisconnect);
     socket.on('violation:new', onViolation);
-    socket.on('violation:logged', onViolation);
     socket.on('session:terminated', onSessionTerminated);
     socket.on('session:update', onSessionUpdate);
     socket.on('session:reinstated', onSessionUpdate);
@@ -198,7 +197,6 @@ export function ProctorDashboardPage({ initialTab = 'monitor' }: { initialTab?: 
       socket.off('connect', onConnect);
       socket.off('disconnect', onDisconnect);
       socket.off('violation:new', onViolation);
-      socket.off('violation:logged', onViolation);
       socket.off('session:terminated', onSessionTerminated);
       socket.off('session:update', onSessionUpdate);
       socket.off('session:reinstated', onSessionUpdate);
@@ -380,6 +378,7 @@ export function ProctorDashboardPage({ initialTab = 'monitor' }: { initialTab?: 
                 <select
                   value={selectedExamId}
                   onChange={(e) => setSelectedExamId(e.target.value)}
+                  aria-label="Filter candidates by assessment"
                   className="rounded-xl border border-border bg-background px-3.5 py-2 text-xs text-foreground focus:border-brand focus:ring-1 focus:ring-brand focus:outline-none font-mono"
                 >
                   <option value="ALL">All Active Exams ({exams.length})</option>
@@ -394,6 +393,7 @@ export function ProctorDashboardPage({ initialTab = 'monitor' }: { initialTab?: 
                 <select
                   value={selectedStatus}
                   onChange={(e) => setSelectedStatus(e.target.value)}
+                  aria-label="Filter candidates by session status"
                   className="rounded-xl border border-border bg-background px-3.5 py-2 text-xs text-foreground focus:border-brand focus:ring-1 focus:ring-brand focus:outline-none font-mono"
                 >
                   <option value="ALL">All Statuses</option>
@@ -407,6 +407,7 @@ export function ProctorDashboardPage({ initialTab = 'monitor' }: { initialTab?: 
                 <select
                   value={selectedSeverity}
                   onChange={(e) => setSelectedSeverity(e.target.value)}
+                  aria-label="Filter candidates by severity risk level"
                   className="rounded-xl border border-border bg-background px-3.5 py-2 text-xs text-foreground focus:border-brand focus:ring-1 focus:ring-brand focus:outline-none font-mono"
                 >
                   <option value="ALL">All Severities</option>
@@ -438,6 +439,7 @@ export function ProctorDashboardPage({ initialTab = 'monitor' }: { initialTab?: 
             <div className="grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-4 gap-6 items-start">
               {/* Student Tiles Grid (2 cols on md, 2 or 3 cols on xl) */}
               <div className="lg:col-span-2 xl:col-span-3">
+                <h2 className="sr-only">Active Candidate Surveillance Grid</h2>
                 {displaySessions.length === 0 ? (
                   <div className="rounded-3xl border border-border bg-surface p-16 text-center space-y-3">
                     <Shield className="w-10 h-10 text-brand/40 mx-auto" />

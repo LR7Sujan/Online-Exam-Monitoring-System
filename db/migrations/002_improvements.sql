@@ -1,6 +1,6 @@
 -- ============================================================================
 -- ProctorIQ Migration 002: Integrity Hardening, Auto-Timeout & Analytics
--- Applies cleanly on top of /db/migrations/001_init.sql
+-- Applies cleanly on top of db/migrations/001_init.sql
 -- ============================================================================
 
 USE proctoriq;
@@ -16,6 +16,8 @@ CREATE INDEX idx_sessions_reinstatement ON Exam_Sessions (needs_reinstatement, s
 -- ----------------------------------------------------------------------------
 -- Clean drop of objects replaced or added in 002
 -- ----------------------------------------------------------------------------
+DROP TRIGGER IF EXISTS trg_before_violation_insert;
+DROP TRIGGER IF EXISTS trg_after_violation_insert;
 DROP TRIGGER IF EXISTS trg_after_violation_review_update;
 DROP TRIGGER IF EXISTS trg_after_review_update;
 DROP TRIGGER IF EXISTS trg_before_log_delete;
@@ -28,6 +30,81 @@ DROP VIEW IF EXISTS vw_ExamAnalytics;
 DROP VIEW IF EXISTS vw_ViolationHeatmap;
 
 DELIMITER $$
+
+-- ----------------------------------------------------------------------------
+-- 1b. Violation Triggers:
+--     trg_before_violation_insert logs violation metadata without aborting on closed
+--     sessions, and trg_after_violation_insert deducts trust score and auto-terminates
+--     only when session status is IN_PROGRESS. Violations on closed sessions do nothing.
+-- ----------------------------------------------------------------------------
+CREATE TRIGGER trg_before_violation_insert
+BEFORE INSERT ON Proctoring_Logs
+FOR EACH ROW
+BEGIN
+  DECLARE v_penalty TINYINT UNSIGNED;
+  DECLARE v_session_status ENUM('IN_PROGRESS', 'SUBMITTED', 'TERMINATED_CHEATING', 'TIMED_OUT');
+
+  SELECT status
+    INTO v_session_status
+    FROM Exam_Sessions
+   WHERE id = NEW.session_id;
+
+  IF v_session_status IS NULL THEN
+    SIGNAL SQLSTATE '45000'
+      SET MESSAGE_TEXT = 'Cannot log violation: exam session not found.';
+  END IF;
+
+  SELECT penalty_points
+    INTO v_penalty
+    FROM Violation_Types
+   WHERE id = NEW.violation_type_id;
+
+  IF v_penalty IS NULL THEN
+    SIGNAL SQLSTATE '45000'
+      SET MESSAGE_TEXT = 'Cannot log violation: invalid violation_type_id.';
+  END IF;
+
+  SET NEW.penalty_applied = v_penalty;
+  IF NEW.occurred_at IS NULL THEN
+    SET NEW.occurred_at = CURRENT_TIMESTAMP;
+  END IF;
+END$$
+
+CREATE TRIGGER trg_after_violation_insert
+AFTER INSERT ON Proctoring_Logs
+FOR EACH ROW
+BEGIN
+  DECLARE v_current_trust TINYINT UNSIGNED;
+  DECLARE v_min_trust TINYINT UNSIGNED;
+  DECLARE v_session_status ENUM('IN_PROGRESS', 'SUBMITTED', 'TERMINATED_CHEATING', 'TIMED_OUT');
+  DECLARE v_new_trust INT;
+
+  SELECT es.trust_score, es.status, e.min_trust_score
+    INTO v_current_trust, v_session_status, v_min_trust
+    FROM Exam_Sessions es
+    JOIN Exams e ON e.id = es.exam_id
+   WHERE es.id = NEW.session_id;
+
+  -- Violations on a non-IN_PROGRESS session do nothing to session state
+  IF v_session_status = 'IN_PROGRESS' THEN
+    SET v_new_trust = GREATEST(
+      0,
+      CAST(v_current_trust AS SIGNED) - CAST(NEW.penalty_applied AS SIGNED)
+    );
+
+    IF v_new_trust < v_min_trust THEN
+      UPDATE Exam_Sessions
+         SET trust_score = v_new_trust,
+             status = 'TERMINATED_CHEATING',
+             ended_at = COALESCE(ended_at, NOW())
+       WHERE id = NEW.session_id;
+    ELSE
+      UPDATE Exam_Sessions
+         SET trust_score = v_new_trust
+       WHERE id = NEW.session_id;
+    END IF;
+  END IF;
+END$$
 
 -- ----------------------------------------------------------------------------
 -- 1c. Make Proctoring_Logs immutable (no deletes; only proctor_review_status
@@ -253,6 +330,9 @@ BEGIN
 
     IF v_final_status = 'TERMINATED_CHEATING' OR v_trust_score < v_min_trust_score THEN
       SET v_integrity_status = 'DISQUALIFIED';
+      -- Disqualified / terminated cheater sessions receive 0 score and 0 percentage
+      SET v_raw_score = 0.00;
+      SET v_percentage = 0.00;
     ELSEIF v_trust_score < 100 OR v_active_violations > 0 THEN
       SET v_integrity_status = 'FLAGGED';
     ELSE

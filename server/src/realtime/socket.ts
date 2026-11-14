@@ -93,9 +93,10 @@ export function emitToProctors(event: string, payload: unknown): void {
   ioInstance.to('role:PROCTOR').to('role:ADMIN').emit(event, payload);
 }
 
-export function emitToStudent(studentId: number, sessionId: number, event: string, payload: unknown): void {
+export function emitToStudent(studentId: number, _sessionId: number, event: string, payload: unknown): void {
   if (!ioInstance) return;
-  ioInstance.to(`user:${studentId}`).to(`session:${sessionId}`).emit(event, payload);
+  // Strict tenant/user isolation: route exclusively to the target student's socket room
+  ioInstance.to(`user:${studentId}`).emit(event, payload);
 }
 
 export function emitViolationNew(
@@ -106,7 +107,6 @@ export function emitViolationNew(
 ): void {
   if (!ioInstance) return;
   emitToProctors('violation:new', proctorPayload);
-  emitToProctors('violation:logged', proctorPayload);
   emitToProctors('session:update', proctorPayload);
   emitToStudent(studentId, sessionId, 'session:update', studentUpdate);
   emitToStudent(studentId, sessionId, 'violation:logged', {

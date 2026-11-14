@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -64,6 +65,15 @@ export function StudentDetailDrawer({ sessionId, onClose }: StudentDetailDrawerP
 
   const [terminateModalOpen, setTerminateModalOpen] = useState<boolean>(false);
   const [terminateReason, setTerminateReason] = useState<string>('Proctor detected non-compliant examination behavior.');
+
+  useEffect(() => {
+    if (!sessionId) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [sessionId, onClose]);
 
   // Fetch session inspection and audit timeline
   const inspectQuery = useQuery({
@@ -181,11 +191,14 @@ export function StudentDetailDrawer({ sessionId, onClose }: StudentDetailDrawerP
     label: `Current (${currentScore}%)`,
   });
 
-  return (
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex justify-end">
+      <div key="student-drawer-root" className="fixed inset-0 z-50 flex justify-end">
         {/* Backdrop */}
         <motion.div
+          key="drawer-backdrop"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -195,6 +208,10 @@ export function StudentDetailDrawer({ sessionId, onClose }: StudentDetailDrawerP
 
         {/* Slide-over Container */}
         <motion.div
+          key="drawer-slideover"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Student Inspection Details"
           initial={{ x: '100%' }}
           animate={{ x: 0 }}
           exit={{ x: '100%' }}
@@ -227,6 +244,7 @@ export function StudentDetailDrawer({ sessionId, onClose }: StudentDetailDrawerP
                 onClick={onClose}
                 className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
                 title="Close Inspector"
+                aria-label="Close drawer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -452,10 +470,12 @@ export function StudentDetailDrawer({ sessionId, onClose }: StudentDetailDrawerP
                     const isDismissed = log.proctor_review_status === 'DISMISSED';
 
                     const token = useAuthStore.getState().token;
+                    const logRecord = log as unknown as Record<string, unknown>;
+                    const meta = log.evidence_meta as Record<string, unknown> | undefined;
                     const rawUrl =
-                      (log as any).snapshot_url ||
-                      (log.evidence_meta as any)?.snapshot_url ||
-                      (log.evidence_meta as any)?.snapshotUrl;
+                      (typeof logRecord.snapshot_url === 'string' ? logRecord.snapshot_url : undefined) ||
+                      (typeof meta?.snapshot_url === 'string' ? meta.snapshot_url : undefined) ||
+                      (typeof meta?.snapshotUrl === 'string' ? meta.snapshotUrl : undefined);
                     const serverHost = (import.meta.env.VITE_API_URL ?? 'http://localhost:4000/api').replace(
                       /\/api\/?$/,
                       ''
@@ -612,7 +632,7 @@ export function StudentDetailDrawer({ sessionId, onClose }: StudentDetailDrawerP
 
       {/* LIGHTBOX MODAL */}
       {lightboxImage && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-background/85 backdrop-blur-xl">
+        <div key="lightbox-modal" className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-background/85 backdrop-blur-xl">
           <motion.div
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
@@ -655,7 +675,7 @@ export function StudentDetailDrawer({ sessionId, onClose }: StudentDetailDrawerP
 
       {/* WARN CANDIDATE MODAL */}
       {warnModalOpen && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-background/80 backdrop-blur-md">
+        <div key="warn-modal" className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-background/80 backdrop-blur-md">
           <motion.div
             initial={{ scale: 0.92, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
@@ -726,7 +746,7 @@ export function StudentDetailDrawer({ sessionId, onClose }: StudentDetailDrawerP
 
       {/* FORCE TERMINATE MODAL */}
       {terminateModalOpen && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-background/80 backdrop-blur-md">
+        <div key="terminate-modal" className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-background/80 backdrop-blur-md">
           <motion.div
             initial={{ scale: 0.92, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
@@ -778,6 +798,7 @@ export function StudentDetailDrawer({ sessionId, onClose }: StudentDetailDrawerP
           </motion.div>
         </div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 }

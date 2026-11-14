@@ -3,6 +3,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import type { RowDataPacket } from 'mysql2/promise';
 import { executeSql, pool, queryRows } from '../config/db.js';
+import { env } from '../config/env.js';
 import { startOrResumeExamSession } from '../routes/exams.routes.js';
 import {
   emitSessionTerminated,
@@ -13,7 +14,11 @@ import type { ExamSessionRow, ViolationTypeRow } from '../types/api.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const uploadsDir = path.resolve(__dirname, '../../uploads');
+// Resolve uploads directory relative to project root or script location
+const projectRootDir = path.resolve(__dirname, '../../../');
+const uploadsDir = env.UPLOADS_DIR
+  ? path.resolve(projectRootDir, env.UPLOADS_DIR)
+  : path.resolve(__dirname, '../../uploads');
 
 export type ChaosLevel = 'low' | 'medium' | 'high';
 
@@ -110,7 +115,7 @@ class SimulatorEngine {
     }
 
     const examId = config.examId ?? 1;
-    const studentCount = Math.max(1, Math.min(30, config.studentCount ?? 12));
+    const studentCount = Math.max(1, Math.min(100, config.studentCount ?? 12));
     const speed = Math.max(0.5, Math.min(5, config.speed ?? 1.5));
     const chaos = config.chaos ?? 'medium';
 

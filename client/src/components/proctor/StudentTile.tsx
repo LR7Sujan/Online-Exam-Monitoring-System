@@ -107,9 +107,9 @@ export function StudentTile({
           </motion.div>
 
           <div className="min-w-0 flex-1">
-            <h4 className="text-sm font-bold text-foreground truncate group-hover:text-brand transition-colors">
+            <h3 className="text-sm font-bold text-foreground truncate group-hover:text-brand transition-colors">
               {session.student_name}
-            </h4>
+            </h3>
             <p className="text-[11px] font-mono text-muted-foreground truncate">
               {session.exam_title}
             </p>
@@ -175,7 +175,7 @@ export function StudentTile({
           </span>
         </div>
 
-        <span className="flex items-center gap-0.5 text-brand group-hover:underline text-[11px] font-medium">
+        <span className="flex items-center gap-0.5 text-indigo-400 dark:text-indigo-400 group-hover:underline text-[11px] font-semibold">
           Inspect <ArrowUpRight className="w-3 h-3" />
         </span>
       </div>

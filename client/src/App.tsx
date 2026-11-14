@@ -8,18 +8,20 @@ import { ThemeProvider } from './context/ThemeContext';
 import { AppShell } from './components/layout/AppShell';
 import { LoginPage, RegisterPage } from './pages/AuthPages';
 import { PageSkeleton } from './components/ui/Skeleton';
+import { StyleguidePage } from './pages/StyleguidePage';
 import { useAuthStore } from './store/authStore';
 import type { UserRole } from './types/domain';
 
 // Lazy-loaded heavy pages and dashboard routes
 const LandingPage = lazy(() => import('./pages/LandingPage').then((m) => ({ default: m.LandingPage })));
-const StyleguidePage = lazy(() => import('./pages/StyleguidePage').then((m) => ({ default: m.StyleguidePage })));
+
 const AdminDashboardPage = lazy(() => import('./pages/AdminDashboardPage').then((m) => ({ default: m.AdminDashboardPage })));
 const SimulatorPage = lazy(() => import('./pages/SimulatorPage').then((m) => ({ default: m.SimulatorPage })));
 const ProctorDashboardPage = lazy(() => import('./pages/ProctorDashboardPage').then((m) => ({ default: m.ProctorDashboardPage })));
 const StudentDashboardPage = lazy(() => import('./pages/StudentDashboardPage').then((m) => ({ default: m.StudentDashboardPage })));
 const StudentExamPage = lazy(() => import('./pages/StudentExamPage').then((m) => ({ default: m.StudentExamPage })));
 const StudentResultPage = lazy(() => import('./pages/StudentResultPage').then((m) => ({ default: m.StudentResultPage })));
+const NotFoundPage = lazy(() => import('./pages/NotFoundPage').then((m) => ({ default: m.NotFoundPage })));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -151,7 +153,7 @@ export function App() {
                     />
                   </Route>
 
-                  <Route path="*" element={<Navigate to="/" replace />} />
+                  <Route path="*" element={<NotFoundPage />} />
                 </Routes>
               </Suspense>
             </BrowserRouter>

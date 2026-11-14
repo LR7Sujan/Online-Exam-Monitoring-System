@@ -12,9 +12,12 @@
     "dev:client": "npm --prefix client run dev",
     "build": "npm --prefix server run build && npm --prefix client run build",
     "lint": "npm --prefix server run lint && npm --prefix client run lint",
+    "typecheck": "npm --prefix server run typecheck && npm --prefix client run typecheck",
     "simulate": "npm --prefix server run simulate --",
     "demo": "node scripts/demo.js",
+    "test": "npm run test:db && npm run test:server && npm run test:e2e",
     "test:server": "npm --prefix server test",
+    "test:db": "npm --prefix server run test:db",
     "test:vitest": "npm --prefix server run test:vitest",
     "test:e2e": "npm --prefix client run test:e2e"
   },

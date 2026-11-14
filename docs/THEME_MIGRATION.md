@@ -11,7 +11,7 @@
 The objective of this migration is to transition the ProctorIQ user interface from its initial high-contrast Cyberpunk/Neon dark theme (`#0A0B14`, glowing cyan `#22D3EE`, glowing magenta `#F43F5E`) into a unified, accessible, and modern **Aurora Bento** aesthetic.
 
 ### Hard Engineering Boundaries
-- **No Functional Logic Alterations**: Zero changes to `/db`, `/server`, MySQL stored procedures, triggers, views, API schemas, routes, WebSockets (Socket.IO events), Zustand stores, React Query hooks, `useProctoring` hooks, or test assertions.
+- **No Functional Logic Alterations**: Zero changes to `db/`, `server/`, MySQL stored procedures, triggers, views, API schemas, routes, WebSockets (Socket.IO events), Zustand stores, React Query hooks, `useProctoring` hooks, or test assertions.
 - **Component Preservation**: Every component name, prop interface, and file export is strictly preserved. All components are restyled in place so existing imports and tests remain 100% functional.
 - **Dual-Theme Architecture**: Support for **Dark** (default, `#09090B`), **Light** (`#FAFAFA`), and **System** themes with zero layout thrash and synchronized CSS variables.
 - **Allowed Dependencies**: `shadcn/ui` (Radix primitives), `geist` (Geist Sans & Geist Mono), `sonner`, `cmdk`.

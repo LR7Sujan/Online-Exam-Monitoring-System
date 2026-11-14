@@ -203,11 +203,15 @@ export function StudentResultPage() {
             </div>
 
             {/* 2. Donut Breakdown Chart */}
-            <div className="flex flex-col items-center justify-center text-center p-6 rounded-2xl border border-border bg-surface-elevated/70 space-y-2">
+            <div
+              role="region"
+              aria-label={`Performance breakdown chart: ${rawScore} marks earned, ${wrongOrLostMarks} marks lost out of ${totalMarks} total marks`}
+              className="flex flex-col items-center justify-center text-center p-6 rounded-2xl border border-border bg-surface-elevated/70 space-y-2"
+            >
               <span className="text-xs font-mono uppercase tracking-wider text-muted-foreground">
                 Performance Breakdown
               </span>
-              <div className="w-36 h-36 relative">
+              <div className="w-36 h-36 relative" aria-hidden="true">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
@@ -240,12 +244,18 @@ export function StudentResultPage() {
                   <span className="text-[9px] font-mono text-muted-foreground">PTS</span>
                 </div>
               </div>
+              {/* Screen reader summary */}
+              <div className="sr-only">
+                {rawScore} marks earned ({percentage}%), ${wrongOrLostMarks} marks lost.
+              </div>
               <div className="flex items-center gap-3 text-[10px] font-mono text-muted-foreground">
                 <span className="flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500" /> Earned
+                  <span className="w-2 h-2 rounded-full bg-emerald-500" aria-hidden="true" />
+                  <span>Earned: {rawScore}</span>
                 </span>
                 <span className="flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full bg-rose-500" /> Lost
+                  <span className="w-2 h-2 rounded-full bg-rose-500" aria-hidden="true" />
+                  <span>Lost: {wrongOrLostMarks}</span>
                 </span>
               </div>
             </div>

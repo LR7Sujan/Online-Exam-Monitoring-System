@@ -98,12 +98,19 @@ export function TrustRing({
   const markerX = pixelSize / 2 + radius * Math.cos(thresholdRad);
   const markerY = pixelSize / 2 + radius * Math.sin(thresholdRad);
 
+  const valueText = isDanger
+    ? `Critical: ${clamped}%, below minimum threshold of ${minThreshold}%`
+    : isWarning
+      ? `Warning: ${clamped}%`
+      : `Good: ${clamped}%`;
+
   return (
     <div
       role="meter"
       aria-valuenow={clamped}
       aria-valuemin={0}
       aria-valuemax={100}
+      aria-valuetext={valueText}
       aria-label={`Trust Score: ${clamped}%`}
       className={`relative inline-flex flex-col items-center justify-center select-none ${className}`}
     >

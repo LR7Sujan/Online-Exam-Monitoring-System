@@ -241,11 +241,6 @@ BEGIN
       SET MESSAGE_TEXT = 'Cannot log violation: exam session not found.';
   END IF;
 
-  IF v_session_status <> 'IN_PROGRESS' THEN
-    SIGNAL SQLSTATE '45000'
-      SET MESSAGE_TEXT = 'Cannot log violation: exam session is no longer IN_PROGRESS.';
-  END IF;
-
   SELECT penalty_points
     INTO v_penalty
     FROM Violation_Types
@@ -271,30 +266,33 @@ FOR EACH ROW
 BEGIN
   DECLARE v_current_trust TINYINT UNSIGNED;
   DECLARE v_min_trust TINYINT UNSIGNED;
+  DECLARE v_session_status ENUM('IN_PROGRESS', 'SUBMITTED', 'TERMINATED_CHEATING', 'TIMED_OUT');
   DECLARE v_new_trust INT;
 
-  SELECT es.trust_score, e.min_trust_score
-    INTO v_current_trust, v_min_trust
+  SELECT es.trust_score, es.status, e.min_trust_score
+    INTO v_current_trust, v_session_status, v_min_trust
     FROM Exam_Sessions es
     JOIN Exams e ON e.id = es.exam_id
    WHERE es.id = NEW.session_id;
 
-  SET v_new_trust = GREATEST(
-    0,
-    CAST(v_current_trust AS SIGNED) - CAST(NEW.penalty_applied AS SIGNED)
-  );
+  -- Violations on a non-IN_PROGRESS session do nothing to session state
+  IF v_session_status = 'IN_PROGRESS' THEN
+    SET v_new_trust = GREATEST(
+      0,
+      CAST(v_current_trust AS SIGNED) - CAST(NEW.penalty_applied AS SIGNED)
+    );
 
-  IF v_new_trust < v_min_trust THEN
-    UPDATE Exam_Sessions
-       SET trust_score = v_new_trust,
-           status = 'TERMINATED_CHEATING',
-           ended_at = COALESCE(ended_at, NOW())
-     WHERE id = NEW.session_id
-       AND status = 'IN_PROGRESS';
-  ELSE
-    UPDATE Exam_Sessions
-       SET trust_score = v_new_trust
-     WHERE id = NEW.session_id;
+    IF v_new_trust < v_min_trust THEN
+      UPDATE Exam_Sessions
+         SET trust_score = v_new_trust,
+             status = 'TERMINATED_CHEATING',
+             ended_at = COALESCE(ended_at, NOW())
+       WHERE id = NEW.session_id;
+    ELSE
+      UPDATE Exam_Sessions
+         SET trust_score = v_new_trust
+       WHERE id = NEW.session_id;
+    END IF;
   END IF;
 END$$
 
@@ -635,6 +633,9 @@ BEGIN
 
     IF v_final_status = 'TERMINATED_CHEATING' OR v_trust_score < v_min_trust_score THEN
       SET v_integrity_status = 'DISQUALIFIED';
+      -- Disqualified / terminated cheater sessions receive 0 score and 0 percentage
+      SET v_raw_score = 0.00;
+      SET v_percentage = 0.00;
     ELSEIF v_trust_score < 100 OR v_active_violations > 0 THEN
       SET v_integrity_status = 'FLAGGED';
     ELSE

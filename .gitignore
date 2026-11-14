@@ -8,5 +8,5 @@ dist/
 coverage/
 test-results/
 playwright-report/
-server/uploads/snapshot-*.jpg
+server/uploads/*.jpg
 !server/uploads/.gitkeep

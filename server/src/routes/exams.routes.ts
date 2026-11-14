@@ -120,20 +120,33 @@ export async function startOrResumeExamSession(params: {
         const storedToken = existing.session_token ?? '';
         const storedFingerprint = existing.device_fingerprint ?? '';
 
+        // QA Fix (Sub-Phase 11.3): Prevent cross-device hijack; allow same-device resume
         if (
-          storedToken &&
-          params.sessionToken === storedToken &&
-          params.deviceFingerprint === storedFingerprint
+          params.deviceFingerprint &&
+          storedFingerprint &&
+          params.deviceFingerprint !== storedFingerprint
         ) {
-          await conn.commit();
-          return { session: existing, created: false };
+          throw new AppError(
+            409,
+            'SESSION_CONFLICT',
+            'Active exam session already exists with a mismatched device_fingerprint.'
+          );
         }
 
-        throw new AppError(
-          409,
-          'SESSION_CONFLICT',
-          'Active exam session already exists with a mismatched session_token or device_fingerprint.'
-        );
+        if (
+          params.sessionToken &&
+          storedToken &&
+          params.sessionToken !== storedToken
+        ) {
+          throw new AppError(
+            409,
+            'SESSION_CONFLICT',
+            'Active exam session already exists with a mismatched session_token.'
+          );
+        }
+
+        await conn.commit();
+        return { session: existing, created: false };
       }
 
       if (!exam.window_open) {
@@ -144,7 +157,8 @@ export async function startOrResumeExamSession(params: {
         );
       }
 
-      const newToken = randomBytes(32).toString('hex');
+      // QA Fix (Sub-Phase 11.3): Retain client-provided session token if supplied, else generate random token
+      const newToken = params.sessionToken || randomBytes(32).toString('hex');
       const [insertRes] = await conn.execute<ResultSetHeader>(
         `INSERT INTO Exam_Sessions
            (exam_id, student_id, trust_score, status, started_at, server_deadline, last_heartbeat_at,
@@ -597,32 +611,34 @@ examsRouter.post(
       let nextOrder = Number(orderRows[0]?.max_order ?? 0) + 1;
 
       const insertedIds: number[] = [];
-      for (const q of questions as any[]) {
-        const text = q.questionText || q.question_text;
-        const optA = q.optionA || q.option_a;
-        const optB = q.optionB || q.option_b;
-        const optC = q.optionC || q.option_c;
-        const optD = q.optionD || q.option_d;
-        const correct = (q.correctOption || q.correct_option || 'A').toUpperCase();
-        const marks = Number(q.marks ?? 1);
+      const qList = questions as Array<Record<string, unknown>>;
+      if (qList.length > 0) {
+        const valuesClause: string[] = [];
+        const params: (string | number)[] = [];
+
+        for (const q of qList) {
+          const text = String(q.questionText || q.question_text || '');
+          const optA = String(q.optionA || q.option_a || '');
+          const optB = String(q.optionB || q.option_b || '');
+          const optC = String(q.optionC || q.option_c || '');
+          const optD = String(q.optionD || q.option_d || '');
+          const correct = String(q.correctOption || q.correct_option || 'A').toUpperCase();
+          const marks = Number(q.marks ?? 1);
+
+          valuesClause.push('(?, ?, ?, ?, ?, ?, ?, ?, ?)');
+          params.push(examId, text, optA, optB, optC, optD, correct, marks, nextOrder++);
+        }
 
         const res = await executeSql(
           `INSERT INTO Questions
             (exam_id, question_text, option_a, option_b, option_c, option_d, correct_option, marks, order_index)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [
-            examId,
-            text,
-            optA,
-            optB,
-            optC,
-            optD,
-            correct,
-            marks,
-            nextOrder++,
-          ]
+           VALUES ${valuesClause.join(', ')}`,
+          params
         );
-        insertedIds.push(res.insertId);
+
+        for (let i = 0; i < qList.length; i++) {
+          insertedIds.push(res.insertId + i);
+        }
       }
 
       sendSuccess(res, {
