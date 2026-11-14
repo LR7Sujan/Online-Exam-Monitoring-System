@@ -58,7 +58,7 @@ export function Drawer({
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 overflow-hidden">
+        <div className="fixed inset-0 z-60 overflow-hidden">
           {/* Glass Overlay Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -79,7 +79,7 @@ export function Drawer({
               transition={{ type: 'spring', damping: 32, stiffness: 350 }}
               role="dialog"
               aria-modal="true"
-              className={`w-screen ${sizeClasses[size]} border-l border-border bg-surface text-foreground shadow-bento-xl flex flex-col ${className}`}
+              className={`w-screen ${sizeClasses[size]} border-l border-border bg-surface dark:bg-[#0c0d14] text-foreground shadow-2xl flex flex-col ${className}`}
             >
               {/* Header */}
               {(title || description) && (

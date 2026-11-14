@@ -23,13 +23,19 @@ import {
   Zap,
   Volume2,
   VolumeX,
+  User,
+  Settings,
+  Sun,
+  Moon,
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
+import { useTheme } from '../../context/ThemeContext';
 import { useSocketContext } from '../../context/useSocketContext';
 import { LiveDot } from '../ui/LiveDot';
 import { SeverityBadge } from '../ui/SeverityBadge';
 import { ThemeToggle } from '../ui/ThemeToggle';
 import { CommandPalette } from './CommandPalette';
+import { OverlayPanel } from '../ui/OverlayPanel';
 import { RouteErrorBoundary } from '../ui/RouteErrorBoundary';
 import { PageSkeleton } from '../ui/Skeleton';
 import { isAudioMuted, setAudioMuted, playPingSound } from '../../utils/audioAlert';
@@ -86,6 +92,9 @@ export function AppShell() {
   const [userMenuOpen, setUserMenuOpen] = useState<boolean>(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState<boolean>(false);
   const [audioMuted, setAudioMutedState] = useState<boolean>(isAudioMuted());
+  const { setTheme, resolvedTheme } = useTheme();
+  type NotifSeverityFilter = 'ALL' | 'CRITICAL' | 'HIGH' | 'MEDIUM_LOW';
+  const [notifFilter, setNotifFilter] = useState<NotifSeverityFilter>('ALL');
 
   // Sub-menu expansion states (Phase 13.6 expandable groups readiness)
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({
@@ -562,7 +571,10 @@ export function AppShell() {
             {/* Notification Bell with Defined z-50 Popover and Solid Opaque Background */}
             <div className="relative" ref={notifRef}>
               <button
-                onClick={() => setNotificationsOpen(!notificationsOpen)}
+                onClick={() => {
+                  setNotificationsOpen(!notificationsOpen);
+                  if (userMenuOpen) setUserMenuOpen(false);
+                }}
                 className="relative p-2 rounded-xl border border-border bg-surface text-muted-foreground hover:text-foreground hover:border-brand/40 transition-all shadow-sm focus:outline-none focus:ring-2 focus:ring-brand"
                 aria-label="Notifications"
               >
@@ -577,75 +589,155 @@ export function AppShell() {
                 )}
               </button>
 
-              {/* Notification Popover (Solid Opaque Background, z-50 scale) */}
-              <AnimatePresence>
-                {notificationsOpen && (
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.95, y: 10 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                    transition={{ duration: 0.15 }}
-                    className="absolute right-0 mt-2 w-80 sm:w-96 rounded-2xl border border-border bg-surface dark:bg-[#12131d] shadow-2xl p-4 z-50 space-y-3"
-                  >
-                    <div className="flex items-center justify-between pb-3 border-b border-border">
-                      <div className="flex items-center gap-2">
-                        <Bell className="w-4 h-4 text-brand" />
-                        <span className="text-sm font-semibold text-foreground">
-                          Violation Telemetry Feed
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {recentAlerts.length > 0 && (
-                          <button
-                            onClick={clearAlerts}
-                            className="text-[11px] text-muted-foreground hover:text-foreground transition-colors font-mono"
-                          >
-                            Clear
-                          </button>
-                        )}
-                        <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-brand/10 text-brand border border-brand/20">
-                          {violationCount} Active
-                        </span>
-                      </div>
-                    </div>
+              <OverlayPanel
+                isOpen={notificationsOpen}
+                onClose={() => setNotificationsOpen(false)}
+                ariaLabel="Violation Telemetry Feed"
+                className="fixed sm:absolute left-3 right-3 sm:left-auto sm:right-0 top-16 sm:top-full sm:mt-2 sm:w-[420px] max-h-[70vh] flex flex-col"
+              >
+                {/* Header with Title + LiveDot + Count Chip + Close button */}
+                <div className="flex items-center justify-between p-3.5 border-b border-border bg-surface-elevated/40 shrink-0">
+                  <div className="flex items-center gap-2.5">
+                    <LiveDot
+                      color={violationCount > 0 ? 'rose' : 'emerald'}
+                      size="sm"
+                      pulse={violationCount > 0}
+                    />
+                    <span className="text-sm font-bold text-foreground tracking-tight">
+                      Violation Telemetry Feed
+                    </span>
+                    <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full bg-brand/10 text-brand border border-brand/20">
+                      {violationCount} Active
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {recentAlerts.length > 0 && (
+                      <button
+                        onClick={clearAlerts}
+                        className="text-[11px] text-muted-foreground hover:text-foreground transition-colors font-mono"
+                      >
+                        Clear
+                      </button>
+                    )}
+                    <button
+                      onClick={() => setNotificationsOpen(false)}
+                      className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors focus:outline-none focus:ring-2 focus:ring-brand"
+                      aria-label="Close notification panel"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
 
-                    <div className="max-h-64 overflow-y-auto space-y-2">
-                      {recentAlerts.length === 0 ? (
-                        <div className="py-8 text-center text-xs text-muted-foreground space-y-1">
-                          <Shield className="w-8 h-8 text-emerald-500 mx-auto opacity-70 mb-2" />
-                          <p className="font-semibold text-foreground">All Clear</p>
-                          <p className="text-[11px]">No active telemetry alerts logged</p>
-                        </div>
-                      ) : (
-                        recentAlerts.map((alert) => (
-                          <div
-                            key={alert.id}
-                            onClick={() => markAlertRead(alert.id)}
-                            className="p-2.5 rounded-xl border border-border bg-surface-elevated/70 dark:bg-[#181926] hover:bg-muted text-xs space-y-1 cursor-pointer transition-colors"
+                {/* Segmented Control Tabs */}
+                <div className="px-3 py-2 border-b border-border bg-surface dark:bg-[#12131d] flex items-center gap-1.5 overflow-x-auto no-scrollbar shrink-0">
+                  {[
+                    { key: 'ALL', label: 'All', count: recentAlerts.length },
+                    { key: 'CRITICAL', label: 'Critical', count: recentAlerts.filter((a) => a.severity === 'CRITICAL').length },
+                    { key: 'HIGH', label: 'High', count: recentAlerts.filter((a) => a.severity === 'HIGH').length },
+                    { key: 'MEDIUM_LOW', label: 'Med/Low', count: recentAlerts.filter((a) => a.severity === 'MEDIUM' || a.severity === 'LOW').length },
+                  ].map((tab) => {
+                    const isSelected = notifFilter === tab.key;
+                    return (
+                      <button
+                        key={tab.key}
+                        type="button"
+                        onClick={() => setNotifFilter(tab.key as NotifSeverityFilter)}
+                        className={`h-8 px-3 rounded-lg text-xs font-mono transition-all flex items-center gap-1.5 shrink-0 ${
+                          isSelected
+                            ? 'bg-brand-gradient text-white font-semibold shadow-sm'
+                            : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
+                        }`}
+                      >
+                        <span className="truncate max-w-[100px]">{tab.label}</span>
+                        {tab.count > 0 && (
+                          <span
+                            className={`text-[9px] font-mono px-1.5 py-0.2 rounded-full font-semibold ${
+                              isSelected
+                                ? 'bg-white/20 text-white'
+                                : 'bg-surface-elevated text-muted-foreground border border-border'
+                            }`}
                           >
-                            <div className="flex items-center justify-between">
-                              <SeverityBadge severity={alert.severity || 'MEDIUM'} size="sm" />
-                              <span className="text-[10px] text-muted-foreground font-mono flex items-center gap-1">
-                                <Clock className="w-3 h-3" />
-                                {new Date(alert.occurredAt).toLocaleTimeString()}
-                              </span>
-                            </div>
-                            <p className="text-foreground font-medium">{alert.studentName}</p>
-                            <p className="text-muted-foreground text-[11px]">{alert.examTitle}</p>
-                          </div>
-                        ))
-                      )}
+                            {tab.count}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Feed Items (Scrollable internal view) */}
+                <div className="flex-1 overflow-y-auto p-3 space-y-2">
+                  {recentAlerts.filter((alert) => {
+                    if (notifFilter === 'ALL') return true;
+                    if (notifFilter === 'CRITICAL') return alert.severity === 'CRITICAL';
+                    if (notifFilter === 'HIGH') return alert.severity === 'HIGH';
+                    if (notifFilter === 'MEDIUM_LOW') return alert.severity === 'MEDIUM' || alert.severity === 'LOW';
+                    return true;
+                  }).length === 0 ? (
+                    <div className="py-12 flex flex-col items-center justify-center text-center space-y-2 my-auto">
+                      <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-500 mb-1">
+                        <Shield className="w-6 h-6 opacity-90" />
+                      </div>
+                      <p className="font-bold text-sm text-foreground">All Clear</p>
+                      <p className="text-xs text-muted-foreground max-w-[240px]">
+                        No active telemetry alerts logged in this segment. Telemetry stream is operating within clean parameters.
+                      </p>
                     </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+                  ) : (
+                    recentAlerts
+                      .filter((alert) => {
+                        if (notifFilter === 'ALL') return true;
+                        if (notifFilter === 'CRITICAL') return alert.severity === 'CRITICAL';
+                        if (notifFilter === 'HIGH') return alert.severity === 'HIGH';
+                        if (notifFilter === 'MEDIUM_LOW') return alert.severity === 'MEDIUM' || alert.severity === 'LOW';
+                        return true;
+                      })
+                      .map((alert) => (
+                        <div
+                          key={alert.id}
+                          onClick={() => markAlertRead(alert.id)}
+                          className="p-3 rounded-xl border border-border bg-surface-elevated/70 dark:bg-[#181926] hover:bg-muted text-xs space-y-1.5 cursor-pointer transition-colors"
+                        >
+                          <div className="flex items-center justify-between">
+                            <SeverityBadge severity={alert.severity || 'MEDIUM'} size="sm" />
+                            <span className="text-[10px] text-muted-foreground font-mono flex items-center gap-1">
+                              <Clock className="w-3 h-3" />
+                              {new Date(alert.occurredAt).toLocaleTimeString()}
+                            </span>
+                          </div>
+                          <p className="text-foreground font-semibold text-xs">{alert.studentName}</p>
+                          <p className="text-muted-foreground text-[11px] truncate">{alert.examTitle}</p>
+                        </div>
+                      ))
+                  )}
+                </div>
+
+                {/* Footer with "View all violations" link */}
+                <div className="p-3 border-t border-border bg-surface-elevated/40 flex items-center justify-between shrink-0 text-xs">
+                  <span className="text-[11px] text-muted-foreground font-mono">
+                    WSS Live Realtime Feed
+                  </span>
+                  <NavLink
+                    to="/proctor/audit"
+                    onClick={() => setNotificationsOpen(false)}
+                    className="inline-flex items-center gap-1 text-xs font-semibold text-brand hover:underline transition-colors"
+                  >
+                    <span>View all violations</span>
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </NavLink>
+                </div>
+              </OverlayPanel>
             </div>
 
             {/* User Profile Menu with Defined z-50 Popover and Solid Opaque Background */}
             {user ? (
               <div className="relative" ref={userRef}>
                 <button
-                  onClick={() => setUserMenuOpen(!userMenuOpen)}
+                  onClick={() => {
+                    setUserMenuOpen(!userMenuOpen);
+                    if (notificationsOpen) setNotificationsOpen(false);
+                  }}
                   className="flex items-center gap-2.5 p-1.5 rounded-xl border border-border bg-surface hover:border-brand/40 transition-all select-none shadow-sm focus:outline-none focus:ring-2 focus:ring-brand"
                   aria-label="User account menu"
                 >
@@ -662,47 +754,102 @@ export function AppShell() {
                   </div>
                 </button>
 
-                {/* Dropdown Menu (Solid Opaque Background, z-50 scale, prevents background bleed) */}
-                <AnimatePresence>
-                  {userMenuOpen && (
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.95, y: 10 }}
-                      animate={{ opacity: 1, scale: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                      transition={{ duration: 0.15 }}
-                      className="absolute right-0 mt-2 w-64 rounded-2xl border border-border bg-surface dark:bg-[#12131d] shadow-2xl p-3 z-50 space-y-2"
-                    >
-                      <div className="px-3 py-2 border-b border-border">
-                        <p className="text-xs font-semibold text-foreground">
-                          {user.fullName}
-                        </p>
-                        <p className="text-[11px] text-muted-foreground font-mono truncate">
-                          {user.email}
-                        </p>
-                        <div className="mt-1.5 flex items-center gap-1.5">
-                          <span
-                            className={`text-[9px] font-mono uppercase px-1.5 py-0.5 rounded border ${roleBadgeStyle}`}
-                          >
-                            {user.role}
-                          </span>
-                          <span className="text-[9px] font-mono text-muted-foreground">
-                            ID: #{user.id}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="pt-1">
-                        <button
-                          onClick={handleLogout}
-                          className="w-full flex items-center gap-2 px-3 py-2 text-xs text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl transition-colors font-medium text-left"
+                <OverlayPanel
+                  isOpen={userMenuOpen}
+                  onClose={() => setUserMenuOpen(false)}
+                  ariaLabel="User account menu"
+                  className="fixed sm:absolute right-3 sm:right-0 top-16 sm:top-full sm:mt-2 w-[calc(100vw-1.5rem)] sm:w-72 max-w-sm p-2.5"
+                >
+                  {/* Top user card: avatar + full name + email + role & ID badges */}
+                  <div className="p-3 bg-surface-elevated/50 dark:bg-[#181926]/70 rounded-xl border border-border/70 flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500/20 to-fuchsia-500/20 border border-brand/40 flex items-center justify-center font-bold text-sm text-foreground shrink-0 shadow-sm">
+                      {user.fullName.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="flex flex-col flex-1 min-w-0">
+                      <p className="text-xs font-bold text-foreground truncate leading-tight">
+                        {user.fullName}
+                      </p>
+                      <p className="text-[11px] text-muted-foreground font-mono truncate mt-0.5">
+                        {user.email}
+                      </p>
+                      <div className="flex items-center gap-1.5 mt-2">
+                        <span
+                          className={`text-[9px] font-mono uppercase px-2 py-0.5 rounded-md border font-semibold ${roleBadgeStyle}`}
                         >
-                          <LogOut className="w-4 h-4" />
-                          <span>Sign Out</span>
-                        </button>
+                          {user.role}
+                        </span>
+                        <span className="text-[9px] font-mono px-2 py-0.5 rounded-md border border-border bg-surface text-muted-foreground font-semibold">
+                          ID: #{user.id}
+                        </span>
                       </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                    </div>
+                  </div>
+
+                  <div className="h-px bg-border/80 my-1.5 mx-1" />
+
+                  {/* 40px Navigation Items */}
+                  <div className="space-y-0.5">
+                    {/* 1. Profile */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setUserMenuOpen(false);
+                        navigate(user.role === 'ADMIN' ? '/admin' : user.role === 'PROCTOR' ? '/proctor' : '/student');
+                      }}
+                      className="w-full h-10 px-3 flex items-center gap-2.5 rounded-xl text-xs font-medium text-foreground hover:bg-muted/80 transition-colors focus:outline-none focus:ring-2 focus:ring-brand text-left"
+                    >
+                      <User className="w-4 h-4 text-muted-foreground shrink-0" />
+                      <span className="truncate">Operator Profile</span>
+                    </button>
+
+                    {/* 2. Settings */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setUserMenuOpen(false);
+                        navigate('/styleguide');
+                      }}
+                      className="w-full h-10 px-3 flex items-center gap-2.5 rounded-xl text-xs font-medium text-foreground hover:bg-muted/80 transition-colors focus:outline-none focus:ring-2 focus:ring-brand text-left"
+                    >
+                      <Settings className="w-4 h-4 text-muted-foreground shrink-0" />
+                      <span className="truncate">System Preferences</span>
+                    </button>
+
+                    {/* 3. Theme Toggle */}
+                    <button
+                      type="button"
+                      onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
+                      className="w-full h-10 px-3 flex items-center justify-between rounded-xl text-xs font-medium text-foreground hover:bg-muted/80 transition-colors focus:outline-none focus:ring-2 focus:ring-brand text-left"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        {resolvedTheme === 'dark' ? (
+                          <Moon className="w-4 h-4 text-brand shrink-0" />
+                        ) : (
+                          <Sun className="w-4 h-4 text-amber-500 shrink-0" />
+                        )}
+                        <span>Interface Theme</span>
+                      </div>
+                      <span className="text-[10px] font-mono uppercase text-muted-foreground px-2 py-0.5 rounded border border-border bg-surface-elevated">
+                        {resolvedTheme}
+                      </span>
+                    </button>
+
+                    <div className="h-px bg-border/80 my-1.5 mx-1" />
+
+                    {/* 4. Sign Out (Danger color, LogOut icon) */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setUserMenuOpen(false);
+                        handleLogout();
+                      }}
+                      className="w-full h-10 px-3 flex items-center gap-2.5 rounded-xl text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 dark:hover:bg-rose-500/15 transition-colors focus:outline-none focus:ring-2 focus:ring-rose-500 text-left"
+                    >
+                      <LogOut className="w-4 h-4 text-rose-500 shrink-0" />
+                      <span>Sign Out</span>
+                    </button>
+                  </div>
+                </OverlayPanel>
               </div>
             ) : (
               <NavLink

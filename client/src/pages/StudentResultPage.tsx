@@ -106,7 +106,7 @@ export function StudentResultPage() {
   return (
     <div className="max-w-5xl mx-auto py-8 px-4 sm:px-6 space-y-8 pb-20">
       {/* Top Navigation */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <Link
           to="/student"
           className="inline-flex items-center gap-1.5 text-xs font-mono text-muted-foreground hover:text-foreground transition-colors"
@@ -115,7 +115,7 @@ export function StudentResultPage() {
           <span>Back to Candidate Dashboard</span>
         </Link>
 
-        <span className="font-mono text-xs text-brand font-semibold">
+        <span className="font-mono text-xs text-brand font-semibold tracking-wide">
           OFFICIAL INNODB TRANSACTION EVALUATION
         </span>
       </div>

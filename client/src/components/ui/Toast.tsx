@@ -91,6 +91,9 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
           style: {
             borderRadius: '16px',
             fontFamily: 'inherit',
+            border: '1px solid var(--border)',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+            zIndex: 80,
           },
         }}
       />

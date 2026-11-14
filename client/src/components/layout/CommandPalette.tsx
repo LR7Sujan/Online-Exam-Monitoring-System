@@ -65,7 +65,7 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 sm:pt-28 px-4">
+        <div className="fixed inset-0 z-70 flex items-start justify-center pt-20 sm:pt-28 px-4">
           {/* Glass blur overlay backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -82,7 +82,7 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: -10 }}
             transition={{ type: 'spring', stiffness: 450, damping: 30 }}
-            className="relative w-full max-w-xl rounded-2xl border border-border bg-surface text-foreground shadow-bento-xl overflow-hidden z-10"
+            className="relative w-full max-w-xl rounded-2xl border border-border bg-surface dark:bg-[#12131d] text-foreground shadow-2xl overflow-hidden z-10"
           >
             <Command label="Command Palette" className="w-full flex flex-col">
               {/* Search Bar */}

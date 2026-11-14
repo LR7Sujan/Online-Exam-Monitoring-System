@@ -58,7 +58,7 @@ export function Modal({
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
+        <div className="fixed inset-0 z-70 flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
           {/* Glass Overlay Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -78,7 +78,7 @@ export function Modal({
             transition={{ type: 'spring', stiffness: 400, damping: 30 }}
             role="dialog"
             aria-modal="true"
-            className={`relative w-full ${sizeClasses[size]} rounded-3xl border border-border bg-surface text-foreground shadow-bento-xl overflow-hidden flex flex-col z-10 ${className}`}
+            className={`relative w-full ${sizeClasses[size]} rounded-2xl border border-border bg-surface dark:bg-[#111114] text-foreground shadow-2xl overflow-hidden flex flex-col z-10 ${className}`}
           >
             {/* Header */}
             {(title || description) && (
