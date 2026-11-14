@@ -367,16 +367,17 @@ async function run() {
 
     // 4.6 Points Capped at 100 Ceiling Guarantee:
     await pool.query(`UPDATE Exam_Sessions SET trust_score = 95 WHERE id = ${s4SessionId}`);
-    await pool.query(
-      `INSERT INTO Proctoring_Logs (id, session_id, violation_type_id, penalty_applied) VALUES (999901, ${s4SessionId}, 1, 15)`
+    const [cappedLogRes]: any = await pool.query(
+      `INSERT INTO Proctoring_Logs (session_id, violation_type_id, penalty_applied) VALUES (${s4SessionId}, 1, 15)`
     );
+    const cappedLogId = cappedLogRes.insertId;
     await pool.query(`UPDATE Exam_Sessions SET trust_score = 95 WHERE id = ${s4SessionId}`);
 
     await logAndExecute(
       pool,
       '04_REVIEW_TRIGGER',
       '4.6 Dismiss 15-pt log on 95 trust -> capped at 100 (not 110)',
-      `UPDATE Proctoring_Logs SET proctor_review_status = 'DISMISSED' WHERE id = 999901;`
+      `UPDATE Proctoring_Logs SET proctor_review_status = 'DISMISSED' WHERE id = ${cappedLogId};`
     );
 
     await logAndExecute(
