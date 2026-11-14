@@ -7,7 +7,6 @@ import { ToastProvider } from './components/ui/Toast';
 import { ThemeProvider } from './context/ThemeContext';
 import { AppShell } from './components/layout/AppShell';
 import { LoginPage } from './pages/LoginPage';
-import { RegisterPage } from './pages/RegisterPage';
 import { PageSkeleton } from './components/ui/Skeleton';
 import { useAuthStore } from './store/authStore';
 import type { UserRole } from './types/domain';
@@ -58,7 +57,7 @@ function RequireRole({
 }) {
   const user = useAuthStore((s) => s.user);
   if (!user) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/" replace />;
   }
   if (!roles.includes(user.role)) {
     const fallback =
@@ -78,10 +77,10 @@ export function App() {
               <BrowserRouter>
               <Suspense fallback={<PageSkeleton />}>
                 <Routes>
-                  {/* Public standalone pages without sidebar */}
-                  <Route path="/" element={<LandingPage />} />
-                  <Route path="/login" element={<LoginPage />} />
-                  <Route path="/register" element={<RegisterPage />} />
+                  {/* Public entry page & deep-link redirects */}
+                  <Route path="/" element={<LoginPage />} />
+                  <Route path="/login" element={<Navigate to="/?tab=signin" replace />} />
+                  <Route path="/register" element={<Navigate to="/?tab=register" replace />} />
 
                   {/* Exam session room standalone for fullscreen distraction-free kiosk */}
                   <Route
@@ -95,6 +94,15 @@ export function App() {
 
                   {/* Mission Control Shell with Collapsible Sidebar, Top bar & Notifications */}
                   <Route element={<AppShell />}>
+                    {/* Authenticated Home / Landing page */}
+                    <Route
+                      path="/home"
+                      element={
+                        <RequireRole roles={['ADMIN', 'PROCTOR', 'STUDENT']}>
+                          <LandingPage />
+                        </RequireRole>
+                      }
+                    />
                     {/* Styleguide multi-page documentation hierarchy */}
                     <Route path="/styleguide" element={<StyleguideLayout />}>
                       <Route index element={<StyleguideOverview />} />

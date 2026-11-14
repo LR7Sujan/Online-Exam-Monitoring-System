@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, Suspense } from 'react';
 import { NavLink, useLocation, useNavigate, Outlet } from 'react-router-dom';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import {
+  Home,
   Shield,
   Activity,
   ShieldAlert,
@@ -119,6 +120,7 @@ export function AppShell() {
   // Dynamic route document.title updates
   useEffect(() => {
     const ROUTE_TITLES: Record<string, string> = {
+      '/home': 'Home | ProctorIQ',
       '/admin': 'Mission Overview | ProctorIQ',
       '/admin/exams': 'Exam Catalog | ProctorIQ',
       '/admin/analytics': 'Telemetry & Heatmap | ProctorIQ',
@@ -204,7 +206,7 @@ export function AppShell() {
 
   const handleLogout = () => {
     logout();
-    navigate('/login');
+    navigate('/');
   };
 
   // Define role-specific navigation with section labels and sub-menu readiness
@@ -213,6 +215,7 @@ export function AppShell() {
 
     if (user.role === 'ADMIN') {
       return [
+        { to: '/home', label: 'Home', icon: Home, section: 'CORE' },
         { to: '/admin', label: 'Mission Overview', icon: Activity, section: 'CORE' },
         { to: '/proctor', label: 'Live Monitor', icon: Radio, badge: violationCount > 0 ? violationCount : undefined, section: 'SURVEILLANCE' },
         { to: '/proctor/audit', label: 'Violation Audit', icon: ShieldAlert, section: 'SURVEILLANCE' },
@@ -231,6 +234,7 @@ export function AppShell() {
 
     if (user.role === 'PROCTOR') {
       return [
+        { to: '/home', label: 'Home', icon: Home, section: 'CORE' },
         { to: '/proctor', label: 'Live Monitor', icon: Radio, badge: violationCount > 0 ? violationCount : undefined, section: 'SURVEILLANCE' },
         { to: '/proctor/audit', label: 'Violation Audit', icon: ShieldAlert, section: 'SURVEILLANCE' },
         {
@@ -245,6 +249,7 @@ export function AppShell() {
 
     // STUDENT
     return [
+      { to: '/home', label: 'Home', icon: Home, section: 'CORE' },
       { to: '/student', label: 'Exams & Portal', icon: GraduationCap, section: 'EXAMINATIONS' },
       {
         to: '/styleguide',
@@ -310,7 +315,7 @@ export function AppShell() {
         {/* Brand / Logo Header (h-16 = 64px) */}
         <div className="h-16 flex items-center px-3.5 border-b border-border shrink-0">
           <NavLink
-            to="/"
+            to="/home"
             className={`flex items-center gap-3 group w-full overflow-hidden ${
               isCollapsed ? 'justify-center' : ''
             }`}
@@ -374,6 +379,7 @@ export function AppShell() {
                 const isActive =
                   location.pathname === item.to ||
                   (item.to !== '/' &&
+                    item.to !== '/home' &&
                     item.to !== '/proctor' &&
                     item.to !== '/admin' &&
                     location.pathname.startsWith(item.to));
@@ -629,7 +635,9 @@ export function AppShell() {
               </span>
               <span className="text-muted-foreground text-xs hidden sm:inline">/</span>
               <span className="font-semibold text-sm text-foreground tracking-tight capitalize">
-                {location.pathname === '/admin'
+                {location.pathname === '/home'
+                  ? 'Home'
+                  : location.pathname === '/admin'
                   ? 'Mission Overview'
                   : location.pathname === '/admin/exams'
                   ? 'Exam Catalog'
@@ -978,7 +986,7 @@ export function AppShell() {
               </div>
             ) : (
               <NavLink
-                to="/login"
+                to="/"
                 className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white text-xs font-semibold shadow-sm hover:opacity-95"
               >
                 Sign In

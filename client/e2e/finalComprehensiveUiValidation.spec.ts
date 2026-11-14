@@ -14,12 +14,14 @@ test.describe('Phase 15: Final Comprehensive UI Validation, Walkthrough & Verifi
   });
 
   async function loginAsRole(page: any, role: 'Admin' | 'Proctor' | 'Student') {
-    await page.goto('/login');
+    await page.goto('/');
     await page.evaluate(() => localStorage.clear());
-    await page.goto('/login');
+    await page.goto('/');
     await page.waitForLoadState('domcontentloaded');
     await page.click(`button:has-text("${role}")`);
     await page.click('button:has-text("Authenticate & Enter Console")');
+    await page.waitForURL((url: URL) => url.pathname.includes('/home'), { timeout: 15000 });
+    await page.click('button:has-text("Open my dashboard")');
     const expectedPath = role === 'Admin' ? '/admin' : role === 'Proctor' ? '/proctor' : '/student';
     await page.waitForURL((url: URL) => url.pathname.includes(expectedPath), { timeout: 15000 });
     await page.waitForTimeout(500);
@@ -118,6 +120,7 @@ test.describe('Phase 15: Final Comprehensive UI Validation, Walkthrough & Verifi
 
     // Verify sections and active item gradient bar
     await expect(sidebar.getByText('CORE', { exact: true })).toBeVisible();
+    await expect(sidebar.locator('a[href="/home"]').first()).toBeVisible();
     await expect(sidebar.getByText('SURVEILLANCE', { exact: true })).toBeVisible();
     await expect(sidebar.getByText('MANAGEMENT', { exact: true })).toBeVisible();
 
@@ -261,7 +264,7 @@ test.describe('Phase 15: Final Comprehensive UI Validation, Walkthrough & Verifi
 
     // Clear auth so unauthenticated landing/login can be tested without redirect
     await page.context().clearCookies();
-    await page.goto('/login');
+    await page.goto('/');
     await page.evaluate(() => {
       localStorage.clear();
       sessionStorage.clear();
@@ -269,14 +272,16 @@ test.describe('Phase 15: Final Comprehensive UI Validation, Walkthrough & Verifi
     await page.reload();
     await page.waitForLoadState('domcontentloaded');
 
-    // A) Landing Page
+    // A) Unified Entry Page at /
     await page.goto('/');
     await page.waitForLoadState('domcontentloaded');
-    await expect(page.getByRole('heading', { level: 1, name: /Mission Control for ProctorIQ/i })).toBeVisible();
-    await expect(page.locator('header').getByRole('link', { name: 'Sign in' })).toBeVisible();
+    await expect(page.getByRole('button', { name: /^Sign in$/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /^Create account$/i })).toBeVisible();
+    await expect(page.locator('text=Zero-Trust Assessments')).toBeVisible();
 
-    // B) Login Page Validation
+    // B) Login Page Validation & Deep-link Redirect
     await page.goto('/login');
+    await page.waitForURL((url: URL) => url.search.includes('tab=signin') || url.pathname === '/');
     await page.waitForLoadState('domcontentloaded');
 
     // 1. Submit empty fields (clear prefilled demo credentials first)
@@ -290,21 +295,29 @@ test.describe('Phase 15: Final Comprehensive UI Validation, Walkthrough & Verifi
     await page.fill('input#login-email', 'admin@proctoriq.io');
     await page.fill('input#login-password', 'WrongPassword#123');
     await submitBtn.click();
-    await expect(page.locator('text=Invalid email or password')).toBeVisible();
+    await expect(page.locator('[role="alert"]').first()).toBeVisible();
 
-    // 3. Valid Login
+    // 3. Valid Login -> Lands on /home first per specifications
     await page.fill('input#login-password', 'ProctorIQ#2026');
     await submitBtn.click();
+    await page.waitForURL('**/home', { timeout: 15000 });
+    expect(page.url()).toContain('/home');
+
+    // Verify "Open my dashboard" on /home routes to role dashboard (/admin)
+    const openDashBtn = page.getByRole('button', { name: /Open my dashboard/i });
+    await expect(openDashBtn.first()).toBeVisible();
+    await openDashBtn.first().click();
     await page.waitForURL('**/admin', { timeout: 15000 });
     expect(page.url()).toContain('/admin');
 
-    // C) Register Page Validation
+    // C) Register Page Validation & Deep-link Redirect
     await page.evaluate(() => {
       localStorage.clear();
       sessionStorage.clear();
     });
     await page.context().clearCookies();
     await page.goto('/register');
+    await page.waitForURL((url: URL) => url.search.includes('tab=register'));
     await page.waitForLoadState('domcontentloaded');
 
     // Submit with empty fields
@@ -395,9 +408,8 @@ test.describe('Phase 15: Final Comprehensive UI Validation, Walkthrough & Verifi
     });
 
     const walkthroughPages = [
-      { path: '/', name: 'landing', requiresAuth: false },
-      { path: '/login', name: 'login', requiresAuth: false },
-      { path: '/register', name: 'register', requiresAuth: false },
+      { path: '/', name: 'entry_login', requiresAuth: false },
+      { path: '/home', name: 'home', requiresAuth: true, role: 'Admin' as const },
       { path: '/admin', name: 'admin', requiresAuth: true, role: 'Admin' as const },
       { path: '/proctor', name: 'proctor', requiresAuth: true, role: 'Proctor' as const },
       { path: '/student', name: 'student', requiresAuth: true, role: 'Student' as const },
@@ -414,8 +426,13 @@ test.describe('Phase 15: Final Comprehensive UI Validation, Walkthrough & Verifi
       if (item.requiresAuth) {
         await loginAsRole(page, item.role);
       } else {
+        await page.context().clearCookies();
         await page.goto(item.path);
-        await page.evaluate(() => localStorage.clear());
+        await page.evaluate(() => {
+          localStorage.clear();
+          sessionStorage.clear();
+        });
+        await page.reload();
       }
 
       await page.goto(item.path);

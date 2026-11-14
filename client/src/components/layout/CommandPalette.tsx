@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Command } from 'cmdk';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
+  Home,
   Activity,
   Radio,
   ShieldAlert,
@@ -59,7 +60,7 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
 
   const handleLogout = () => {
     logout();
-    navigate('/login');
+    navigate('/');
   };
 
   return (
@@ -108,6 +109,13 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
                   heading="Navigation"
                   className="px-2 py-1.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider font-mono"
                 >
+                  <Command.Item
+                    onSelect={() => runCommand(() => navigate('/home'))}
+                    className="flex items-center gap-3 px-3 py-2 rounded-xl text-foreground hover:bg-muted cursor-pointer transition-colors"
+                  >
+                    <Home className="w-4 h-4 text-brand" />
+                    <span>Home</span>
+                  </Command.Item>
                   {user?.role === 'ADMIN' && (
                     <Command.Item
                       onSelect={() => runCommand(() => navigate('/admin'))}

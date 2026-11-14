@@ -13,7 +13,7 @@ export function Navbar() {
   const handleLogout = () => {
     disconnectSocket();
     logout();
-    navigate('/login');
+    navigate('/');
   };
 
   const navLinks =
@@ -31,7 +31,7 @@ export function Navbar() {
   return (
     <header className="sticky top-0 z-40 border-b border-border/60 bg-surface/85 backdrop-blur-xl">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6">
-        <Link to="/" className="flex items-center gap-3 group">
+        <Link to={user ? '/home' : '/'} className="flex items-center gap-3 group">
           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-tr from-indigo-500 via-violet-500 to-fuchsia-500 text-white shadow-md shadow-brand/20 transition-transform group-hover:scale-105">
             <ShieldCheck className="h-5 w-5" />
           </div>
@@ -96,7 +96,7 @@ export function Navbar() {
           ) : (
             <div className="flex items-center gap-2">
               <Link
-                to="/login"
+                to="/"
                 className="rounded-lg border border-border bg-surface-elevated px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:border-brand/40 hover:text-brand"
               >
                 Operator Login
