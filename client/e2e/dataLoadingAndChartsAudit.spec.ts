@@ -327,4 +327,89 @@ test.describe('Phase 13: Donut Charts, Skeletons & Data Loading Verification (Sc
       await themeBtn.click();
     }
   });
+
+  // --------------------------------------------------------------------------
+  // 4. Violations Telemetry Area Chart: 7/30 Day Range Toggle, Summary Row, Tooltip
+  // --------------------------------------------------------------------------
+  test('Admin dashboard violations telemetry area chart toggles 7d vs 30d with distinct data, summary row, and shared tooltip', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await loginAs(page, 'admin@proctoriq.io');
+
+    await page.goto('/admin');
+    await page.waitForLoadState('domcontentloaded');
+    await page.waitForTimeout(600);
+
+    const chartRegion = page.locator('div[aria-label="Violations telemetry timeline area chart"]');
+    await expect(chartRegion).toBeVisible();
+
+    // 1. Verify 7 Days default view
+    const btn7d = chartRegion.getByRole('button', { name: '7 Days' });
+    const btn30d = chartRegion.getByRole('button', { name: '30 Days' });
+    await expect(btn7d).toBeVisible();
+    await expect(btn30d).toBeVisible();
+    await expect(btn7d).toHaveAttribute('aria-pressed', 'true');
+
+    // Verify summary row values for 7 Days
+    await expect(chartRegion.getByText('Total', { exact: true })).toBeVisible();
+    await expect(chartRegion.getByText('Daily Average')).toBeVisible();
+    await expect(chartRegion.getByText('Peak Day')).toBeVisible();
+
+    // Verify 7-day X-axis tick format (e.g. "Nov 9", "Nov 15")
+    const ticks7d = chartRegion.locator('.recharts-xAxis .recharts-cartesian-axis-tick text');
+    await expect(ticks7d.first()).toBeVisible();
+    const firstTickText = (await ticks7d.first().textContent())?.trim() ?? '';
+    expect(firstTickText).toMatch(/^[A-Z][a-z]{2}\s\d{1,2}$/); // "Nov 9" format
+
+    // Capture screenshot of 7-day view
+    await chartRegion.screenshot({
+      path: path.join(screenshotDir, 'admin-violations-7days-view.png'),
+    });
+
+    // 2. Hover over an area chart point to inspect tooltip
+    const areaPath = chartRegion.locator('.recharts-area-area');
+    await expect(areaPath).toBeVisible();
+    const box = await areaPath.boundingBox();
+    if (box) {
+      await page.mouse.move(box.x + box.width * 0.5, box.y + box.height * 0.5);
+      await page.waitForTimeout(300);
+
+      const tooltip = chartRegion.locator('[role="tooltip"]');
+      if (await tooltip.isVisible()) {
+        await expect(tooltip).toBeVisible();
+        await expect(tooltip.getByText('Incidents Logged')).toBeVisible();
+        await expect(tooltip.getByText('Day of Week')).toBeVisible();
+      }
+    }
+
+    // 3. Switch to 30 Days view
+    const requestPromise30 = page.waitForResponse((res) =>
+      res.url().includes('/analytics/dashboard') && res.url().includes('days=30') && res.status() === 200
+    );
+    await btn30d.click();
+    await requestPromise30;
+    await expect(btn30d).toHaveAttribute('aria-pressed', 'true');
+    await page.waitForTimeout(400);
+
+    // Verify summary row updated for 30 Days (total >= 300)
+    const summaryValues = chartRegion.locator('.font-mono.font-bold');
+    const totalText30 = await summaryValues.first().innerText();
+    expect(Number(totalText30)).toBeGreaterThanOrEqual(300);
+
+    // Capture screenshot of 30-day view
+    await chartRegion.screenshot({
+      path: path.join(screenshotDir, 'admin-violations-30days-view.png'),
+    });
+
+    // 4. Switch back to 7 Days view and verify response and update
+    const requestPromise7 = page.waitForResponse((res) =>
+      res.url().includes('/analytics/dashboard') && res.url().includes('days=7') && res.status() === 200
+    );
+    await btn7d.click();
+    await requestPromise7;
+    await expect(btn7d).toHaveAttribute('aria-pressed', 'true');
+    await page.waitForTimeout(400);
+
+    const totalText7 = await summaryValues.first().innerText();
+    expect(Number(totalText7)).toBeLessThan(Number(totalText30));
+  });
 });

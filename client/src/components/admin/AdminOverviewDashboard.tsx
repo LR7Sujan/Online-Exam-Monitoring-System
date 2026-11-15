@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import {
   Activity,
   BarChart3,
@@ -35,6 +35,32 @@ import { ErrorState } from '../ui/EmptyState';
 import { ChartTooltip, useChartTheme } from '../charts/shared';
 import { api } from '../../lib/api';
 
+function formatTickDate(val: string): string {
+  if (!val) return '';
+  const datePart = val.split('T')[0];
+  const parts = datePart.split('-');
+  if (parts.length < 3) return val;
+  const [year, month, day] = parts.map(Number);
+  const d = new Date(Date.UTC(year, month - 1, day));
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+}
+
+function formatTooltipDate(dateStr: string): { title: string; dayOfWeek: string; fullDate: string } {
+  if (!dateStr) return { title: '', dayOfWeek: '', fullDate: '' };
+  const datePart = dateStr.split('T')[0];
+  const parts = datePart.split('-');
+  if (parts.length < 3) return { title: dateStr, dayOfWeek: '', fullDate: dateStr };
+  const [year, month, day] = parts.map(Number);
+  const d = new Date(Date.UTC(year, month - 1, day));
+  const dayOfWeek = d.toLocaleDateString('en-US', { weekday: 'long', timeZone: 'UTC' });
+  const fullDate = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+  return {
+    title: `${dayOfWeek}, ${fullDate}`,
+    dayOfWeek,
+    fullDate,
+  };
+}
+
 interface DashboardData {
   kpis: {
     totalExams: number;
@@ -46,9 +72,22 @@ interface DashboardData {
   violationsOverTime: Array<{
     date: string;
     violation_count: number;
+    count?: number;
     total_penalty: number;
     impacted_sessions: number;
   }>;
+  violationsSummary?: {
+    total: number;
+    dailyAverage: number;
+    peakDate: string;
+    peakCount: number;
+  };
+  summary?: {
+    total: number;
+    dailyAverage: number;
+    peakDate: string;
+    peakCount: number;
+  };
   violationDistribution: Array<{
     code: string;
     label: string;
@@ -107,13 +146,14 @@ const DONUT_COLORS = [
 ];
 
 export function AdminOverviewDashboard() {
-  const [daysWindow, setDaysWindow] = useState<number>(7);
+  const [daysWindow, setDaysWindow] = useState<7 | 30>(7);
   const [hoveredDonutCode, setHoveredDonutCode] = useState<string | null>(null);
   const chartTheme = useChartTheme();
 
   const query = useQuery({
     queryKey: ['admin-overview-dashboard', daysWindow],
     queryFn: () => api.get<DashboardData>(`/analytics/dashboard?days=${daysWindow}`),
+    placeholderData: keepPreviousData,
     refetchInterval: 20000,
   });
 
@@ -207,6 +247,8 @@ export function AdminOverviewDashboard() {
     ...((data?.heatmap ?? []).map((h) => Number(h.violation_count)))
   );
 
+  const violationsSummary = data?.violationsSummary ?? data?.summary;
+
   return (
     <div className="space-y-6">
       <h2 className="sr-only">Assessment Telemetry & Integrity Analytics Overview</h2>
@@ -218,7 +260,6 @@ export function AdminOverviewDashboard() {
           accent="cyan"
           icon={<GraduationCap className="w-5 h-5 text-sky-500" />}
           changeLabel="proctoring active"
-          sparklineData={[1, 2, 2, 3, 4, 4, kpis.totalExams]}
         />
         <StatCard
           label="Registered Students"
@@ -226,7 +267,6 @@ export function AdminOverviewDashboard() {
           accent="violet"
           icon={<Users className="w-5 h-5 text-violet-500" />}
           changeLabel="biometric verified"
-          sparklineData={[40, 45, 52, 55, 58, 60, kpis.totalStudents]}
         />
         <StatCard
           label="Monitored Sessions"
@@ -234,7 +274,6 @@ export function AdminOverviewDashboard() {
           accent="emerald"
           icon={<Activity className="w-5 h-5 text-emerald-500" />}
           changeLabel="audit logged"
-          sparklineData={[25, 28, 32, 35, 38, 40, kpis.totalSessions]}
         />
         <StatCard
           label="Cheating Disqualification Rate"
@@ -244,7 +283,6 @@ export function AdminOverviewDashboard() {
           accent="magenta"
           icon={<ShieldAlert className="w-5 h-5 text-rose-500" />}
           changeLabel="threshold breaches"
-          sparklineData={[4.2, 5.0, 6.1, 7.2, 7.0, 7.5, kpis.cheatingRate]}
         />
       </div>
 
@@ -268,10 +306,15 @@ export function AdminOverviewDashboard() {
             </div>
 
             {/* 7/30 Day Toggle Button */}
-            <div className="flex items-center gap-1 rounded-xl border border-border bg-surface-elevated p-1 font-mono text-xs">
+            <div
+              role="group"
+              aria-label="Timeline window filter"
+              className="flex items-center gap-1 rounded-xl border border-border bg-surface-elevated p-1 font-mono text-xs"
+            >
               <button
                 type="button"
                 onClick={() => setDaysWindow(7)}
+                aria-pressed={daysWindow === 7}
                 className={`rounded-lg px-3 py-1 font-medium transition-all cursor-pointer ${
                   daysWindow === 7
                     ? 'bg-brand text-white shadow-sm'
@@ -283,6 +326,7 @@ export function AdminOverviewDashboard() {
               <button
                 type="button"
                 onClick={() => setDaysWindow(30)}
+                aria-pressed={daysWindow === 30}
                 className={`rounded-lg px-3 py-1 font-medium transition-all cursor-pointer ${
                   daysWindow === 30
                     ? 'bg-brand text-white shadow-sm'
@@ -294,59 +338,127 @@ export function AdminOverviewDashboard() {
             </div>
           </div>
 
-          <div className="h-64 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart
-                data={data?.violationsOverTime ?? []}
-                margin={{ top: 10, right: 12, left: -20, bottom: 0 }}
-              >
-                <defs>
-                  <linearGradient id="violationsGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#6366F1" stopOpacity={0.4} />
-                    <stop offset="95%" stopColor="#8B5CF6" stopOpacity={0.0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.gridlines} opacity={0.6} vertical={false} />
-                <XAxis
-                  dataKey="date"
-                  stroke={chartTheme.axisLine}
-                  tick={{ fill: chartTheme.axisText, fontSize: 10, fontFamily: 'sans-serif' }}
-                  tickLine={false}
-                  tickFormatter={(val: string) => {
-                    const d = new Date(val);
-                    return `${d.getMonth() + 1}/${d.getDate()}`;
-                  }}
-                />
-                <YAxis stroke={chartTheme.axisLine} tick={{ fill: chartTheme.axisText, fontSize: 10, fontFamily: 'sans-serif' }} tickLine={false} />
-                <Tooltip
-                  {...chartTheme.lineTooltipProps}
-                  content={({ active, payload }) => {
-                    if (active && payload && payload.length) {
-                      const item = payload[0].payload;
-                      return (
-                        <ChartTooltip
-                          active={active}
-                          title={item.date}
-                          payload={[
-                            { name: 'Incidents Logged', value: item.violation_count, color: chartTheme.series.indigo },
-                            { name: 'Points Deducted', value: `-${item.total_penalty} PTS`, color: chartTheme.series.rose },
-                            { name: 'Impacted Candidates', value: item.impacted_sessions, color: chartTheme.series.amber },
-                          ]}
-                        />
-                      );
-                    }
-                    return null;
-                  }}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="violation_count"
-                  stroke="#6366F1"
-                  strokeWidth={2}
-                  fill="url(#violationsGrad)"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
+          {/* Summary Row under title */}
+          <div className="grid grid-cols-3 gap-2 sm:gap-4 pt-2 pb-1 border-t border-border/60">
+            <div className="flex flex-col">
+              <span className="text-[11px] font-medium text-muted-foreground">Total</span>
+              <span className="text-sm font-bold font-mono text-foreground">
+                {violationsSummary?.total ?? 0}
+              </span>
+            </div>
+            <div className="flex flex-col">
+              <span className="text-[11px] font-medium text-muted-foreground">Daily Average</span>
+              <span className="text-sm font-bold font-mono text-foreground">
+                {violationsSummary?.dailyAverage !== undefined ? `${violationsSummary.dailyAverage}/day` : '0/day'}
+              </span>
+            </div>
+            <div className="flex flex-col">
+              <span className="text-[11px] font-medium text-muted-foreground">Peak Day</span>
+              <span className="text-sm font-bold font-mono text-foreground truncate">
+                {violationsSummary?.peakDate
+                  ? `${formatTickDate(violationsSummary.peakDate)} (${violationsSummary.peakCount})`
+                  : 'N/A'}
+              </span>
+            </div>
+          </div>
+
+          {/* Chart Container with Smooth Fade & No Layout Jump */}
+          <div className="h-64 w-full relative">
+            {query.isFetching && (
+              <div className="absolute inset-0 bg-surface/30 backdrop-blur-[1px] pointer-events-none z-10 flex items-center justify-center transition-opacity duration-300">
+                <div className="h-1 w-24 bg-brand/30 overflow-hidden rounded-full absolute top-1">
+                  <div className="h-full bg-brand animate-pulse w-full rounded-full" />
+                </div>
+              </div>
+            )}
+
+            <div
+              className={`h-full w-full transition-opacity duration-200 ${
+                query.isFetching ? 'opacity-70' : 'opacity-100'
+              }`}
+            >
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart
+                  data={data?.violationsOverTime ?? []}
+                  margin={{ top: 12, right: 20, left: -20, bottom: 0 }}
+                >
+                  <defs>
+                    <linearGradient id="violationsGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#6366F1" stopOpacity={0.4} />
+                      <stop offset="95%" stopColor="#8B5CF6" stopOpacity={0.0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.gridlines} opacity={0.6} vertical={false} />
+                  <XAxis
+                    dataKey="date"
+                    stroke={chartTheme.axisLine}
+                    tick={{ fill: chartTheme.axisText, fontSize: 10, fontFamily: 'sans-serif' }}
+                    tickLine={false}
+                    interval={daysWindow === 7 ? 0 : 4}
+                    tickFormatter={formatTickDate}
+                  />
+                  <YAxis
+                    stroke={chartTheme.axisLine}
+                    tick={{ fill: chartTheme.axisText, fontSize: 10, fontFamily: 'sans-serif' }}
+                    tickLine={false}
+                    domain={[0, (dataMax: number) => Math.max(5, Math.ceil(dataMax * 1.15))]}
+                    allowDecimals={false}
+                  />
+                  <Tooltip
+                    {...chartTheme.lineTooltipProps}
+                    content={({ active, payload }) => {
+                      if (active && payload && payload.length) {
+                        const item = payload[0].payload;
+                        const { title, dayOfWeek } = formatTooltipDate(item.date);
+                        return (
+                          <ChartTooltip
+                            active={active}
+                            title={title}
+                            payload={[
+                              {
+                                name: 'Incidents Logged',
+                                value: item.violation_count ?? item.count ?? 0,
+                                color: chartTheme.series.indigo,
+                              },
+                              {
+                                name: 'Day of Week',
+                                value: dayOfWeek,
+                                color: chartTheme.series.sky,
+                              },
+                              {
+                                name: 'Points Deducted',
+                                value: `-${item.total_penalty ?? 0} PTS`,
+                                color: chartTheme.series.rose,
+                              },
+                              {
+                                name: 'Impacted Candidates',
+                                value: item.impacted_sessions ?? 0,
+                                color: chartTheme.series.amber,
+                              },
+                            ]}
+                          />
+                        );
+                      }
+                      return null;
+                    }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="violation_count"
+                    stroke="#6366F1"
+                    strokeWidth={2}
+                    fill="url(#violationsGrad)"
+                    dot={false}
+                    activeDot={{
+                      r: 5,
+                      fill: '#6366F1',
+                      stroke: '#FFFFFF',
+                      strokeWidth: 2,
+                    }}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
           </div>
         </div>
 
