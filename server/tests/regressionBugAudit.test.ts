@@ -135,7 +135,7 @@ describe('Permanent Regression Test Suite: Bug Register Verification (BUG-001 th
   it('[BUG-009] Exam start with candidate existing sessionToken resumes session (200) without 409 conflict', async () => {
     // Find an active session in progress
     const [existing] = await pool.query<RowDataPacket[]>(
-      "SELECT id, exam_id, student_id, session_token FROM Exam_Sessions WHERE status = 'IN_PROGRESS' LIMIT 1"
+      "SELECT id, exam_id, student_id, session_token, device_fingerprint FROM Exam_Sessions WHERE status = 'IN_PROGRESS' LIMIT 1"
     );
     expect(existing.length).toBeGreaterThan(0);
     const session = existing[0];
@@ -150,13 +150,17 @@ describe('Permanent Regression Test Suite: Bug Register Verification (BUG-001 th
       activeToken = 'test-audit-token-12345';
       await pool.query('UPDATE Exam_Sessions SET session_token = ? WHERE id = ?', [activeToken, session.id]);
     }
+    const activeFingerprint = session.device_fingerprint || 'test-audit-fp-12345';
+    if (!session.device_fingerprint) {
+      await pool.query('UPDATE Exam_Sessions SET device_fingerprint = ? WHERE id = ?', [activeFingerprint, session.id]);
+    }
     createdStudentSessionId = session.id;
 
     // Starting with candidate's existing sessionToken must resume cleanly with 200 OK (never 409)
     const res = await request(app)
       .post(`/api/exams/${session.exam_id}/start`)
       .set('Authorization', `Bearer ${candidateToken}`)
-      .send({ sessionToken: activeToken });
+      .send({ sessionToken: activeToken, deviceFingerprint: activeFingerprint });
 
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);

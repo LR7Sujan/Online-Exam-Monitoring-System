@@ -10,6 +10,7 @@ export default defineConfig({
       'tests/securityProbes.test.ts',
       'tests/realtimeAndLoad.test.ts',
       'tests/regressionBugAudit.test.ts',
+      'tests/simulatorReset.api.test.ts',
     ],
     testTimeout: 25000,
     fileParallelism: false,
