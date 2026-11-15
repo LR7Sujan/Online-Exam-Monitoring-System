@@ -55,9 +55,9 @@ test.describe('Phase 13: Donut Charts, Skeletons & Data Loading Verification (Sc
   });
 
   // --------------------------------------------------------------------------
-  // 2. Admin Donut Chart: Center Alerts Label and 14px Legend with %
+  // 2. Admin Donut Chart: Center Alerts Label, Interactive Hover/Focus, Legend
   // --------------------------------------------------------------------------
-  test('Admin dashboard renders violation donut chart with center alerts count and 14px legend with %', async ({ page }) => {
+  test('Admin dashboard renders violation donut chart with center alerts count and interactive legend', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await loginAs(page, 'admin@proctoriq.io');
 
@@ -73,12 +73,73 @@ test.describe('Phase 13: Donut Charts, Skeletons & Data Loading Verification (Sc
     const alertsCaption = chartRegion.getByText('ALERTS', { exact: true });
     await expect(alertsCaption).toBeVisible();
 
-    // Verify Legend items have percentage
-    const legendPercent = chartRegion.locator('text=/\(\\d+%\)/').first();
+    // Verify Legend items have percentage and count
+    const legendPercent = chartRegion.locator('text=/\\(\\d+%\\)/').first();
     await expect(legendPercent).toBeVisible();
 
+    // Verify no scrollbar container on legend
+    const legendList = chartRegion.locator('[role="list"][aria-label="Violation categories breakdown"]');
+    await expect(legendList).toBeVisible();
+    await expect(legendList).not.toHaveClass(/overflow-y-auto/);
+
+    // Verify Legend button keyboard focus & hover changes center text
+    const firstLegendBtn = legendList.locator('button').first();
+    await expect(firstLegendBtn).toBeVisible();
+    const firstLabel = await firstLegendBtn.locator('span.truncate').innerText();
+
+    // Hover legend row -> center shows infraction name
+    await firstLegendBtn.hover();
+    await page.waitForTimeout(200);
+    await expect(chartRegion.getByText(firstLabel).first()).toBeVisible();
+    await expect(alertsCaption).not.toBeVisible();
+
+    // Mouse leave -> center restores default "ALERTS"
+    await page.mouse.move(0, 0);
+    await page.waitForTimeout(200);
+    await expect(alertsCaption).toBeVisible();
+
+    // Keyboard focus -> center updates again
+    await firstLegendBtn.focus();
+    await page.waitForTimeout(200);
+    await expect(chartRegion.getByText(firstLabel).first()).toBeVisible();
+    await expect(alertsCaption).not.toBeVisible();
+    await chartRegion.screenshot({
+      path: path.join(screenshotDir, 'admin-donut-chart-hover-active.png'),
+    });
+
+    // Blur -> center restores default "ALERTS"
+    await firstLegendBtn.blur();
+    await page.waitForTimeout(200);
+    await expect(alertsCaption).toBeVisible();
+
+    // Capture screenshot at 1440px
+    await chartRegion.scrollIntoViewIfNeeded();
+    await chartRegion.screenshot({
+      path: path.join(screenshotDir, 'admin-donut-chart-card-1440px.png'),
+    });
     await page.screenshot({
-      path: path.join(screenshotDir, 'admin-donut-chart-verified.png'),
+      path: path.join(screenshotDir, 'admin-donut-chart-1440px.png'),
+    });
+
+    // Verify at 1024px
+    await page.setViewportSize({ width: 1024, height: 768 });
+    await page.waitForTimeout(300);
+    await chartRegion.scrollIntoViewIfNeeded();
+    await expect(alertsCaption).toBeVisible();
+    await chartRegion.screenshot({
+      path: path.join(screenshotDir, 'admin-donut-chart-card-1024px.png'),
+    });
+
+    // Verify at 390px mobile
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.waitForTimeout(300);
+    await chartRegion.scrollIntoViewIfNeeded();
+    await expect(alertsCaption).toBeVisible();
+    await chartRegion.screenshot({
+      path: path.join(screenshotDir, 'admin-donut-chart-card-390px.png'),
+    });
+    await page.screenshot({
+      path: path.join(screenshotDir, 'admin-donut-chart-390px.png'),
     });
   });
 

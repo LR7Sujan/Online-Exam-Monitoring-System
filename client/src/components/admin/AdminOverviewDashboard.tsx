@@ -106,6 +106,7 @@ const DONUT_COLORS = [
 
 export function AdminOverviewDashboard() {
   const [daysWindow, setDaysWindow] = useState<number>(7);
+  const [hoveredDonutCode, setHoveredDonutCode] = useState<string | null>(null);
   const chartTheme = useChartTheme();
 
   const query = useQuery({
@@ -141,6 +142,14 @@ export function AdminOverviewDashboard() {
   }
 
   const data = query.data;
+  const violationDistribution = data?.violationDistribution ?? [];
+  const totalAlerts = violationDistribution.reduce((acc, v) => acc + Number(v.count || 0), 0);
+  const activeDonutItem = hoveredDonutCode
+    ? violationDistribution.find((v) => v.code === hoveredDonutCode) || null
+    : null;
+  const activePercent = activeDonutItem && totalAlerts > 0
+    ? Math.round((Number(activeDonutItem.count || 0) / totalAlerts) * 100)
+    : 0;
   const kpis = data?.kpis ?? {
     totalExams: 4,
     totalStudents: 60,
@@ -333,96 +342,152 @@ export function AdminOverviewDashboard() {
             </p>
           </div>
 
-          <div className="h-52 w-full relative">
+          <div className="h-56 w-full relative">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
                   data={
-                    (data?.violationDistribution?.length ?? 0) === 0
+                    totalAlerts === 0
                       ? [{ code: 'NO_DATA', label: 'No data', count: 1, isPlaceholder: true }]
-                      : data?.violationDistribution
+                      : violationDistribution
                   }
                   dataKey="count"
                   nameKey="code"
                   cx="50%"
                   cy="50%"
-                  innerRadius={50}
-                  outerRadius={75}
-                  paddingAngle={(data?.violationDistribution?.length ?? 0) === 0 ? 0 : 3}
-                  cornerRadius={(data?.violationDistribution?.length ?? 0) === 0 ? 0 : 6}
+                  innerRadius={56}
+                  outerRadius={80}
+                  paddingAngle={totalAlerts === 0 ? 0 : 3}
+                  cornerRadius={totalAlerts === 0 ? 0 : 6}
+                  onMouseEnter={(entry: unknown) => {
+                    const code = (entry as { code?: string })?.code;
+                    if (code && code !== 'NO_DATA') {
+                      setHoveredDonutCode(code);
+                    }
+                  }}
+                  onMouseLeave={() => setHoveredDonutCode(null)}
                 >
-                  {(data?.violationDistribution ?? []).map((_, idx) => (
-                    <Cell
-                      key={`cell-${idx}`}
-                      fill={DONUT_COLORS[idx % DONUT_COLORS.length]}
-                    />
-                  ))}
-                  {(data?.violationDistribution?.length ?? 0) === 0 && (
-                    <Cell fill="#3f3f46" />
-                  )}
-                </Pie>
-                <Tooltip
-                  {...chartTheme.tooltipProps}
-                  offset={20}
-                  content={({ active, payload }) => {
-                    if (active && payload && payload.length) {
-                      const item = payload[0].payload;
-                      if (item.isPlaceholder) return null;
-                      const total = (data?.violationDistribution ?? []).reduce((acc, v) => acc + Number(v.count || 0), 0);
-                      const pct = total > 0 ? Math.round((Number(item.count || 0) / total) * 100) : 0;
-                      const colorIndex = (data?.violationDistribution ?? []).indexOf(item);
-                      const swatch = item.fill || DONUT_COLORS[(colorIndex >= 0 ? colorIndex : 0) % DONUT_COLORS.length];
+                  {totalAlerts === 0 ? (
+                    <Cell fill={chartTheme.isDark ? '#27272a' : '#e4e4e7'} stroke="none" />
+                  ) : (
+                    violationDistribution.map((item, idx) => {
+                      const isHovered = hoveredDonutCode === item.code;
+                      const isAnyHovered = hoveredDonutCode !== null;
                       return (
-                        <ChartTooltip
-                          active={active}
-                          title={item.label}
-                          payload={[
-                            {
-                              name: 'Incidents Logged',
-                              value: item.count,
-                              color: swatch,
-                              payload: { percent: pct },
-                            },
-                          ]}
-                          showPercent
+                        <Cell
+                          key={`cell-${item.code || idx}`}
+                          fill={DONUT_COLORS[idx % DONUT_COLORS.length]}
+                          opacity={isAnyHovered ? (isHovered ? 1 : 0.4) : 1}
+                          stroke={isHovered ? (chartTheme.isDark ? '#ffffff' : '#09090b') : 'none'}
+                          strokeWidth={isHovered ? 2 : 0}
+                          className="transition-all duration-150 cursor-pointer focus:outline-none"
+                          tabIndex={0}
+                          aria-label={`${item.label}: ${item.count} alerts`}
+                          onMouseEnter={() => setHoveredDonutCode(item.code)}
+                          onMouseLeave={() => setHoveredDonutCode(null)}
+                          onFocus={() => setHoveredDonutCode(item.code)}
+                          onBlur={() => setHoveredDonutCode(null)}
                         />
                       );
-                    }
-                    return null;
-                  }}
-                />
+                    })
+                  )}
+                </Pie>
               </PieChart>
             </ResponsiveContainer>
-            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none select-none">
-              <span className="text-xl font-bold font-mono tracking-tight tabular-nums text-foreground">
-                {(data?.violationDistribution ?? []).reduce((acc, v) => acc + Number(v.count || 0), 0)}
-              </span>
-              <span className="text-[9px] font-mono uppercase tracking-wider text-muted-foreground">
-                ALERTS
-              </span>
+
+            {/* Interactive Center Hole Label */}
+            <div
+              className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none select-none px-2"
+              aria-live="polite"
+            >
+              <div className="w-[104px] max-w-[104px] text-center flex flex-col items-center justify-center overflow-hidden">
+                {totalAlerts === 0 ? (
+                  <span className="text-xs font-semibold text-muted-foreground">
+                    No data
+                  </span>
+                ) : activeDonutItem ? (
+                  <>
+                    <span
+                      className="text-[11px] font-semibold text-foreground truncate w-full leading-tight text-center px-1"
+                      title={activeDonutItem.label}
+                    >
+                      {activeDonutItem.label}
+                    </span>
+                    <span className="text-xl font-bold font-mono tracking-tight tabular-nums text-foreground leading-tight mt-0.5">
+                      {activeDonutItem.count}
+                    </span>
+                    <span className="text-[10px] font-mono text-brand font-semibold leading-tight">
+                      {activePercent}%
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-2xl font-bold font-mono tracking-tight tabular-nums text-foreground leading-none">
+                      {totalAlerts}
+                    </span>
+                    <span className="text-[9px] font-mono uppercase tracking-wider text-muted-foreground mt-1">
+                      ALERTS
+                    </span>
+                  </>
+                )}
+              </div>
             </div>
           </div>
 
-          <div className="space-y-2 text-sm font-sans max-h-32 overflow-y-auto scrollbar-thin">
-            {(data?.violationDistribution ?? []).map((item, idx) => {
-              const total = (data?.violationDistribution ?? []).reduce((acc, v) => acc + Number(v.count || 0), 0);
-              const pct = total > 0 ? Math.round((Number(item.count || 0) / total) * 100) : 0;
-              return (
-                <div key={item.code} className="flex items-center justify-between text-muted-foreground hover:text-foreground transition-colors">
-                  <div className="flex items-center gap-2 truncate">
-                    <span
-                      className="w-3 h-3 rounded-full shrink-0"
-                      style={{ backgroundColor: DONUT_COLORS[idx % DONUT_COLORS.length] }}
-                    />
-                    <span className="truncate text-foreground font-medium text-sm">{item.label}</span>
-                  </div>
-                  <span className="font-mono text-xs text-muted-foreground pl-2 shrink-0">
-                    <strong className="text-foreground">{item.count}</strong> ({pct}%)
-                  </span>
-                </div>
-              );
-            })}
-          </div>
+          {/* Interactive Legend: No scrollbar, all rows, 2 columns on wide / 1 on narrow, keyboard focusable */}
+          {violationDistribution.length === 0 ? (
+            <div className="pt-3 border-t border-border/50 text-center py-2 text-xs text-muted-foreground">
+              No violations recorded
+            </div>
+          ) : (
+            <div
+              role="list"
+              aria-label="Violation categories breakdown"
+              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 gap-1.5 pt-3 border-t border-border/50 text-sm font-sans"
+            >
+              {violationDistribution.map((item, idx) => {
+                const pct = totalAlerts > 0 ? Math.round((Number(item.count || 0) / totalAlerts) * 100) : 0;
+                const isSelected = hoveredDonutCode === item.code;
+                const isAnySelected = hoveredDonutCode !== null;
+                return (
+                  <button
+                    key={item.code}
+                    type="button"
+                    tabIndex={0}
+                    onMouseEnter={() => setHoveredDonutCode(item.code)}
+                    onMouseLeave={() => setHoveredDonutCode(null)}
+                    onFocus={() => setHoveredDonutCode(item.code)}
+                    onBlur={() => setHoveredDonutCode(null)}
+                    className={`flex items-center justify-between gap-1.5 p-1.5 rounded-lg text-left transition-all cursor-pointer focus:outline-none focus:ring-1 focus:ring-brand ${
+                      isSelected
+                        ? 'bg-surface-elevated text-foreground shadow-sm ring-1 ring-border'
+                        : isAnySelected
+                          ? 'opacity-40 text-muted-foreground hover:opacity-80'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-surface-elevated/40'
+                    }`}
+                    aria-label={`${item.label}: ${item.count} incidents, ${pct} percent`}
+                  >
+                    <div className="flex items-center gap-2 min-w-0 truncate">
+                      <span
+                        className="w-2.5 h-2.5 rounded-full shrink-0 transition-transform"
+                        style={{
+                          backgroundColor: DONUT_COLORS[idx % DONUT_COLORS.length],
+                          transform: isSelected ? 'scale(1.25)' : 'scale(1)',
+                        }}
+                      />
+                      <span className="truncate text-xs font-medium text-foreground">
+                        {item.label}
+                      </span>
+                    </div>
+                    <span className="font-mono text-[11px] shrink-0 pl-1">
+                      <strong className="text-foreground font-semibold">{item.count}</strong>{' '}
+                      <span className="text-muted-foreground">({pct}%)</span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
 
