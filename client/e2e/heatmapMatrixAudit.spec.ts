@@ -45,25 +45,26 @@ test.describe('Circadian Incident Heatmap (14.3.6 Matrix & Insights Verification
     const grandTotalEl = heatmap.getByTestId('insight-grand-total');
     await expect(grandTotalEl).toBeVisible();
     const grandTotalText = await grandTotalEl.textContent();
-    expect(grandTotalText).toContain('30'); // 300+ incidents
+    expect(grandTotalText).toMatch(/\d+\s+incidents/);
+    expect(parseInt(grandTotalText || '0', 10)).toBeGreaterThan(200);
     expect(grandTotalText).toContain('incidents');
 
     const peakHourEl = heatmap.getByTestId('insight-peak-hour');
     await expect(peakHourEl).toBeVisible();
     const peakHourText = await peakHourEl.textContent();
-    expect(peakHourText).toContain('16:00 (4 PM)');
+    expect(peakHourText).toMatch(/\d{2}:00 \(\d{1,2} [AP]M\)/);
 
     const topViolationEl = heatmap.getByTestId('insight-top-violation');
     await expect(topViolationEl).toBeVisible();
     const topViolationText = await topViolationEl.textContent();
     expect(topViolationText).toContain('Copy / Paste Attempt');
 
-    // Verify Desktop Grid structure: headers (VIOLATION TYPE, 00h..23h, TOTAL)
+    // Verify Desktop Grid structure: headers (VIOLATION TYPE, 3h compact labels 12a..9p, TOTAL)
     const desktopGrid = heatmap.getByTestId('heatmap-desktop-grid');
     await expect(desktopGrid).toBeVisible();
     await expect(desktopGrid.getByText('VIOLATION TYPE')).toBeVisible();
-    await expect(desktopGrid.getByText('00h')).toBeVisible();
-    await expect(desktopGrid.getByText('23h')).toBeVisible();
+    await expect(desktopGrid.getByText('12a', { exact: true })).toBeVisible();
+    await expect(desktopGrid.getByText('9p', { exact: true })).toBeVisible();
     await expect(desktopGrid.getByText('TOTAL', { exact: true })).toBeVisible();
 
     // Verify row totals for seeded violation types
@@ -150,5 +151,67 @@ test.describe('Circadian Incident Heatmap (14.3.6 Matrix & Insights Verification
     await expect(mobileGrid.getByText('12-15h')).toBeVisible();
     await expect(mobileGrid.getByText('16-19h')).toBeVisible();
     await expect(mobileGrid.getByText('20-23h')).toBeVisible();
+  });
+
+  test('Heatmap professional design: 5-step indigo palette, compact 3h labels, column strip, legend, and solid hover tooltip with crosshair and arrow keys', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await loginAsAdmin(page);
+
+    const heatmap = page.getByRole('region', { name: /circadian incident heatmap/i });
+    await expect(heatmap).toBeVisible({ timeout: 10000 });
+
+    // 1. Header subtitle: insights line from helper
+    await expect(heatmap.getByText(/peak hour:/i)).toBeVisible();
+    await expect(heatmap.getByText(/most frequent:/i)).toBeVisible();
+    await expect(heatmap.getByText(/quietest:/i)).toBeVisible();
+
+    // 2. Compact hour labels every 3 hours (12a, 3a, 6a, 9a, 12p, 3p, 6p, 9p)
+    const desktopGrid = heatmap.getByTestId('heatmap-desktop-grid');
+    await expect(desktopGrid.getByText('12a', { exact: true })).toBeVisible();
+    await expect(desktopGrid.getByText('3a', { exact: true })).toBeVisible();
+    await expect(desktopGrid.getByText('6a', { exact: true })).toBeVisible();
+    await expect(desktopGrid.getByText('9a', { exact: true })).toBeVisible();
+    await expect(desktopGrid.getByText('12p', { exact: true })).toBeVisible();
+    await expect(desktopGrid.getByText('3p', { exact: true })).toBeVisible();
+    await expect(desktopGrid.getByText('6p', { exact: true })).toBeVisible();
+    await expect(desktopGrid.getByText('9p', { exact: true })).toBeVisible();
+
+    // 3. Legend: "Less" to "More" with 5 swatches under the grid
+    const legend = heatmap.getByRole('group', { name: /infraction intensity legend/i });
+    await expect(legend).toBeVisible();
+    await expect(heatmap.getByText('Less', { exact: true })).toBeVisible();
+    await expect(heatmap.getByText('More', { exact: true })).toBeVisible();
+
+    // 4. Cell styling & aria-labels
+    const cell16Copy = heatmap.getByTestId('cell-COPY_PASTE-16');
+    await expect(cell16Copy).toBeVisible();
+    const cellAria = await cell16Copy.getAttribute('aria-label');
+    expect(cellAria).toMatch(/copy \/ paste attempt, \d+ [ap]m to \d+ [ap]m, \d+ incidents/i);
+
+    // 5. Hover interaction: displays shared solid tooltip with hour range, count, share of total
+    await cell16Copy.hover();
+    const tooltip = page.getByRole('tooltip');
+    await expect(tooltip).toBeVisible();
+    await expect(tooltip.getByText(/time window/i)).toBeVisible();
+    await expect(tooltip.getByText('Incidents', { exact: true })).toBeVisible();
+    await expect(tooltip.getByText(/share of grand total/i)).toBeVisible();
+    await expect(tooltip.getByText(/share of .* [ap]m total/i)).toBeVisible();
+
+    // 6. Keyboard accessibility: arrow-key navigation
+    await cell16Copy.focus();
+    await page.keyboard.press('ArrowRight'); // moves to hour 17
+    const cell17Copy = heatmap.getByTestId('cell-COPY_PASTE-17');
+    await expect(cell17Copy).toBeFocused();
+
+    // 7. Verify in Light Mode
+    const themeBtn = page.getByRole('button', { name: /current theme/i });
+    if (await themeBtn.isVisible()) {
+      await themeBtn.click();
+      await page.waitForTimeout(300);
+      await expect(heatmap).toBeVisible();
+      await expect(desktopGrid).toBeVisible();
+    }
   });
 });

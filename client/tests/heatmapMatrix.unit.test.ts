@@ -3,6 +3,9 @@ import assert from 'node:assert/strict';
 import {
   buildHeatmapMatrix,
   formatHour,
+  formatHourSimple,
+  formatHourCompact3h,
+  formatHourRange,
   KNOWN_VIOLATION_TYPES,
   type RawHeatmapRecord,
 } from '../src/utils/heatmapMatrix.js';
@@ -173,5 +176,31 @@ describe('Circadian Incident Heatmap Matrix Helper (buildHeatmapMatrix)', () => 
     assert.equal(formatHour(16), '16:00 (4 PM)');
     assert.equal(formatHour(23), '23:00 (11 PM)');
     assert.equal(formatHour(24), '24:00'); // Out of bounds fallback
+  });
+
+  it('formats compact 3-hour labels, simple hours, and hourly ranges', () => {
+    // formatHourSimple
+    assert.equal(formatHourSimple(0), '12 AM');
+    assert.equal(formatHourSimple(14), '2 PM');
+    assert.equal(formatHourSimple(16), '4 PM');
+    assert.equal(formatHourSimple(23), '11 PM');
+
+    // formatHourCompact3h: 12a, 3a, 6a, 9a, 12p, 3p, 6p, 9p
+    assert.equal(formatHourCompact3h(0), '12a');
+    assert.equal(formatHourCompact3h(1), '');
+    assert.equal(formatHourCompact3h(2), '');
+    assert.equal(formatHourCompact3h(3), '3a');
+    assert.equal(formatHourCompact3h(6), '6a');
+    assert.equal(formatHourCompact3h(9), '9a');
+    assert.equal(formatHourCompact3h(12), '12p');
+    assert.equal(formatHourCompact3h(15), '3p');
+    assert.equal(formatHourCompact3h(18), '6p');
+    assert.equal(formatHourCompact3h(21), '9p');
+    assert.equal(formatHourCompact3h(22), '');
+
+    // formatHourRange
+    assert.equal(formatHourRange(0), '12 AM to 1 AM');
+    assert.equal(formatHourRange(14), '2 PM to 3 PM');
+    assert.equal(formatHourRange(23), '11 PM to 12 AM');
   });
 });

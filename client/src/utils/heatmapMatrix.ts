@@ -44,9 +44,11 @@ export interface HeatmapInsights {
   grandTotal: number;
   peakHour: number; // 0..23
   peakHourFormatted: string;
+  peakHourSimple: string;
   peakHourCount: number;
   quietestHour: number; // 0..23
   quietestHourFormatted: string;
+  quietestHourSimple: string;
   quietestHourCount: number;
   mostFrequentViolationType: string;
   mostFrequentViolationCount: number;
@@ -89,6 +91,44 @@ export function formatHour(hour: number): string {
   const period = hour >= 12 ? 'PM' : 'AM';
   const hour12 = hour % 12 === 0 ? 12 : hour % 12;
   return `${padded}:00 (${hour12} ${period})`;
+}
+
+/**
+ * Formats a 0-23 hour into simple 12h format e.g. 0 -> "12 AM", 14 -> "2 PM"
+ */
+export function formatHourSimple(hour: number): string {
+  if (hour < 0 || hour > 23 || !Number.isInteger(hour)) {
+    return `${hour}:00`;
+  }
+  const period = hour >= 12 ? 'PM' : 'AM';
+  const hour12 = hour % 12 === 0 ? 12 : hour % 12;
+  return `${hour12} ${period}`;
+}
+
+/**
+ * Returns a compact 3-hour label (12a, 3a, 6a, 9a, 12p, 3p, 6p, 9p)
+ * for hours divisible by 3; empty string otherwise.
+ */
+export function formatHourCompact3h(hour: number): string {
+  if (hour < 0 || hour > 23 || !Number.isInteger(hour) || hour % 3 !== 0) {
+    return '';
+  }
+  const period = hour >= 12 ? 'p' : 'a';
+  const hour12 = hour % 12 === 0 ? 12 : hour % 12;
+  return `${hour12}${period}`;
+}
+
+/**
+ * Formats an hour into a range string: e.g. 14 -> "2 PM to 3 PM", 0 -> "12 AM to 1 AM"
+ */
+export function formatHourRange(hour: number): string {
+  if (hour < 0 || hour > 23 || !Number.isInteger(hour)) {
+    return `${hour}:00 to ${hour + 1}:00`;
+  }
+  const start = formatHourSimple(hour);
+  const nextHour = (hour + 1) % 24;
+  const end = formatHourSimple(nextHour);
+  return `${start} to ${end}`;
 }
 
 /**
@@ -244,9 +284,11 @@ export function buildHeatmapMatrix(
     grandTotal,
     peakHour,
     peakHourFormatted: formatHour(peakHour),
+    peakHourSimple: formatHourSimple(peakHour),
     peakHourCount,
     quietestHour,
     quietestHourFormatted: formatHour(quietestHour),
+    quietestHourSimple: formatHourSimple(quietestHour),
     quietestHourCount,
     mostFrequentViolationType,
     mostFrequentViolationCount,
