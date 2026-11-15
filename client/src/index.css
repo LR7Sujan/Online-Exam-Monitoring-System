@@ -39,6 +39,7 @@
     background-color: var(--background);
     color: var(--foreground);
     font-family: 'Geist', 'Inter', system-ui, -apple-system, sans-serif;
+    scrollbar-gutter: stable;
   }
 
   body {
@@ -212,13 +213,12 @@
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: none;
   }
 }
 
 .route-enter {
-  animation: routeEnter 180ms ease-out both;
-  will-change: opacity, transform;
+  animation: routeEnter 180ms ease-out backwards;
 }
 
 @media (prefers-reduced-motion: reduce) {

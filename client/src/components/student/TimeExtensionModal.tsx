@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
 import { Clock, Send, ShieldAlert, XCircle } from 'lucide-react';
+import { Modal } from '../ui/Modal';
 import { NeonButton } from '../ui/NeonButton';
 import type { TimeExtensionRequest } from '../../types/domain';
 
@@ -78,12 +78,14 @@ export function TimeExtensionModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95, y: 10 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        className="w-full max-w-lg rounded-2xl border border-border bg-surface p-6 shadow-2xl relative overflow-hidden space-y-5"
-      >
+    <Modal
+      isOpen={isOpen}
+      onClose={onSubmitExam}
+      size="md"
+      showCloseButton={false}
+      closeOnBackdropClick={false}
+    >
+      <div className="relative overflow-hidden space-y-5">
         {/* Subtle Ambient Glow */}
         <div className="absolute -top-24 -left-24 w-48 h-48 bg-brand/20 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute -bottom-24 -right-24 w-48 h-48 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
@@ -268,7 +270,7 @@ export function TimeExtensionModal({
             </div>
           </div>
         )}
-      </motion.div>
-    </div>
+      </div>
+    </Modal>
   );
 }

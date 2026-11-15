@@ -10,8 +10,6 @@ describe('Time Extension Requests: API, Security & SQL Invariant Tests', () => {
   let adminToken: string;
   let proctorToken: string;
   let studentToken: string;
-  let studentId: number;
-  let proctorId: number;
   let examWithExtId: number;
   let examNoExtId: number;
   let sharedSessionId: number;
@@ -27,13 +25,15 @@ describe('Time Extension Requests: API, Security & SQL Invariant Tests', () => {
       .post('/api/auth/login')
       .send({ email: 'proctor@proctoriq.io', password: 'ProctorIQ#2026' });
     proctorToken = proctorRes.body.data.token;
-    proctorId = proctorRes.body.data.user.id;
+    const _proctorId = proctorRes.body.data.user.id;
+    void _proctorId;
 
     const studentRes = await request(app)
       .post('/api/auth/login')
       .send({ email: 'student@proctoriq.io', password: 'ProctorIQ#2026' });
     studentToken = studentRes.body.data.token;
-    studentId = studentRes.body.data.user.id;
+    const _studentId = studentRes.body.data.user.id;
+    void _studentId;
 
     // 2. Create test exam with extensions allowed (max 15 mins)
     const createExtRes = await request(app)
@@ -222,7 +222,7 @@ describe('Time Extension Requests: API, Security & SQL Invariant Tests', () => {
     expect(Array.isArray(monRes.body.data)).toBe(true);
 
     const pendingItem = monRes.body.data.find(
-      (r: any) => r.student_email === 'student@proctoriq.io' && r.status === 'PENDING'
+      (r: Record<string, unknown>) => r.student_email === 'student@proctoriq.io' && r.status === 'PENDING'
     );
     expect(pendingItem).toBeDefined();
     expect(pendingItem.requested_minutes).toBe(10);

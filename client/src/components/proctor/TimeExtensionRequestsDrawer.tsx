@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -92,8 +93,10 @@ export function TimeExtensionRequestsDrawer({
     return `${mins}:${String(secs).padStart(2, '0')}`;
   };
 
-  return (
-    <div className="fixed inset-0 z-50 overflow-hidden bg-black/60 backdrop-blur-sm">
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
+    <div role="presentation" className="fixed inset-0 z-60 overflow-hidden bg-black/60 backdrop-blur-sm">
       <div className="absolute inset-y-0 right-0 max-w-full flex pl-10">
         <motion.div
           initial={{ x: '100%' }}
@@ -423,6 +426,7 @@ export function TimeExtensionRequestsDrawer({
           </div>
         </Modal>
       )}
-    </div>
+    </div>,
+    document.body
   );
 }

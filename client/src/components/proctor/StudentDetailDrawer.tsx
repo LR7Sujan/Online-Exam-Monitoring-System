@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Modal } from '../ui/Modal';
 import {
   AlertTriangle,
   Camera,
@@ -678,30 +679,23 @@ export function StudentDetailDrawer({ sessionId, onClose }: StudentDetailDrawerP
       </div>
 
       {/* LIGHTBOX MODAL */}
-      {lightboxImage && (
-        <div key="lightbox-modal" className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-background/85 backdrop-blur-xl">
-          <motion.div
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.9, opacity: 0 }}
-            className="relative max-w-xl w-full rounded-2xl border border-border bg-surface p-5 shadow-2xl space-y-4"
-          >
-            <div className="flex items-center justify-between border-b border-border/70 pb-3">
-              <div className="flex items-center gap-2">
-                <Camera className="w-4 h-4 text-brand" />
-                <h4 className="text-sm font-bold text-foreground font-mono">
-                  Optical Evidence: {lightboxImage.code}
-                </h4>
-              </div>
-              <button
-                type="button"
-                onClick={() => setLightboxImage(null)}
-                className="p-1 rounded-lg text-muted-foreground hover:text-foreground cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
+      <Modal
+        isOpen={Boolean(lightboxImage)}
+        onClose={() => setLightboxImage(null)}
+        size="lg"
+        title={
+          lightboxImage ? (
+            <div className="flex items-center gap-2">
+              <Camera className="w-4 h-4 text-brand" />
+              <span className="text-sm font-bold text-foreground font-mono">
+                Optical Evidence: {lightboxImage.code}
+              </span>
             </div>
-
+          ) : undefined
+        }
+      >
+        {lightboxImage && (
+          <div className="space-y-4">
             <div className="relative aspect-video w-full rounded-xl overflow-hidden border border-border bg-black">
               <img
                 src={lightboxImage.url}
@@ -716,135 +710,117 @@ export function StudentDetailDrawer({ sessionId, onClose }: StudentDetailDrawerP
             <div className="text-xs font-mono text-foreground">
               {lightboxImage.caption}
             </div>
-          </motion.div>
-        </div>
-      )}
+          </div>
+        )}
+      </Modal>
 
       {/* WARN CANDIDATE MODAL */}
-      {warnModalOpen && (
-        <div key="warn-modal" className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-background/80 backdrop-blur-md">
-          <motion.div
-            initial={{ scale: 0.92, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            className="w-full max-w-md rounded-2xl border border-border bg-surface p-5 shadow-2xl space-y-4"
-          >
-            <div className="flex items-center justify-between">
-              <h4 className="text-sm font-bold text-foreground flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-amber-500" />
-                <span>Issue Proctor Warning</span>
-              </h4>
-              <button
-                type="button"
-                onClick={() => setWarnModalOpen(false)}
-                className="p-1 rounded-lg text-muted-foreground hover:text-foreground cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
+      <Modal
+        isOpen={warnModalOpen}
+        onClose={() => setWarnModalOpen(false)}
+        size="md"
+        title={
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-amber-500" />
+            <span>Issue Proctor Warning</span>
+          </div>
+        }
+        footer={
+          <div className="flex items-center justify-end gap-2 w-full">
+            <button
+              type="button"
+              onClick={() => setWarnModalOpen(false)}
+              className="py-1.5 px-3 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              disabled={warnMutation.isPending}
+              onClick={() => warnMutation.mutate(warnMessage)}
+              className="py-2 px-4 rounded-xl text-xs font-semibold text-white bg-gradient-to-r from-amber-500 to-orange-600 hover:opacity-95 shadow-sm transition-all cursor-pointer"
+            >
+              {warnMutation.isPending ? 'Transmitting...' : 'Send Warning Overlay'}
+            </button>
+          </div>
+        }
+      >
+        <div className="space-y-4">
+          <p className="text-xs text-muted-foreground">
+            Transmit an immediate intervention overlay to candidate's screen.
+          </p>
 
-            <p className="text-xs text-muted-foreground">
-              Transmit an immediate intervention overlay to candidate's screen.
-            </p>
+          <div className="space-y-1.5">
+            <button
+              type="button"
+              onClick={() => setWarnMessage('Please keep your eyes and face directed at the screen.')}
+              className="w-full text-left text-xs font-mono p-2 rounded-lg border border-border bg-surface-elevated hover:bg-muted text-foreground cursor-pointer"
+            >
+              • "Please keep your eyes and face directed at the screen."
+            </button>
+            <button
+              type="button"
+              onClick={() => setWarnMessage('Secondary screen or background tab activity detected. Return immediately.')}
+              className="w-full text-left text-xs font-mono p-2 rounded-lg border border-border bg-surface-elevated hover:bg-muted text-foreground cursor-pointer"
+            >
+              • "Secondary screen or background tab activity detected."
+            </button>
+          </div>
 
-            <div className="space-y-1.5">
-              <button
-                type="button"
-                onClick={() => setWarnMessage('Please keep your eyes and face directed at the screen.')}
-                className="w-full text-left text-xs font-mono p-2 rounded-lg border border-border bg-surface-elevated hover:bg-muted text-foreground cursor-pointer"
-              >
-                • "Please keep your eyes and face directed at the screen."
-              </button>
-              <button
-                type="button"
-                onClick={() => setWarnMessage('Secondary screen or background tab activity detected. Return immediately.')}
-                className="w-full text-left text-xs font-mono p-2 rounded-lg border border-border bg-surface-elevated hover:bg-muted text-foreground cursor-pointer"
-              >
-                • "Secondary screen or background tab activity detected."
-              </button>
-            </div>
-
-            <textarea
-              value={warnMessage}
-              onChange={(e) => setWarnMessage(e.target.value)}
-              rows={3}
-              className="w-full rounded-xl border border-border bg-surface-elevated p-3 text-xs text-foreground focus:border-brand focus:outline-none font-mono"
-            />
-
-            <div className="flex items-center justify-end gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setWarnModalOpen(false)}
-                className="py-1.5 px-3 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={warnMutation.isPending}
-                onClick={() => warnMutation.mutate(warnMessage)}
-                className="py-2 px-4 rounded-xl text-xs font-semibold text-white bg-gradient-to-r from-amber-500 to-orange-600 hover:opacity-95 shadow-sm transition-all cursor-pointer"
-              >
-                {warnMutation.isPending ? 'Transmitting...' : 'Send Warning Overlay'}
-              </button>
-            </div>
-          </motion.div>
+          <textarea
+            value={warnMessage}
+            onChange={(e) => setWarnMessage(e.target.value)}
+            rows={3}
+            className="w-full rounded-xl border border-border bg-surface-elevated p-3 text-xs text-foreground focus:border-brand focus:outline-none font-mono"
+          />
         </div>
-      )}
+      </Modal>
 
       {/* FORCE TERMINATE MODAL */}
-      {terminateModalOpen && (
-        <div key="terminate-modal" className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-background/80 backdrop-blur-md">
-          <motion.div
-            initial={{ scale: 0.92, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            className="w-full max-w-md rounded-2xl border border-rose-500/40 bg-surface p-5 shadow-2xl space-y-4"
-          >
-            <div className="flex items-center justify-between">
-              <h4 className="text-sm font-bold text-rose-500 flex items-center gap-2">
-                <ShieldOff className="w-4 h-4" />
-                <span>Confirm Force Disqualification</span>
-              </h4>
-              <button
-                type="button"
-                onClick={() => setTerminateModalOpen(false)}
-                className="p-1 rounded-lg text-muted-foreground hover:text-foreground cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
+      <Modal
+        isOpen={terminateModalOpen}
+        onClose={() => setTerminateModalOpen(false)}
+        size="md"
+        title={
+          <div className="flex items-center gap-2 text-rose-500">
+            <ShieldOff className="w-4 h-4" />
+            <span>Confirm Force Disqualification</span>
+          </div>
+        }
+        footer={
+          <div className="flex items-center justify-end gap-2 w-full">
+            <button
+              type="button"
+              onClick={() => setTerminateModalOpen(false)}
+              className="py-1.5 px-3 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              disabled={terminateMutation.isPending}
+              onClick={() => terminateMutation.mutate(terminateReason)}
+              className="py-2 px-4 rounded-xl text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 shadow-sm transition-all cursor-pointer"
+            >
+              {terminateMutation.isPending ? 'Executing Lockout...' : 'Confirm Disqualification'}
+            </button>
+          </div>
+        }
+      >
+        <div className="space-y-4">
+          <p className="text-xs text-muted-foreground">
+            Immediately locks candidate out, writes terminal status to MySQL, and submits for ACID grading.
+          </p>
 
-            <p className="text-xs text-muted-foreground">
-              Immediately locks candidate out, writes terminal status to MySQL, and submits for ACID grading.
-            </p>
-
-            <textarea
-              value={terminateReason}
-              onChange={(e) => setTerminateReason(e.target.value)}
-              rows={3}
-              placeholder="Reason for termination..."
-              className="w-full rounded-xl border border-rose-500/30 bg-surface-elevated p-3 text-xs text-foreground focus:border-rose-500 focus:outline-none font-mono"
-            />
-
-            <div className="flex items-center justify-end gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setTerminateModalOpen(false)}
-                className="py-1.5 px-3 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={terminateMutation.isPending}
-                onClick={() => terminateMutation.mutate(terminateReason)}
-                className="py-2 px-4 rounded-xl text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 shadow-sm transition-all cursor-pointer"
-              >
-                {terminateMutation.isPending ? 'Executing Lockout...' : 'Confirm Disqualification'}
-              </button>
-            </div>
-          </motion.div>
+          <textarea
+            value={terminateReason}
+            onChange={(e) => setTerminateReason(e.target.value)}
+            rows={3}
+            placeholder="Reason for termination..."
+            className="w-full rounded-xl border border-rose-500/30 bg-surface-elevated p-3 text-xs text-foreground focus:border-rose-500 focus:outline-none font-mono"
+          />
         </div>
-      )}
+      </Modal>
     </AnimatePresence>,
     document.body
   );

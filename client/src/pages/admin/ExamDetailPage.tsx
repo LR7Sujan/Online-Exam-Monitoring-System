@@ -17,9 +17,9 @@ import {
   Shield,
   Trash2,
   Users,
-  X,
 } from 'lucide-react';
 import { api } from '../../lib/api';
+import { Modal } from '../../components/ui/Modal';
 import { NeonButton } from '../../components/ui/NeonButton';
 import { SkeletonCard } from '../../components/ui/Skeleton';
 import { ErrorState, EmptyState } from '../../components/ui/EmptyState';
@@ -813,59 +813,77 @@ export function ExamDetailPage() {
               )}
             </div>
 
-            {/* Inline Question Add / Edit Form */}
-            {(isAddingQuestion || editingQuestionId) && (
-              <div className="rounded-2xl border border-brand/40 bg-surface-elevated p-4 space-y-3 font-mono text-xs">
-                <div className="flex items-center justify-between border-b border-border/70 pb-2">
-                  <span className="font-bold text-foreground">
-                    {editingQuestionId ? 'Edit Question' : 'Add New Question'}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={resetQuestionForm}
-                    className="p-1 rounded text-muted-foreground hover:text-foreground cursor-pointer"
+            {/* Question Add / Edit Modal Dialog */}
+            <Modal
+              isOpen={Boolean(isAddingQuestion || editingQuestionId)}
+              onClose={resetQuestionForm}
+              size="lg"
+              title={editingQuestionId ? 'Edit Question' : 'Add New Question'}
+              description="Configure question text, multiple choice options, and marks"
+              footer={
+                <div className="flex items-center justify-end gap-2.5 w-full">
+                  <NeonButton variant="secondary" size="sm" onClick={resetQuestionForm}>
+                    Cancel
+                  </NeonButton>
+                  <NeonButton
+                    variant="primary"
+                    size="sm"
+                    onClick={handleSaveQuestion}
+                    isLoading={addQuestionMutation.isPending || updateQuestionMutation.isPending}
                   >
-                    <X className="w-4 h-4" />
-                  </button>
+                    {editingQuestionId ? 'Update Question' : 'Save Question'}
+                  </NeonButton>
+                </div>
+              }
+            >
+              <div className="space-y-4 font-mono text-xs">
+                <div>
+                  <label className="block text-xs font-mono text-foreground font-semibold mb-1">
+                    QUESTION PROMPT *
+                  </label>
+                  <input
+                    type="text"
+                    value={qText}
+                    onChange={(e) => setQText(e.target.value)}
+                    placeholder="Question prompt..."
+                    className="w-full rounded-xl border border-border bg-background p-2.5 text-xs text-foreground font-mono focus:border-brand focus:outline-none"
+                  />
                 </div>
 
-                <input
-                  type="text"
-                  value={qText}
-                  onChange={(e) => setQText(e.target.value)}
-                  placeholder="Question prompt..."
-                  className="w-full rounded-xl border border-border bg-background p-2.5 text-xs text-foreground font-mono focus:border-brand focus:outline-none"
-                />
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  <input
-                    type="text"
-                    value={optA}
-                    onChange={(e) => setOptA(e.target.value)}
-                    placeholder="Option A *"
-                    className="rounded-lg border border-border bg-background p-2 text-xs text-foreground font-mono focus:border-brand focus:outline-none"
-                  />
-                  <input
-                    type="text"
-                    value={optB}
-                    onChange={(e) => setOptB(e.target.value)}
-                    placeholder="Option B *"
-                    className="rounded-lg border border-border bg-background p-2 text-xs text-foreground font-mono focus:border-brand focus:outline-none"
-                  />
-                  <input
-                    type="text"
-                    value={optC}
-                    onChange={(e) => setOptC(e.target.value)}
-                    placeholder="Option C"
-                    className="rounded-lg border border-border bg-background p-2 text-xs text-foreground font-mono focus:border-brand focus:outline-none"
-                  />
-                  <input
-                    type="text"
-                    value={optD}
-                    onChange={(e) => setOptD(e.target.value)}
-                    placeholder="Option D"
-                    className="rounded-lg border border-border bg-background p-2 text-xs text-foreground font-mono focus:border-brand focus:outline-none"
-                  />
+                <div className="space-y-2">
+                  <label className="block text-xs font-mono text-foreground font-semibold">
+                    ANSWER OPTIONS
+                  </label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <input
+                      type="text"
+                      value={optA}
+                      onChange={(e) => setOptA(e.target.value)}
+                      placeholder="Option A *"
+                      className="rounded-lg border border-border bg-background p-2 text-xs text-foreground font-mono focus:border-brand focus:outline-none"
+                    />
+                    <input
+                      type="text"
+                      value={optB}
+                      onChange={(e) => setOptB(e.target.value)}
+                      placeholder="Option B *"
+                      className="rounded-lg border border-border bg-background p-2 text-xs text-foreground font-mono focus:border-brand focus:outline-none"
+                    />
+                    <input
+                      type="text"
+                      value={optC}
+                      onChange={(e) => setOptC(e.target.value)}
+                      placeholder="Option C"
+                      className="rounded-lg border border-border bg-background p-2 text-xs text-foreground font-mono focus:border-brand focus:outline-none"
+                    />
+                    <input
+                      type="text"
+                      value={optD}
+                      onChange={(e) => setOptD(e.target.value)}
+                      placeholder="Option D"
+                      className="rounded-lg border border-border bg-background p-2 text-xs text-foreground font-mono focus:border-brand focus:outline-none"
+                    />
+                  </div>
                 </div>
 
                 {qError && (
@@ -875,11 +893,11 @@ export function ExamDetailPage() {
                   </p>
                 )}
 
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-border/60">
                   <div className="flex items-center gap-3">
-                    <span className="text-muted-foreground">Correct Option:</span>
+                    <span className="text-muted-foreground font-semibold">Correct Option:</span>
                     {(['A', 'B', 'C', 'D'] as const).map((opt) => (
-                      <label key={opt} className="flex items-center gap-1 cursor-pointer">
+                      <label key={opt} className="flex items-center gap-1.5 cursor-pointer">
                         <input
                           type="radio"
                           name="qCorrectRadio"
@@ -892,30 +910,20 @@ export function ExamDetailPage() {
                     ))}
                   </div>
 
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-muted-foreground">Marks:</span>
-                      <input
-                        type="number"
-                        min={1}
-                        max={50}
-                        value={qMarks}
-                        onChange={(e) => setQMarks(parseInt(e.target.value, 10) || 1)}
-                        className="w-16 rounded-lg border border-border bg-background p-1.5 text-center text-xs text-foreground font-mono focus:border-brand focus:outline-none"
-                      />
-                    </div>
-                    <NeonButton
-                      variant="primary"
-                      size="sm"
-                      onClick={handleSaveQuestion}
-                      isLoading={addQuestionMutation.isPending || updateQuestionMutation.isPending}
-                    >
-                      {editingQuestionId ? 'Update' : 'Save Question'}
-                    </NeonButton>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-muted-foreground font-semibold">Marks:</span>
+                    <input
+                      type="number"
+                      min={1}
+                      max={50}
+                      value={qMarks}
+                      onChange={(e) => setQMarks(parseInt(e.target.value, 10) || 1)}
+                      className="w-16 rounded-lg border border-border bg-background p-1.5 text-center text-xs text-foreground font-mono focus:border-brand focus:outline-none"
+                    />
                   </div>
                 </div>
               </div>
-            )}
+            </Modal>
 
             {/* Questions List */}
             {questions.length === 0 ? (

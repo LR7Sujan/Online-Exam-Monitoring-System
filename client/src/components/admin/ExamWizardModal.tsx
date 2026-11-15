@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   AlertCircle,
@@ -18,6 +18,7 @@ import {
   Upload,
   X,
 } from 'lucide-react';
+import { Modal } from '../ui/Modal';
 import { NeonButton } from '../ui/NeonButton';
 import { api } from '../../lib/api';
 import type { AnswerOption, ExamItem } from '../../types/domain';
@@ -778,60 +779,126 @@ export function ExamWizardModal({
   const maxDevToolsBeforeTermination = Math.max(0, Math.floor((100 - minTrustScore) / 50));
   const maxNoFaceBeforeTermination = Math.max(1, Math.floor((100 - minTrustScore) / 20));
 
+  const handleSafeClose = () => {
+    const isDirty = Boolean(title.trim() || description.trim() || questions.length > 0);
+    if (isDirty) {
+      if (window.confirm('Discard unsaved exam changes?')) {
+        onClose();
+      }
+    } else {
+      onClose();
+    }
+  };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-background/80 backdrop-blur-md">
-      <motion.div
-        initial={{ scale: 0.95, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        exit={{ scale: 0.95, opacity: 0 }}
-        className="relative w-full max-w-3xl rounded-3xl border border-border bg-surface p-6 sm:p-7 shadow-2xl flex flex-col max-h-[92vh] overflow-hidden"
-      >
-        {/* Wizard Header + Stepper Progress */}
-        <div className="flex items-center justify-between border-b border-border/70 pb-4">
-          <div>
-            <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-brand" />
-              <span>{editingExam ? 'Modify Assessment Specification' : 'Architect New Examination'}</span>
-            </h3>
-            <p className="text-xs font-mono text-muted-foreground">
-              Multi-step configuration wizard with live threshold integrity bounds
-            </p>
+    <>
+      <Modal
+        isOpen={isOpen}
+        onClose={handleSafeClose}
+        size="xl"
+        className="max-w-3xl"
+        bodyClassName="p-0"
+        showCloseButton={false}
+        header={
+          <div className="p-5 sm:p-6 pb-0">
+            {/* Wizard Header + Stepper Progress */}
+            <div className="flex items-center justify-between border-b border-border/70 pb-4">
+              <div>
+                <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-brand" />
+                  <span>{editingExam ? 'Modify Assessment Specification' : 'Architect New Examination'}</span>
+                </h3>
+                <p className="text-xs font-mono text-muted-foreground">
+                  Multi-step configuration wizard with live threshold integrity bounds
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleSafeClose}
+                className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+                aria-label="Close modal"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Animated Stepper Tabs */}
+            <div className="grid grid-cols-3 gap-2 border-b border-border/50 py-3 font-mono text-xs">
+              {[
+                { step: 1, label: '1. Exam Details', isValid: isStep1Valid },
+                { step: 2, label: '2. Windows & Threshold', isValid: isStep2Valid },
+                { step: 3, label: '3. Questions & CSV', isValid: isStep3Valid },
+              ].map((s) => (
+                <button
+                  key={s.step}
+                  type="button"
+                  onClick={() => handleStepClick(s.step as 1 | 2 | 3)}
+                  className={`rounded-xl py-2 px-3 text-center transition-all cursor-pointer ${
+                    currentStep === s.step
+                      ? 'bg-brand text-white font-medium shadow-sm'
+                      : currentStep > s.step && s.isValid
+                      ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-medium border border-emerald-500/30'
+                      : 'bg-surface-elevated text-muted-foreground border border-border hover:text-foreground'
+                  }`}
+                >
+                  {s.label}
+                </button>
+              ))}
+            </div>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+        }
+        footer={
+          <div className="flex flex-wrap items-center justify-between gap-3 w-full">
+            <div>
+              {currentStep > 1 && (
+                <NeonButton
+                  variant="ghost"
+                  size="sm"
+                  leftIcon={<ArrowLeft className="w-4 h-4" />}
+                  onClick={() => setCurrentStep((c) => (c - 1) as 1 | 2 | 3)}
+                >
+                  Back
+                </NeonButton>
+              )}
+            </div>
 
-        {/* Animated Stepper Tabs */}
-        <div className="grid grid-cols-3 gap-2 border-b border-border/50 py-3 font-mono text-xs">
-          {[
-            { step: 1, label: '1. Exam Details', isValid: isStep1Valid },
-            { step: 2, label: '2. Windows & Threshold', isValid: isStep2Valid },
-            { step: 3, label: '3. Questions & CSV', isValid: isStep3Valid },
-          ].map((s) => (
-            <button
-              key={s.step}
-              type="button"
-              onClick={() => handleStepClick(s.step as 1 | 2 | 3)}
-              className={`rounded-xl py-2 px-3 text-center transition-all cursor-pointer ${
-                currentStep === s.step
-                  ? 'bg-brand text-white font-medium shadow-sm'
-                  : currentStep > s.step && s.isValid
-                  ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-medium border border-emerald-500/30'
-                  : 'bg-surface-elevated text-muted-foreground border border-border hover:text-foreground'
-              }`}
-            >
-              {s.label}
-            </button>
-          ))}
-        </div>
+            <div className="flex items-center gap-2">
+              <NeonButton
+                variant="secondary"
+                size="sm"
+                leftIcon={<Save className="w-4 h-4" />}
+                isLoading={saveExamMutation.isPending}
+                onClick={handleSaveDraft}
+              >
+                Save as draft
+              </NeonButton>
 
+              {currentStep < 3 ? (
+                <NeonButton
+                  variant="primary"
+                  size="sm"
+                  rightIcon={<ArrowRight className="w-4 h-4" />}
+                  onClick={handleContinue}
+                >
+                  Continue
+                </NeonButton>
+              ) : (
+                <NeonButton
+                  variant="success"
+                  size="md"
+                  isLoading={saveExamMutation.isPending}
+                  leftIcon={<CheckCircle2 className="w-4 h-4" />}
+                  onClick={handlePublishClick}
+                >
+                  {editingExam ? 'Save & Deploy Specifications' : 'Publish & Finalize Assessment'}
+                </NeonButton>
+              )}
+            </div>
+          </div>
+        }
+      >
         {/* Wizard Step Body */}
-        <div className="flex-1 overflow-y-auto py-5 space-y-5 scrollbar-thin">
+        <div className="flex-1 overflow-y-auto px-5 sm:px-6 py-5 space-y-5 scrollbar-thin">
           {/* ================================================================ */}
           {/* STEP 1: EXAM DETAILS */}
           {/* ================================================================ */}
@@ -1570,148 +1637,83 @@ export function ExamWizardModal({
             </motion.div>
           )}
         </div>
+      </Modal>
 
-        {/* Wizard Footer Controls */}
-        <div className="border-t border-border/70 pt-4 flex flex-wrap items-center justify-between gap-3">
-          <div>
-            {currentStep > 1 && (
-              <NeonButton
-                variant="ghost"
-                size="sm"
-                leftIcon={<ArrowLeft className="w-4 h-4" />}
-                onClick={() => setCurrentStep((c) => (c - 1) as 1 | 2 | 3)}
-              >
-                Back
-              </NeonButton>
-            )}
+      {/* "BEFORE YOU CAN PUBLISH" REVIEW MODAL */}
+      <Modal
+        isOpen={showPublishModal}
+        onClose={() => setShowPublishModal(false)}
+        size="lg"
+        title={
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-500">
+              <ShieldAlert className="w-5 h-5" />
+            </div>
+            <div>
+              <h4 className="text-base font-bold text-foreground">Before you can publish</h4>
+              <p className="text-xs font-mono text-muted-foreground">
+                The following required specifications must be completed before deploying:
+              </p>
+            </div>
           </div>
-
-          <div className="flex items-center gap-2">
-            <NeonButton
-              variant="secondary"
-              size="sm"
-              leftIcon={<Save className="w-4 h-4" />}
-              isLoading={saveExamMutation.isPending}
-              onClick={handleSaveDraft}
-            >
-              Save as draft
+        }
+        footer={
+          <div className="flex items-center justify-end gap-2 w-full">
+            <NeonButton variant="secondary" size="sm" onClick={() => setShowPublishModal(false)}>
+              Close
             </NeonButton>
-
-            {currentStep < 3 ? (
+            {publishErrors.length > 0 && publishErrors[0].errors.length > 0 && (
               <NeonButton
                 variant="primary"
                 size="sm"
                 rightIcon={<ArrowRight className="w-4 h-4" />}
-                onClick={handleContinue}
+                onClick={() =>
+                  jumpToField(
+                    publishErrors[0].errors[0].step,
+                    publishErrors[0].errors[0].targetId
+                  )
+                }
               >
-                Continue
-              </NeonButton>
-            ) : (
-              <NeonButton
-                variant="success"
-                size="md"
-                isLoading={saveExamMutation.isPending}
-                leftIcon={<CheckCircle2 className="w-4 h-4" />}
-                onClick={handlePublishClick}
-              >
-                {editingExam ? 'Save & Deploy Specifications' : 'Publish & Finalize Assessment'}
+                Fix First Issue
               </NeonButton>
             )}
           </div>
-        </div>
-
-        {/* ================================================================ */}
-        {/* "BEFORE YOU CAN PUBLISH" REVIEW MODAL */}
-        {/* ================================================================ */}
-        <AnimatePresence>
-          {showPublishModal && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="absolute inset-0 z-50 bg-background/90 backdrop-blur-md p-6 flex flex-col justify-between overflow-y-auto"
+        }
+      >
+        <div className="space-y-4">
+          {publishErrors.map((group) => (
+            <div
+              key={group.step}
+              className="rounded-2xl border border-border bg-surface-elevated/70 p-4 space-y-2.5"
             >
-              <div className="space-y-4">
-                <div className="flex items-center justify-between border-b border-border/70 pb-3">
-                  <div className="flex items-center gap-2.5">
-                    <div className="p-2 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-500">
-                      <ShieldAlert className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h4 className="text-base font-bold text-foreground">Before you can publish</h4>
-                      <p className="text-xs font-mono text-muted-foreground">
-                        The following required specifications must be completed before deploying:
-                      </p>
-                    </div>
-                  </div>
+              <h5 className="text-xs font-mono font-bold text-brand uppercase tracking-wider">
+                {group.stepName}
+              </h5>
+              <div className="space-y-1.5">
+                {group.errors.map((issue, idx) => (
                   <button
+                    key={idx}
                     type="button"
-                    onClick={() => setShowPublishModal(false)}
-                    className="p-1 rounded-lg text-muted-foreground hover:text-foreground cursor-pointer"
+                    onClick={() => jumpToField(issue.step, issue.targetId)}
+                    className="w-full text-left p-2.5 rounded-xl border border-rose-500/30 bg-rose-500/5 hover:bg-rose-500/10 transition-colors flex items-center justify-between cursor-pointer group"
                   >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-
-                <div className="space-y-4">
-                  {publishErrors.map((group) => (
-                    <div
-                      key={group.step}
-                      className="rounded-2xl border border-border bg-surface-elevated/70 p-4 space-y-2.5"
-                    >
-                      <h5 className="text-xs font-mono font-bold text-brand uppercase tracking-wider">
-                        {group.stepName}
-                      </h5>
-                      <div className="space-y-1.5">
-                        {group.errors.map((issue, idx) => (
-                          <button
-                            key={idx}
-                            type="button"
-                            onClick={() => jumpToField(issue.step, issue.targetId)}
-                            className="w-full text-left p-2.5 rounded-xl border border-rose-500/30 bg-rose-500/5 hover:bg-rose-500/10 transition-colors flex items-center justify-between cursor-pointer group"
-                          >
-                            <div className="flex items-center gap-2 min-w-0 pr-2">
-                              <AlertCircle className="w-4 h-4 text-rose-500 shrink-0" />
-                              <span className="text-xs font-mono text-foreground">
-                                <strong className="text-rose-500 mr-1.5">{issue.field}:</strong>
-                                {issue.message}
-                              </span>
-                            </div>
-                            <span className="text-[11px] font-mono text-brand group-hover:underline shrink-0 flex items-center gap-1">
-                              Fix field <ArrowRight className="w-3 h-3" />
-                            </span>
-                          </button>
-                        ))}
-                      </div>
+                    <div className="flex items-center gap-2 min-w-0 pr-2">
+                      <AlertCircle className="w-4 h-4 text-rose-500 shrink-0" />
+                      <span className="text-xs font-mono text-foreground">
+                        <strong className="text-rose-500 mr-1.5">{issue.field}:</strong>
+                        {issue.message}
+                      </span>
                     </div>
-                  ))}
-                </div>
+                    <span className="text-[11px] font-mono text-brand group-hover:underline shrink-0 flex items-center gap-1">
+                      Fix field <ArrowRight className="w-3 h-3" />
+                    </span>
+                  </button>
+                ))}
               </div>
-
-              <div className="pt-4 border-t border-border/70 flex justify-end gap-2">
-                <NeonButton variant="secondary" size="sm" onClick={() => setShowPublishModal(false)}>
-                  Close
-                </NeonButton>
-                {publishErrors.length > 0 && publishErrors[0].errors.length > 0 && (
-                  <NeonButton
-                    variant="primary"
-                    size="sm"
-                    rightIcon={<ArrowRight className="w-4 h-4" />}
-                    onClick={() =>
-                      jumpToField(
-                        publishErrors[0].errors[0].step,
-                        publishErrors[0].errors[0].targetId
-                      )
-                    }
-                  >
-                    Fix First Issue
-                  </NeonButton>
-                )}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </motion.div>
-    </div>
+            </div>
+          ))}
+        </div>
+      </Modal>
+    </>
   );
 }

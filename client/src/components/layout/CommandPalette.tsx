@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { Command } from 'cmdk';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -63,10 +64,12 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
     navigate('/');
   };
 
-  return (
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-70 flex items-start justify-center pt-20 sm:pt-28 px-4">
+        <div role="presentation" className="fixed inset-0 z-70 flex items-start justify-center pt-20 sm:pt-28 px-4">
           {/* Glass blur overlay backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -79,6 +82,9 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
 
           {/* Dialog Container */}
           <motion.div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Command Palette"
             initial={{ opacity: 0, scale: 0.96, y: -10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: -10 }}
@@ -255,6 +261,7 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
           </motion.div>
         </div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 }

@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
+import { Modal } from '../ui/Modal';
 import {
   ShieldCheck,
   Camera,
@@ -223,17 +224,16 @@ export function PreExamChecklistModal({
     rulesAccepted && cameraActive && fullscreenActive && systemChecks.network;
 
   return (
-    <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-background/80 backdrop-blur-xl">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95, y: 16 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.95, y: 16 }}
-          transition={{ duration: 0.25 }}
-          className="relative w-full max-w-2xl rounded-3xl border border-border bg-surface/95 backdrop-blur-2xl shadow-layered-md overflow-hidden flex flex-col"
-        >
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      size="lg"
+      showCloseButton={false}
+      bodyClassName="p-0 flex flex-col"
+      header={
+        <div>
           {/* Top highlight bar */}
-          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500" />
+          <div className="h-1 bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500" />
 
           {/* Header */}
           <div className="flex items-center justify-between p-5 border-b border-border/70 bg-surface-elevated/50">
@@ -249,8 +249,10 @@ export function PreExamChecklistModal({
               </h3>
             </div>
             <button
+              type="button"
               onClick={onClose}
               className="p-1.5 text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted transition-colors cursor-pointer"
+              aria-label="Close modal"
             >
               <X className="w-5 h-5" />
             </button>
@@ -267,6 +269,7 @@ export function PreExamChecklistModal({
               ].map((s) => (
                 <button
                   key={s.step}
+                  type="button"
                   onClick={() => setCurrentStep(s.step)}
                   className={`flex items-center gap-2 py-1.5 px-3 rounded-xl text-xs font-mono transition-all cursor-pointer ${
                     currentStep === s.step
@@ -284,9 +287,59 @@ export function PreExamChecklistModal({
               ))}
             </div>
           </div>
+        </div>
+      }
+      footer={
+        <div className="flex items-center justify-between w-full">
+          <div>
+            {currentStep > 1 && (
+              <button
+                type="button"
+                onClick={() => setCurrentStep((c) => (c - 1) as StepKey)}
+                className="py-2 px-3.5 rounded-xl text-xs font-medium text-muted-foreground hover:text-foreground border border-border hover:bg-muted transition-colors flex items-center gap-1.5 cursor-pointer"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span>Back</span>
+              </button>
+            )}
+          </div>
 
-          {/* Step Content */}
-          <div className="p-6 overflow-y-auto max-h-[60vh]">
+          <div className="flex items-center gap-3">
+            {currentStep < 4 ? (
+              <button
+                type="button"
+                onClick={() => setCurrentStep((c) => (c + 1) as StepKey)}
+                className="py-2 px-4 rounded-xl text-xs font-semibold text-white bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 hover:opacity-95 shadow-sm transition-all flex items-center gap-1.5 cursor-pointer"
+              >
+                <span>Continue</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            ) : (
+              <button
+                type="button"
+                disabled={!allStepsValid || isLoading}
+                onClick={onComplete}
+                className="py-2.5 px-5 rounded-xl text-xs font-semibold text-white bg-gradient-to-r from-emerald-500 to-teal-600 hover:opacity-95 shadow-md shadow-emerald-500/20 active:scale-[0.99] transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isLoading ? (
+                  <span className="inline-flex items-center gap-2">
+                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Initializing...
+                  </span>
+                ) : (
+                  <>
+                    <Sparkles className="w-4 h-4" />
+                    <span>Initialize Assessment Session</span>
+                  </>
+                )}
+              </button>
+            )}
+          </div>
+        </div>
+      }
+    >
+      {/* Step Content */}
+      <div className="p-6 overflow-y-auto max-h-[60vh]">
             {/* STEP 1: RULES */}
             {currentStep === 1 && (
               <motion.div
@@ -501,57 +554,7 @@ export function PreExamChecklistModal({
                 </div>
               </motion.div>
             )}
-          </div>
-
-          {/* Footer Navigation */}
-          <div className="p-5 border-t border-border/70 bg-surface-elevated/50 flex items-center justify-between">
-            <div>
-              {currentStep > 1 && (
-                <button
-                  type="button"
-                  onClick={() => setCurrentStep((c) => (c - 1) as StepKey)}
-                  className="py-2 px-3.5 rounded-xl text-xs font-medium text-muted-foreground hover:text-foreground border border-border hover:bg-muted transition-colors flex items-center gap-1.5 cursor-pointer"
-                >
-                  <ArrowLeft className="w-4 h-4" />
-                  <span>Back</span>
-                </button>
-              )}
-            </div>
-
-            <div className="flex items-center gap-3">
-              {currentStep < 4 ? (
-                <button
-                  type="button"
-                  onClick={() => setCurrentStep((c) => (c + 1) as StepKey)}
-                  className="py-2 px-4 rounded-xl text-xs font-semibold text-white bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 hover:opacity-95 shadow-sm transition-all flex items-center gap-1.5 cursor-pointer"
-                >
-                  <span>Continue</span>
-                  <ArrowRight className="w-4 h-4" />
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  disabled={!allStepsValid || isLoading}
-                  onClick={onComplete}
-                  className="py-2.5 px-5 rounded-xl text-xs font-semibold text-white bg-gradient-to-r from-emerald-500 to-teal-600 hover:opacity-95 shadow-md shadow-emerald-500/20 active:scale-[0.99] transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isLoading ? (
-                    <span className="inline-flex items-center gap-2">
-                      <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      Initializing...
-                    </span>
-                  ) : (
-                    <>
-                      <Sparkles className="w-4 h-4" />
-                      <span>Initialize Assessment Session</span>
-                    </>
-                  )}
-                </button>
-              )}
-            </div>
-          </div>
-        </motion.div>
       </div>
-    </AnimatePresence>
+    </Modal>
   );
 }
