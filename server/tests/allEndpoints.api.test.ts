@@ -778,6 +778,103 @@ describe('Comprehensive API Endpoint Test Suite (All Endpoints: 200/201, 400, 40
       expect(Array.isArray(res.body.data)).toBe(true);
     });
 
+    // Dashboard & Violations Telemetry Tests (7 vs 30 days window)
+    it('GET /api/analytics/dashboard?days=7 - 200 returns exactly 7 continuous points and matches direct SQL query', async () => {
+      const res = await request(app)
+        .get('/api/analytics/dashboard')
+        .query({ days: 7 })
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      const points = res.body.data.violationsOverTime;
+      expect(Array.isArray(points)).toBe(true);
+      expect(points.length).toBe(7);
+
+      // Verify continuous date order (each date is exactly 1 day after previous)
+      for (let i = 1; i < points.length; i++) {
+        const prev = new Date(points[i - 1].date + 'T00:00:00Z').getTime();
+        const curr = new Date(points[i].date + 'T00:00:00Z').getTime();
+        expect(curr - prev).toBe(86400000);
+      }
+
+      // Verify summary fields
+      const summary = res.body.data.violationsSummary;
+      expect(summary).toBeDefined();
+      expect(summary.total).toBeGreaterThan(0);
+      expect(summary.dailyAverage).toBe(Number((summary.total / 7).toFixed(1)));
+      expect(typeof summary.peakDate).toBe('string');
+      expect(summary.peakCount).toBeGreaterThanOrEqual(0);
+
+      // Verify total matches direct SQL query
+      const [sqlRow] = await queryRows<RowDataPacket[]>(
+        'SELECT COUNT(*) AS total_count FROM Proctoring_Logs WHERE occurred_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)'
+      );
+      expect(summary.total).toBe(Number(sqlRow.total_count));
+    });
+
+    it('GET /api/analytics/dashboard?days=30 - 200 returns exactly 30 continuous points and matches direct SQL query', async () => {
+      const res = await request(app)
+        .get('/api/analytics/dashboard')
+        .query({ days: 30 })
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      const points = res.body.data.violationsOverTime;
+      expect(Array.isArray(points)).toBe(true);
+      expect(points.length).toBe(30);
+
+      // Verify continuous date order
+      for (let i = 1; i < points.length; i++) {
+        const prev = new Date(points[i - 1].date + 'T00:00:00Z').getTime();
+        const curr = new Date(points[i].date + 'T00:00:00Z').getTime();
+        expect(curr - prev).toBe(86400000);
+      }
+
+      const summary = res.body.data.violationsSummary;
+      expect(summary.total).toBeGreaterThanOrEqual(300);
+      expect(summary.dailyAverage).toBe(Number((summary.total / 30).toFixed(1)));
+
+      // Verify total matches direct SQL query
+      const [sqlRow] = await queryRows<RowDataPacket[]>(
+        'SELECT COUNT(*) AS total_count FROM Proctoring_Logs WHERE occurred_at >= DATE_SUB(CURDATE(), INTERVAL 29 DAY)'
+      );
+      expect(summary.total).toBe(Number(sqlRow.total_count));
+    });
+
+    it('GET /api/analytics/dashboard?days=14 - 400 rejects invalid days window with validation error', async () => {
+      const res = await request(app)
+        .get('/api/analytics/dashboard')
+        .query({ days: 14 })
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(res.status).toBe(400);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error.code).toBe('VALIDATION_ERROR');
+    });
+
+    it('GET /api/analytics/dashboard?days=abc - 400 rejects non-numeric days param', async () => {
+      const res = await request(app)
+        .get('/api/analytics/dashboard')
+        .query({ days: 'abc' })
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(res.status).toBe(400);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error.code).toBe('VALIDATION_ERROR');
+    });
+
+    it('GET /api/analytics/violations-over-time - 200 returns 7 continuous points by default', async () => {
+      const res = await request(app)
+        .get('/api/analytics/violations-over-time')
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.violationsOverTime.length).toBe(7);
+      expect(res.body.data.summary.total).toBeGreaterThan(0);
+    });
+
     it('GET /api/admin/users - 200 returns user list for ADMIN', async () => {
       const res = await request(app)
         .get('/api/admin/users')

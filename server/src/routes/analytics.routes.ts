@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import type { RowDataPacket } from 'mysql2/promise';
+import { z } from 'zod';
 import { queryRows } from '../config/db.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 import { sendSuccess } from '../utils/response.js';
@@ -8,10 +9,105 @@ export const analyticsRouter = Router();
 
 analyticsRouter.use(requireAuth, requireRole('ADMIN', 'PROCTOR'));
 
+const daysQuerySchema = z.object({
+  days: z
+    .preprocess((val) => (val === undefined ? '7' : String(val)), z.enum(['7', '30']))
+    .transform((val) => Number(val) as 7 | 30),
+});
+
+interface ViolationDayPoint {
+  date: string;
+  count: number;
+  violation_count: number;
+  total_penalty: number;
+  impacted_sessions: number;
+}
+
+interface ViolationsSummary {
+  total: number;
+  dailyAverage: number;
+  peakDate: string;
+  peakCount: number;
+}
+
+async function getViolationsOverTime(days: 7 | 30): Promise<{
+  series: ViolationDayPoint[];
+  summary: ViolationsSummary;
+}> {
+  const dateWindowRows = await queryRows<RowDataPacket[]>(
+    "SELECT DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL ? - 1 DAY), '%Y-%m-%d') AS start_date",
+    [days]
+  );
+  const startDateStr = dateWindowRows[0]?.start_date ?? '';
+  const [startY, startM, startD] = startDateStr.split('-').map(Number);
+  const dateList: string[] = [];
+  for (let i = 0; i < days; i++) {
+    const d = new Date(Date.UTC(startY, startM - 1, startD + i));
+    dateList.push(d.toISOString().slice(0, 10));
+  }
+
+  const rawViolations = await queryRows<RowDataPacket[]>(
+    `SELECT DATE(pl.occurred_at) AS date,
+            COUNT(pl.id) AS violation_count,
+            COALESCE(SUM(pl.penalty_applied), 0) AS total_penalty,
+            COUNT(DISTINCT pl.session_id) AS impacted_sessions
+       FROM Proctoring_Logs pl
+      WHERE pl.occurred_at >= DATE_SUB(CURDATE(), INTERVAL ? - 1 DAY)
+      GROUP BY DATE(pl.occurred_at)
+      ORDER BY date ASC`,
+    [days]
+  );
+
+  const rowMap = new Map<string, { count: number; total_penalty: number; impacted_sessions: number }>();
+  for (const row of rawViolations) {
+    const dStr =
+      row.date instanceof Date
+        ? row.date.toISOString().slice(0, 10)
+        : String(row.date ?? '').slice(0, 10);
+    rowMap.set(dStr, {
+      count: Number(row.violation_count ?? 0),
+      total_penalty: Number(row.total_penalty ?? 0),
+      impacted_sessions: Number(row.impacted_sessions ?? 0),
+    });
+  }
+
+  const series: ViolationDayPoint[] = dateList.map((dStr) => {
+    const item = rowMap.get(dStr);
+    const count = item ? item.count : 0;
+    return {
+      date: dStr,
+      count,
+      violation_count: count,
+      total_penalty: item ? item.total_penalty : 0,
+      impacted_sessions: item ? item.impacted_sessions : 0,
+    };
+  });
+
+  const total = series.reduce((sum, item) => sum + item.count, 0);
+  const dailyAverage = Number((total / days).toFixed(1));
+  let peakDate = series[0]?.date ?? '';
+  let peakCount = series[0]?.count ?? 0;
+  for (const item of series) {
+    if (item.count > peakCount) {
+      peakCount = item.count;
+      peakDate = item.date;
+    }
+  }
+
+  const summary: ViolationsSummary = {
+    total,
+    dailyAverage,
+    peakDate,
+    peakCount,
+  };
+
+  return { series, summary };
+}
+
 // GET /api/analytics/dashboard — comprehensive admin overview intelligence
 analyticsRouter.get('/dashboard', async (req, res, next) => {
   try {
-    const days = Math.min(90, Math.max(1, Number(req.query.days ?? 7)));
+    const { days } = daysQuerySchema.parse(req.query);
 
     // 1. KPI cards: total exams, students, sessions, cheating rate
     const kpiRows = await queryRows<RowDataPacket[]>(
@@ -26,18 +122,8 @@ analyticsRouter.get('/dashboard', async (req, res, next) => {
     const terminatedSessions = Number(kpi.terminated_sessions ?? 0);
     const cheatingRate = totalSessions > 0 ? Number(((terminatedSessions / totalSessions) * 100).toFixed(1)) : 0;
 
-    // 2. Violations over time (7/30 day window)
-    const violationsOverTime = await queryRows<RowDataPacket[]>(
-      `SELECT DATE(pl.occurred_at) AS date,
-              COUNT(pl.id) AS violation_count,
-              COALESCE(SUM(pl.penalty_applied), 0) AS total_penalty,
-              COUNT(DISTINCT pl.session_id) AS impacted_sessions
-         FROM Proctoring_Logs pl
-        WHERE pl.occurred_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
-        GROUP BY DATE(pl.occurred_at)
-        ORDER BY date ASC`,
-      [days]
-    );
+    // 2. Violations over time (continuous 7/30 day window with zero-fill)
+    const { series: violationsOverTime, summary: violationsSummary } = await getViolationsOverTime(days);
 
     // 3. Violation type distribution (donut)
     const violationDistribution = await queryRows<RowDataPacket[]>(
@@ -112,11 +198,33 @@ analyticsRouter.get('/dashboard', async (req, res, next) => {
         cheatingRate,
       },
       violationsOverTime,
+      violationsSummary,
+      summary: violationsSummary,
       violationDistribution,
       integritySplit,
       trustHistogram: trustHistogram[0] || {},
       leaderboard,
       heatmap,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/analytics/violations-over-time — 7/30 day window continuous violations telemetry
+analyticsRouter.get('/violations-over-time', async (req, res, next) => {
+  try {
+    const { days } = daysQuerySchema.parse(req.query);
+    const { series, summary } = await getViolationsOverTime(days);
+    sendSuccess(res, {
+      days,
+      violationsOverTime: series,
+      series,
+      summary,
+      total: summary.total,
+      dailyAverage: summary.dailyAverage,
+      peakDate: summary.peakDate,
+      peakCount: summary.peakCount,
     });
   } catch (err) {
     next(err);
