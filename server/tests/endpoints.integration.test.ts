@@ -83,11 +83,23 @@ test('All Admin, Student, Proctor endpoints and Socket.IO events work end-to-end
       token: adminToken,
       body: JSON.stringify({
         title: 'E2E Test Exam',
+        description: 'Comprehensive exam syllabus that has more than 20 characters for E2E testing',
         durationMinutes: 30,
         minTrustScore: 50,
         startWindow: new Date(Date.now() - 3600_000).toISOString(),
         endWindow: new Date(Date.now() + 3600_000).toISOString(),
         isPublished: true,
+        questions: [
+          {
+            questionText: 'E2E sample question initial?',
+            optionA: 'Alpha',
+            optionB: 'Beta',
+            optionC: 'Gamma',
+            optionD: 'Delta',
+            correctOption: 'A',
+            marks: 5,
+          },
+        ],
       }),
     });
     assert.equal(createExam.status, 201);

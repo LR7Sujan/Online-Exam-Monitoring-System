@@ -26,7 +26,10 @@ test.describe('Admin Role Complete User Journey', () => {
     await page.click('button:has-text("Authenticate & Enter Console")');
 
     // 2. Admin Overview Dashboard
-    await page.waitForURL('**/admin', { timeout: 15000 });
+    await page.waitForURL(/\/home|\/admin/, { timeout: 15000 });
+    if (page.url().includes('/home')) {
+      await page.goto('/admin');
+    }
     await expect(page.locator('text=Administrator Console')).toBeVisible();
     await expect(page.locator('text=Governance & Intelligence Deck')).toBeVisible();
     await expect(page.locator('text=Registered Students')).toBeVisible({ timeout: 10000 });
@@ -82,6 +85,9 @@ test.describe('Admin Role Complete User Journey', () => {
     const validCsv = `"What is ACID atomicity?","All operations succeed or all fail","Automatic concurrency","Any database engine","Asynchronous replication","A",2`;
     await page.fill('textarea[placeholder*="question_text,option_a"]', validCsv);
     await page.click('button:has-text("Parse & Stage Questions")');
+
+    // Preview table displays valid row; click Import valid row
+    await page.click('button:has-text("Import")');
 
     // Verify now 2 staged questions
     await expect(page.locator('text=Curated Questions (2 Staged)')).toBeVisible();

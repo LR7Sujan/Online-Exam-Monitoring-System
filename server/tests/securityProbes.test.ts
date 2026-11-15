@@ -87,6 +87,15 @@ describe('Sub-Phase 11.4: Comprehensive Security Probes & Vulnerability Audit', 
         startWindow: new Date(Date.now() - 3600000).toISOString(),
         endWindow: new Date(Date.now() + 7200000).toISOString(),
         isPublished: true,
+        questions: [
+          {
+            questionText: 'Security Question Initial',
+            optionA: 'Opt A',
+            optionB: 'Opt B',
+            correctOption: 'A',
+            marks: 1,
+          },
+        ],
       });
     expect(examRes.status).toBe(201);
     testExamId = examRes.body.data.id;

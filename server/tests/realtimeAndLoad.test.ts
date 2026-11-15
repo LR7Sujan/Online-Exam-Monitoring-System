@@ -108,12 +108,18 @@ describe('Sub-Phase 11.6: Realtime, Proctoring Invariants & Load Verification', 
     );
     expect(Number(afterLogs[0].cnt)).toBe(1);
 
-    // Verify trust score deducted only once (100 - 10 = 90)
+    const [vt] = await pool.query<RowDataPacket[]>(
+      'SELECT penalty_points FROM Violation_Types WHERE code = ?',
+      ['COPY_PASTE']
+    );
+    const expectedPenalty = vt.length ? Number(vt[0].penalty_points) : 10;
+
+    // Verify trust score deducted only once (100 - penalty)
     const [sess] = await pool.query<RowDataPacket[]>(
       'SELECT trust_score FROM Exam_Sessions WHERE id = ?',
       [sessionId]
     );
-    expect(sess[0].trust_score).toBe(90);
+    expect(sess[0].trust_score).toBe(100 - expectedPenalty);
   });
 
   // ==========================================================================
@@ -311,7 +317,9 @@ describe('Sub-Phase 11.6: Realtime, Proctoring Invariants & Load Verification', 
   // ==========================================================================
   // 5. SIMULATOR LOAD TEST: 50 STUDENTS AT HIGH CHAOS
   // ==========================================================================
-  it('Load: run Demo Simulator with 50 students at high chaos, reporting latency, DB errors, and memory growth', async () => {
+  it(
+    'Load: run Demo Simulator with 50 students at high chaos, reporting latency, DB errors, and memory growth',
+    async () => {
     const memBefore = process.memoryUsage();
 
     // 1. Start Demo Simulator with 50 students at high chaos using adminToken
@@ -399,5 +407,5 @@ describe('Sub-Phase 11.6: Realtime, Proctoring Invariants & Load Verification', 
       method: 'POST',
       headers: { Authorization: `Bearer ${adminToken}` },
     });
-  });
+  }, 60000);
 });

@@ -8,7 +8,7 @@ import { validate } from '../middleware/validate.js';
 import { emitSessionUpdate } from '../realtime/socket.js';
 import type { ExamRow, ExamSessionRow, QuestionRow } from '../types/api.js';
 import { AppError } from '../utils/errors.js';
-import { sendSuccess } from '../utils/response.js';
+import { sendError, sendSuccess } from '../utils/response.js';
 
 export const examsRouter = Router();
 
@@ -21,30 +21,140 @@ const questionIdParamSchema = z.object({
   questionId: z.coerce.number().int().positive(),
 });
 
-const createExamSchema = z.object({
-  title: z.string().trim().min(3).max(200),
-  description: z.string().trim().max(2000).optional().nullable(),
-  durationMinutes: z.coerce.number().int().min(1).max(480),
-  minTrustScore: z.coerce.number().int().min(0).max(100).default(50),
-  startWindow: z.string().min(10),
-  endWindow: z.string().min(10),
-  isPublished: z.boolean().default(false),
-});
+const questionInputSchema = z
+  .object({
+    questionText: z.string().trim().min(1, 'Question prompt is required').max(4000),
+    optionA: z.string().trim().min(1, 'Option A is required').max(500),
+    optionB: z.string().trim().min(1, 'Option B is required').max(500),
+    optionC: z.string().trim().max(500).optional().default('N/A'),
+    optionD: z.string().trim().max(500).optional().default('N/A'),
+    correctOption: z.enum(['A', 'B', 'C', 'D'], {
+      errorMap: () => ({ message: 'Correct option must be A, B, C, or D' }),
+    }),
+    marks: z.coerce.number().positive('Marks must be greater than 0').max(1000).default(1),
+    orderIndex: z.coerce.number().int().positive().optional(),
+  })
+  .superRefine((q, ctx) => {
+    if (q.correctOption === 'C' && (!q.optionC || q.optionC.trim() === '' || q.optionC === 'N/A')) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Correct option C points to an empty option',
+        path: ['correctOption'],
+      });
+    }
+    if (q.correctOption === 'D' && (!q.optionD || q.optionD.trim() === '' || q.optionD === 'N/A')) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Correct option D points to an empty option',
+        path: ['correctOption'],
+      });
+    }
+  });
 
-const updateExamSchema = createExamSchema.partial();
+const createQuestionSchema = questionInputSchema;
 
-const createQuestionSchema = z.object({
-  questionText: z.string().trim().min(5).max(4000),
-  optionA: z.string().trim().min(1).max(500),
-  optionB: z.string().trim().min(1).max(500),
-  optionC: z.string().trim().min(1).max(500),
-  optionD: z.string().trim().min(1).max(500),
-  correctOption: z.enum(['A', 'B', 'C', 'D']),
-  marks: z.coerce.number().positive().max(1000).default(1),
+const updateQuestionSchema = z.object({
+  questionText: z.string().trim().min(1).max(4000).optional(),
+  optionA: z.string().trim().min(1).max(500).optional(),
+  optionB: z.string().trim().min(1).max(500).optional(),
+  optionC: z.string().trim().max(500).optional(),
+  optionD: z.string().trim().max(500).optional(),
+  correctOption: z.enum(['A', 'B', 'C', 'D']).optional(),
+  marks: z.coerce.number().positive().max(1000).optional(),
   orderIndex: z.coerce.number().int().positive().optional(),
 });
 
-const updateQuestionSchema = createQuestionSchema.partial();
+const createExamSchema = z
+  .object({
+    title: z.string().trim().min(1, 'Title is required').max(200),
+    description: z.string().trim().max(2000).optional().nullable(),
+    durationMinutes: z.coerce.number().int().min(1, 'Duration must be between 1 and 600 minutes').max(600, 'Duration must be between 1 and 600 minutes').default(60),
+    minTrustScore: z.coerce.number().int().min(0, 'Minimum trust score must be between 0 and 100').max(100, 'Minimum trust score must be between 0 and 100').default(50),
+    startWindow: z.string().optional(),
+    endWindow: z.string().optional(),
+    isPublished: z.boolean().default(false),
+    questions: z.array(questionInputSchema).optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.isPublished) {
+      if (!data.description || data.description.trim().length < 20) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Syllabus & instructions are required and must be at least 20 characters',
+          path: ['description'],
+        });
+      }
+      if (!data.startWindow) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Start window is required',
+          path: ['startWindow'],
+        });
+      }
+      if (!data.endWindow) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'End window is required',
+          path: ['endWindow'],
+        });
+      }
+      if (data.startWindow && data.endWindow) {
+        const start = new Date(data.startWindow).getTime();
+        const end = new Date(data.endWindow).getTime();
+        if (Number.isNaN(start)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Invalid start window date format',
+            path: ['startWindow'],
+          });
+        }
+        if (Number.isNaN(end)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Invalid end window date format',
+            path: ['endWindow'],
+          });
+        }
+        if (!Number.isNaN(start) && !Number.isNaN(end)) {
+          if (end <= start) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: 'End window must be after start window',
+              path: ['endWindow'],
+            });
+          } else {
+            const windowMinutes = (end - start) / (60 * 1000);
+            if (windowMinutes < data.durationMinutes) {
+              ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: `Window duration (${Math.round(windowMinutes)} mins) must be at least equal to exam duration (${data.durationMinutes} mins)`,
+                path: ['endWindow'],
+              });
+            }
+          }
+        }
+      }
+      if (!data.questions || data.questions.length === 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'At least 1 question is required to publish an exam',
+          path: ['questions'],
+        });
+      }
+    }
+  });
+
+const updateExamSchema = z
+  .object({
+    title: z.string().trim().min(1, 'Title cannot be empty').max(200).optional(),
+    description: z.string().trim().max(2000).optional().nullable(),
+    durationMinutes: z.coerce.number().int().min(1, 'Duration must be between 1 and 600 minutes').max(600, 'Duration must be between 1 and 600 minutes').optional(),
+    minTrustScore: z.coerce.number().int().min(0, 'Minimum trust score must be between 0 and 100').max(100, 'Minimum trust score must be between 0 and 100').optional(),
+    startWindow: z.string().optional(),
+    endWindow: z.string().optional(),
+    isPublished: z.boolean().optional(),
+    questions: z.array(questionInputSchema).optional(),
+  });
 
 const startExamBodySchema = z
   .object({
@@ -329,29 +439,70 @@ examsRouter.post(
   async (req: AuthenticatedRequest, res, next) => {
     try {
       const body = req.body as z.infer<typeof createExamSchema>;
-      const startWin = toMysqlDateTime(body.startWindow);
-      const endWin = toMysqlDateTime(body.endWindow);
+      const startWin = body.startWindow
+        ? toMysqlDateTime(body.startWindow)
+        : toMysqlDateTime(new Date().toISOString());
+      const endWin = body.endWindow
+        ? toMysqlDateTime(body.endWindow)
+        : toMysqlDateTime(new Date(Date.now() + 7 * 86400000).toISOString());
 
-      const result = await executeSql(
-        `INSERT INTO Exams
-          (title, description, duration_minutes, min_trust_score, start_window, end_window, is_published, created_by)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        [
-          body.title,
-          body.description ?? null,
-          body.durationMinutes,
-          body.minTrustScore,
-          startWin,
-          endWin,
-          body.isPublished,
-          req.user!.sub,
-        ]
-      );
+      const exam = await withConnection(async (conn) => {
+        await conn.beginTransaction();
+        try {
+          const [result] = await conn.execute<ResultSetHeader>(
+            `INSERT INTO Exams
+              (title, description, duration_minutes, min_trust_score, start_window, end_window, is_published, created_by)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+              body.title,
+              body.description ?? null,
+              body.durationMinutes ?? 60,
+              body.minTrustScore ?? 50,
+              startWin,
+              endWin,
+              Boolean(body.isPublished),
+              req.user!.sub,
+            ]
+          );
 
-      const created = await queryRows<ExamRow[]>('SELECT * FROM Exams WHERE id = ? LIMIT 1', [
-        result.insertId,
-      ]);
-      sendSuccess(res, created[0], 201);
+          const examId = result.insertId;
+
+          if (body.questions && body.questions.length > 0) {
+            let orderIdx = 1;
+            for (const q of body.questions) {
+              await conn.execute(
+                `INSERT INTO Questions
+                  (exam_id, question_text, option_a, option_b, option_c, option_d, correct_option, marks, order_index)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                [
+                  examId,
+                  q.questionText,
+                  q.optionA,
+                  q.optionB,
+                  q.optionC || 'N/A',
+                  q.optionD || 'N/A',
+                  q.correctOption,
+                  q.marks ?? 1,
+                  q.orderIndex ?? orderIdx++,
+                ]
+              );
+            }
+          }
+
+          const [rows] = await conn.execute<ExamRow[]>(
+            'SELECT * FROM Exams WHERE id = ? LIMIT 1',
+            [examId]
+          );
+
+          await conn.commit();
+          return rows[0];
+        } catch (e) {
+          await conn.rollback();
+          throw e;
+        }
+      });
+
+      sendSuccess(res, exam, 201);
     } catch (err) {
       next(err);
     }
@@ -373,28 +524,112 @@ async function handleUpdateExam(req: AuthenticatedRequest, res: Parameters<typeo
 
     const startWin = body.startWindow ? toMysqlDateTime(body.startWindow) : existing.start_window;
     const endWin = body.endWindow ? toMysqlDateTime(body.endWindow) : existing.end_window;
+    const targetPublished = body.isPublished !== undefined ? body.isPublished : Boolean(existing.is_published);
 
-    await executeSql(
-      `UPDATE Exams
-          SET title = ?,
-              description = ?,
-              duration_minutes = ?,
-              min_trust_score = ?,
-              start_window = ?,
-              end_window = ?,
-              is_published = ?
-        WHERE id = ?`,
-      [
-        body.title ?? existing.title,
-        body.description !== undefined ? body.description : existing.description,
-        body.durationMinutes ?? existing.duration_minutes,
-        body.minTrustScore ?? existing.min_trust_score,
-        startWin,
-        endWin,
-        body.isPublished !== undefined ? body.isPublished : Boolean(existing.is_published),
-        examId,
-      ]
-    );
+    if (targetPublished) {
+      const finalTitle = (body.title ?? existing.title).trim();
+      const finalDesc = (body.description !== undefined ? body.description : existing.description)?.trim() ?? '';
+      const finalDuration = body.durationMinutes ?? existing.duration_minutes;
+      const finalTrust = body.minTrustScore ?? existing.min_trust_score;
+
+      const errors: Record<string, string[]> = {};
+      if (!finalTitle) {
+        errors.title = ['Title is required'];
+      }
+      if (!finalDesc || finalDesc.length < 20) {
+        errors.description = ['Syllabus & instructions are required and must be at least 20 characters'];
+      }
+      if (!finalDuration || finalDuration < 1 || finalDuration > 600) {
+        errors.durationMinutes = ['Duration must be between 1 and 600 minutes'];
+      }
+      const sTime = new Date(startWin).getTime();
+      const eTime = new Date(endWin).getTime();
+      if (Number.isNaN(sTime) || Number.isNaN(eTime)) {
+        errors.window = ['Valid start and end window timestamps are required'];
+      } else {
+        if (eTime <= sTime) {
+          errors.endWindow = ['End window must be after start window'];
+        } else {
+          const winMins = (eTime - sTime) / (60 * 1000);
+          if (winMins < finalDuration) {
+            errors.endWindow = [`Window duration (${Math.round(winMins)} mins) must be at least equal to exam duration (${finalDuration} mins)`];
+          }
+        }
+      }
+      if (finalTrust < 0 || finalTrust > 100) {
+        errors.minTrustScore = ['Minimum trust score must be between 0 and 100'];
+      }
+
+      const qRows = await queryRows<RowDataPacket[]>('SELECT COUNT(*) AS count FROM Questions WHERE exam_id = ?', [examId]);
+      const currentQCount = Number(qRows[0]?.count ?? 0);
+      const newQCount = body.questions ? body.questions.length : 0;
+      if (currentQCount + newQCount === 0) {
+        errors.questions = ['At least 1 question is required to publish an exam'];
+      }
+
+      if (Object.keys(errors).length > 0) {
+        sendError(res, 400, 'VALIDATION_ERROR', 'Exam cannot be published with missing requirements.', { fieldErrors: errors });
+        return;
+      }
+    }
+
+    await withConnection(async (conn) => {
+      await conn.beginTransaction();
+      try {
+        await conn.execute(
+          `UPDATE Exams
+              SET title = ?,
+                  description = ?,
+                  duration_minutes = ?,
+                  min_trust_score = ?,
+                  start_window = ?,
+                  end_window = ?,
+                  is_published = ?
+            WHERE id = ?`,
+          [
+            body.title ?? existing.title,
+            body.description !== undefined ? body.description : existing.description,
+            body.durationMinutes ?? existing.duration_minutes,
+            body.minTrustScore ?? existing.min_trust_score,
+            startWin,
+            endWin,
+            targetPublished,
+            examId,
+          ]
+        );
+
+        if (body.questions && body.questions.length > 0) {
+          const [orderRows] = await conn.execute<RowDataPacket[]>(
+            'SELECT COALESCE(MAX(order_index), 0) AS max_order FROM Questions WHERE exam_id = ?',
+            [examId]
+          );
+          let nextOrder = Number(orderRows[0]?.max_order ?? 0) + 1;
+          for (const q of body.questions) {
+            await conn.execute(
+              `INSERT INTO Questions
+                (exam_id, question_text, option_a, option_b, option_c, option_d, correct_option, marks, order_index)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+              [
+                examId,
+                q.questionText,
+                q.optionA,
+                q.optionB,
+                q.optionC || 'N/A',
+                q.optionD || 'N/A',
+                q.correctOption,
+                q.marks ?? 1,
+                q.orderIndex ?? nextOrder++,
+              ]
+            );
+          }
+        }
+
+        await conn.commit();
+      } catch (e) {
+        await conn.rollback();
+        throw e;
+      }
+    });
 
     const updated = await queryRows<ExamRow[]>('SELECT * FROM Exams WHERE id = ? LIMIT 1', [
       examId,
@@ -404,6 +639,107 @@ async function handleUpdateExam(req: AuthenticatedRequest, res: Parameters<typeo
     next(err);
   }
 }
+
+// Publish Exam Handler
+async function handlePublishExam(
+  req: AuthenticatedRequest,
+  res: Parameters<typeof sendSuccess>[0],
+  next: (e?: unknown) => void
+) {
+  try {
+    const { examId } = req.params as unknown as z.infer<typeof examIdParamSchema>;
+
+    const existingRows = await queryRows<ExamRow[]>('SELECT * FROM Exams WHERE id = ? LIMIT 1', [
+      examId,
+    ]);
+    const exam = existingRows[0];
+    if (!exam) {
+      throw new AppError(404, 'EXAM_NOT_FOUND', 'Exam not found.');
+    }
+
+    const errors: Record<string, string[]> = {};
+    if (!exam.title || exam.title.trim().length === 0) {
+      errors.title = ['Title is required'];
+    }
+    if (!exam.description || exam.description.trim().length < 20) {
+      errors.description = ['Syllabus & instructions are required and must be at least 20 characters'];
+    }
+    if (!exam.duration_minutes || exam.duration_minutes < 1 || exam.duration_minutes > 600) {
+      errors.durationMinutes = ['Duration must be between 1 and 600 minutes'];
+    }
+
+    const sTime = new Date(exam.start_window).getTime();
+    const eTime = new Date(exam.end_window).getTime();
+    if (Number.isNaN(sTime) || Number.isNaN(eTime)) {
+      errors.window = ['Valid start and end window timestamps are required'];
+    } else {
+      if (eTime <= sTime) {
+        errors.endWindow = ['End window must be after start window'];
+      } else {
+        const winMins = (eTime - sTime) / (60 * 1000);
+        if (winMins < exam.duration_minutes) {
+          errors.endWindow = [`Window duration (${Math.round(winMins)} mins) must be at least equal to exam duration (${exam.duration_minutes} mins)`];
+        }
+      }
+    }
+
+    if (exam.min_trust_score < 0 || exam.min_trust_score > 100) {
+      errors.minTrustScore = ['Minimum trust score must be between 0 and 100'];
+    }
+
+    const questions = await queryRows<QuestionRow[]>(
+      'SELECT id, question_text, option_a, option_b, option_c, option_d, correct_option, marks FROM Questions WHERE exam_id = ?',
+      [examId]
+    );
+
+    if (questions.length === 0) {
+      errors.questions = ['At least 1 question is required to publish an exam'];
+    } else {
+      for (const q of questions) {
+        if (!q.question_text || !q.option_a || !q.option_b || Number(q.marks) <= 0) {
+          errors.questions = ['All questions must have question prompt, options A & B, and marks > 0'];
+          break;
+        }
+        if (q.correct_option === 'C' && (!q.option_c || q.option_c.trim() === '' || q.option_c === 'N/A')) {
+          errors.questions = ['Question contains correct option C pointing to an empty option'];
+          break;
+        }
+        if (q.correct_option === 'D' && (!q.option_d || q.option_d.trim() === '' || q.option_d === 'N/A')) {
+          errors.questions = ['Question contains correct option D pointing to an empty option'];
+          break;
+        }
+      }
+    }
+
+    if (Object.keys(errors).length > 0) {
+      sendError(res, 400, 'VALIDATION_ERROR', 'Exam cannot be published with missing requirements.', { fieldErrors: errors });
+      return;
+    }
+
+    await executeSql('UPDATE Exams SET is_published = TRUE WHERE id = ?', [examId]);
+    const updated = await queryRows<ExamRow[]>('SELECT * FROM Exams WHERE id = ? LIMIT 1', [examId]);
+    sendSuccess(res, updated[0]);
+  } catch (err) {
+    next(err);
+  }
+}
+
+// PATCH & POST /api/exams/:examId/publish (ADMIN)
+examsRouter.patch(
+  '/:examId/publish',
+  requireAuth,
+  requireRole('ADMIN'),
+  validate({ params: examIdParamSchema }),
+  handlePublishExam
+);
+
+examsRouter.post(
+  '/:examId/publish',
+  requireAuth,
+  requireRole('ADMIN'),
+  validate({ params: examIdParamSchema }),
+  handlePublishExam
+);
 
 // PUT & PATCH /api/exams/:examId (ADMIN)
 examsRouter.put(
@@ -555,8 +891,8 @@ examsRouter.post(
           body.questionText,
           body.optionA,
           body.optionB,
-          body.optionC,
-          body.optionD,
+          body.optionC || 'N/A',
+          body.optionD || 'N/A',
           body.correctOption,
           body.marks,
           nextOrder,

@@ -68,12 +68,21 @@ describe('Comprehensive API Endpoint Test Suite (All Endpoints: 200/201, 400, 40
       .set('Authorization', `Bearer ${adminToken}`)
       .send({
         title: 'Comprehensive API Test Exam',
-        description: 'Exam used for automated endpoint test coverage',
+        description: 'Exam used for automated endpoint test coverage and integrity',
         durationMinutes: 60,
         minTrustScore: 50,
         startWindow: new Date(Date.now() - 3600000).toISOString(),
         endWindow: new Date(Date.now() + 7200000).toISOString(),
         isPublished: true,
+        questions: [
+          {
+            questionText: 'Initial Comprehensive Question',
+            optionA: 'Opt A',
+            optionB: 'Opt B',
+            correctOption: 'A',
+            marks: 1,
+          },
+        ],
       });
     expect(examRes.status).toBe(201);
     testExamId = examRes.body.data.id;
@@ -264,11 +273,21 @@ describe('Comprehensive API Endpoint Test Suite (All Endpoints: 200/201, 400, 40
         .set('Authorization', `Bearer ${adminToken}`)
         .send({
           title: 'Future Window Exam',
+          description: 'Syllabus and guidelines for future window assessment testing',
           durationMinutes: 60,
           minTrustScore: 50,
           startWindow: new Date(Date.now() + 3600000).toISOString(),
           endWindow: new Date(Date.now() + 7200000).toISOString(),
           isPublished: true,
+          questions: [
+            {
+              questionText: 'Future Question 1',
+              optionA: 'Opt A',
+              optionB: 'Opt B',
+              correctOption: 'A',
+              marks: 1,
+            },
+          ],
         });
       futureExamId = fRes.body.data.id;
 
@@ -278,11 +297,21 @@ describe('Comprehensive API Endpoint Test Suite (All Endpoints: 200/201, 400, 40
         .set('Authorization', `Bearer ${adminToken}`)
         .send({
           title: 'Past Window Exam',
+          description: 'Syllabus and guidelines for past window assessment testing',
           durationMinutes: 60,
           minTrustScore: 50,
           startWindow: new Date(Date.now() - 7200000).toISOString(),
           endWindow: new Date(Date.now() - 3600000).toISOString(),
           isPublished: true,
+          questions: [
+            {
+              questionText: 'Past Question 1',
+              optionA: 'Opt A',
+              optionB: 'Opt B',
+              correctOption: 'A',
+              marks: 1,
+            },
+          ],
         });
       pastExamId = pRes.body.data.id;
     });
