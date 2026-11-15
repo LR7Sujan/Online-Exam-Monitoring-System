@@ -262,10 +262,35 @@ analyticsRouter.get('/overview', async (_req, res, next) => {
   }
 });
 
-// GET /api/analytics/heatmap — queries vw_ViolationHeatmap
-analyticsRouter.get('/heatmap', async (_req, res, next) => {
+// GET /api/analytics/heatmap — queries vw_ViolationHeatmap (with optional ?days=7|30|all window)
+const heatmapQuerySchema = z.object({
+  days: z.enum(['7', '30', 'all']).optional(),
+});
+
+analyticsRouter.get('/heatmap', async (req, res, next) => {
   try {
-    const rows = await queryRows<RowDataPacket[]>('SELECT * FROM vw_ViolationHeatmap');
+    const { days } = heatmapQuerySchema.parse(req.query);
+    let rows: RowDataPacket[];
+    if (days === '7' || days === '30') {
+      const dayInterval = Number(days) - 1;
+      rows = await queryRows<RowDataPacket[]>(
+        `SELECT
+           HOUR(pl.occurred_at) AS hour_of_day,
+           vt.code AS violation_code,
+           vt.label AS violation_label,
+           vt.severity,
+           COUNT(*) AS violation_count,
+           SUM(pl.penalty_applied) AS total_penalty_points
+         FROM Proctoring_Logs pl
+         JOIN Violation_Types vt ON vt.id = pl.violation_type_id
+        WHERE pl.occurred_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+        GROUP BY HOUR(pl.occurred_at), vt.code, vt.label, vt.severity
+        ORDER BY hour_of_day ASC, violation_count DESC`,
+        [dayInterval]
+      );
+    } else {
+      rows = await queryRows<RowDataPacket[]>('SELECT * FROM vw_ViolationHeatmap');
+    }
     sendSuccess(res, rows);
   } catch (err) {
     next(err);

@@ -776,6 +776,32 @@ describe('Comprehensive API Endpoint Test Suite (All Endpoints: 200/201, 400, 40
         .set('Authorization', `Bearer ${adminToken}`);
       expect(res.status).toBe(200);
       expect(Array.isArray(res.body.data)).toBe(true);
+      const totalViolations = res.body.data.reduce(
+        (sum: number, r: { violation_count: number }) => sum + Number(r.violation_count),
+        0
+      );
+      expect(totalViolations).toBeGreaterThanOrEqual(300);
+    });
+
+    it('GET /api/analytics/heatmap?days=7 - 200 returns last 7 days heatmap records', async () => {
+      const res = await request(app)
+        .get('/api/analytics/heatmap?days=7')
+        .set('Authorization', `Bearer ${adminToken}`);
+      expect(res.status).toBe(200);
+      expect(Array.isArray(res.body.data)).toBe(true);
+      const totalViolations = res.body.data.reduce(
+        (sum: number, r: { violation_count: number }) => sum + Number(r.violation_count),
+        0
+      );
+      expect(totalViolations).toBeGreaterThanOrEqual(74);
+    });
+
+    it('GET /api/analytics/heatmap?days=invalid - 400 rejects invalid days parameter', async () => {
+      const res = await request(app)
+        .get('/api/analytics/heatmap?days=99')
+        .set('Authorization', `Bearer ${adminToken}`);
+      expect(res.status).toBe(400);
+      expect(res.body.success).toBe(false);
     });
 
     // Dashboard & Violations Telemetry Tests (7 vs 30 days window)

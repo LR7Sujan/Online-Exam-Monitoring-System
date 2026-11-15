@@ -4,7 +4,6 @@ import {
   Activity,
   BarChart3,
   Clock,
-  Flame,
   GraduationCap,
   Layers,
   PieChart as PieChartIcon,
@@ -33,6 +32,7 @@ import { StatusPill } from '../ui/StatusPill';
 import { SkeletonCard } from '../ui/Skeleton';
 import { ErrorState } from '../ui/EmptyState';
 import { ChartTooltip, useChartTheme } from '../charts/shared';
+import { CircadianHeatmap } from './CircadianHeatmap';
 import { api } from '../../lib/api';
 
 function formatTickDate(val: string): string {
@@ -230,22 +230,6 @@ export function AdminOverviewDashboard() {
     { range: '100%', count: Number(data?.trustHistogram?.bucket_100 ?? 0), fill: '#10B981' },
   ];
   const totalHistogramCandidates = histogramData.reduce((acc, h) => acc + h.count, 0);
-
-  // Prepare Heatmap Matrix (24 hours x distinct violation codes)
-  const heatmapCodes = Array.from(
-    new Set((data?.heatmap ?? []).map((h) => h.violation_code))
-  );
-  const heatmapHours = Array.from({ length: 24 }, (_, i) => i);
-
-  const getHeatmapCount = (hour: number, code: string): number => {
-    const item = data?.heatmap?.find((h) => h.hour_of_day === hour && h.violation_code === code);
-    return item ? Number(item.violation_count) : 0;
-  };
-
-  const maxHeatmapVal = Math.max(
-    1,
-    ...((data?.heatmap ?? []).map((h) => Number(h.violation_count)))
-  );
 
   const violationsSummary = data?.violationsSummary ?? data?.summary;
 
@@ -628,68 +612,7 @@ export function AdminOverviewDashboard() {
       </div>
 
       {/* 3. VIOLATION HEATMAP (hour of day x violation type) FROM vw_ViolationHeatmap */}
-      <div className="rounded-2xl border border-border bg-surface p-5 shadow-sm space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
-              <Flame className="w-4 h-4 text-amber-500" />
-              <span>Circadian Incident Heatmap (vw_ViolationHeatmap)</span>
-            </h3>
-            <p className="text-[11px] font-mono text-muted-foreground">
-              Aggregated frequency matrix: Hour of Day (0–23) × Infraction Type
-            </p>
-          </div>
-          <span className="text-[10px] font-mono text-muted-foreground">SQL View Driven</span>
-        </div>
-
-        <div className="overflow-x-auto pb-2">
-          <div className="min-w-[700px] space-y-1.5 font-mono text-[10px]">
-            {/* Hour Headers */}
-            <div className="grid grid-cols-25 gap-1 text-center text-muted-foreground">
-              <div className="text-left font-bold text-foreground">TYPE</div>
-              {heatmapHours.map((h) => (
-                <div key={h}>{String(h).padStart(2, '0')}h</div>
-              ))}
-            </div>
-
-            {/* Matrix Rows */}
-            {heatmapCodes.length === 0 ? (
-              <div className="py-6 text-center text-muted-foreground">No heatmap telemetry available.</div>
-            ) : (
-              heatmapCodes.map((code) => (
-                <div key={code} className="grid grid-cols-25 gap-1 items-center">
-                  <div className="truncate text-left text-muted-foreground font-semibold pr-1" title={code}>
-                    {code}
-                  </div>
-                  {heatmapHours.map((h) => {
-                    const cnt = getHeatmapCount(h, code);
-                    const intensity = cnt / maxHeatmapVal;
-                    let bg = 'bg-muted/30 dark:bg-muted/20 text-transparent';
-                    if (cnt > 0) {
-                      if (intensity > 0.6) {
-                        bg = 'bg-rose-500/85 text-white font-bold shadow-sm';
-                      } else if (intensity > 0.3) {
-                        bg = 'bg-amber-500/35 text-amber-700 dark:text-amber-300 font-bold';
-                      } else {
-                        bg = 'bg-brand/25 text-brand font-medium';
-                      }
-                    }
-                    return (
-                      <div
-                        key={h}
-                        className={`h-7 rounded flex items-center justify-center transition-all ${bg}`}
-                        title={`${code} at ${h}:00 — ${cnt} incidents`}
-                      >
-                        {cnt > 0 ? cnt : ''}
-                      </div>
-                    );
-                  })}
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-      </div>
+      <CircadianHeatmap />
 
       {/* 4. INTEGRITY STATUS PER EXAM (stacked bars) + TRUST SCORE HISTOGRAM */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
