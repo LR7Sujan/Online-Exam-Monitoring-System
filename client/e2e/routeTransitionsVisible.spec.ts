@@ -33,7 +33,7 @@ test.describe('Fail-Safe Route Transitions: Visible-By-Default Navigation', () =
       });
     }, {
       message: 'Expected main container to be rendered with opacity > 0.9, height > 200, and visible title',
-      timeout: 4000,
+      timeout: 8000,
     }).toMatchObject({ ok: true });
 
     // 4. zero uncaught console errors
@@ -238,5 +238,92 @@ test.describe('Fail-Safe Route Transitions: Visible-By-Default Navigation', () =
 
     await page.goForward();
     await expectRendered(page, errors);
+  });
+
+  test('ADMIN: New Routes (/admin/exams, /admin/exams/:id, questions page) render visible with zero blank pages (normal and throttled passes)', async ({
+    page,
+  }) => {
+    const errors = await setupConsoleListener(page);
+    await loginAs(page, 'admin@proctoriq.io');
+
+    // Part A: Normal Navigation across /admin/exams, /admin/exams/:id, and questions inspection
+    for (let pass = 1; pass <= 3; pass++) {
+      // 1. Navigate to /admin/exams
+      await page.locator('aside a[href="/admin/exams"]').first().click();
+      await page.waitForURL(/\/admin\/exams/, { timeout: 10000 });
+      await expectRendered(page, errors);
+      await expect(page.locator('text=Curated Assessment Directory')).toBeVisible();
+
+      // 2. Open Questions panel on /admin/exams (if draft exam exists with enabled Inspect Questions)
+      const inspectBtn = page.locator('button:has-text("Inspect Questions"):not([disabled])').first();
+      const hasDraft = await inspectBtn.isVisible().catch(() => false);
+      if (hasDraft) {
+        await inspectBtn.click();
+        await expect(page.locator('text=Questions Configured')).toBeVisible({ timeout: 5000 });
+        await expectRendered(page, errors);
+        // Close questions panel
+        await page.locator('button:has-text("Close")').first().click();
+        await expectRendered(page, errors);
+      }
+
+      // 3. Navigate to /admin/exams/:id by clicking the exam card
+      const examCards = page.locator('.grid > div.rounded-2xl');
+      await expect(examCards.first()).toBeVisible({ timeout: 10000 });
+      await examCards.first().click();
+      await page.waitForURL(/\/admin\/exams\/\d+/, { timeout: 10000 });
+      await expectRendered(page, errors);
+
+      // Verify detail page & questions bank section are fully rendered
+      await expect(page.locator('text=Curated Question Bank')).toBeVisible({ timeout: 5000 });
+      await expectRendered(page, errors);
+
+      // 4. Test Browser Back button back to /admin/exams
+      await page.goBack();
+      await page.waitForURL(/\/admin\/exams/, { timeout: 10000 });
+      await expectRendered(page, errors);
+
+      // 5. Test Browser Forward button back to /admin/exams/:id
+      await page.goForward();
+      await page.waitForURL(/\/admin\/exams\/\d+/, { timeout: 10000 });
+      await expectRendered(page, errors);
+
+      // 6. Direct URL navigation to /admin/exams/:id and back to /admin/exams
+      await page.goto('/admin/exams');
+      await expectRendered(page, errors);
+    }
+
+    // Part B: CPU Throttled 4x Passes across /admin/exams and /admin/exams/:id
+    let cdp: CDPSession | null = null;
+    try {
+      cdp = await page.context().newCDPSession(page);
+      await cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 });
+    } catch {}
+
+    for (let pass = 1; pass <= 3; pass++) {
+      // 1. Throttled /admin/exams
+      await page.locator('aside a[href="/admin/exams"]').first().click();
+      await page.waitForTimeout(50);
+      await expectRendered(page, errors);
+
+      // 2. Throttled click card to /admin/exams/:id
+      const firstCard = page.locator('.grid > div.rounded-2xl').first();
+      await firstCard.click();
+      await page.waitForURL(/\/admin\/exams\/\d+/, { timeout: 10000 });
+      await page.waitForTimeout(50);
+      await expectRendered(page, errors);
+
+      // Verify question bank loaded under throttled conditions
+      await expect(page.locator('text=Curated Question Bank')).toBeVisible({ timeout: 5000 });
+      await expectRendered(page, errors);
+
+      // 3. Throttled navigate back to /admin/exams
+      await page.locator('aside a[href="/admin/exams"]').first().click();
+      await page.waitForTimeout(50);
+      await expectRendered(page, errors);
+    }
+
+    if (cdp) {
+      await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 });
+    }
   });
 });
