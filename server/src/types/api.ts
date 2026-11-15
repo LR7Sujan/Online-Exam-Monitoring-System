@@ -42,6 +42,7 @@ export interface ExamRow extends RowDataPacket {
   description: string | null;
   duration_minutes: number;
   min_trust_score: number;
+  max_extension_mins: number;
   start_window: Date;
   end_window: Date;
   is_published: number | boolean;
@@ -69,6 +70,7 @@ export interface ExamSessionRow extends RowDataPacket {
   trust_score: number;
   status: SessionStatus;
   needs_reinstatement?: number | boolean;
+  extra_minutes_granted?: number;
   ip_address?: string | null;
   device_fingerprint?: string | null;
   session_token?: string | null;
@@ -80,6 +82,31 @@ export interface ExamSessionRow extends RowDataPacket {
   exam_title?: string;
   duration_minutes?: number;
   min_trust_score?: number;
+  max_extension_mins?: number;
+  extension_request?: TimeExtensionRequestRow | null;
+}
+
+export type ExtensionRequestStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'EXPIRED';
+
+export interface TimeExtensionRequestRow extends RowDataPacket {
+  request_id: number;
+  session_id: number;
+  requested_minutes: number;
+  reason: string | null;
+  status: ExtensionRequestStatus;
+  granted_minutes: number | null;
+  decided_by: number | null;
+  decided_at: Date | null;
+  created_at: Date;
+  student_id?: number;
+  student_name?: string;
+  student_email?: string;
+  exam_id?: number;
+  exam_title?: string;
+  trust_score?: number;
+  total_violations?: number;
+  seconds_remaining?: number;
+  decided_by_name?: string | null;
 }
 
 export interface ViolationTypeRow extends RowDataPacket {

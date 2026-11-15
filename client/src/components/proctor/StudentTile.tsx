@@ -75,6 +75,14 @@ export function StudentTile({
       onClick={() => onSelect(session.session_id)}
       className={`group relative rounded-2xl border p-4.5 transition-all duration-200 cursor-pointer backdrop-blur-xl ${glowClasses}`}
     >
+      {/* Time Extension Request Pending Pill */}
+      {session.extension_request_status === 'PENDING' && (
+        <div className="absolute -top-2.5 left-4 z-10 flex items-center gap-1 rounded-full border border-amber-500/80 bg-amber-500/30 px-2.5 py-0.5 text-[10px] font-mono font-bold text-amber-400 shadow-md animate-pulse">
+          <Clock className="w-3 h-3 text-amber-400" />
+          <span>EXTRA TIME REQUESTED (+{session.requested_extension_minutes || 5}m)</span>
+        </div>
+      )}
+
       {/* Reinstatement Flag Pill */}
       {needsReinstatement && (
         <div className="absolute -top-2.5 right-4 z-10 flex items-center gap-1 rounded-full border border-amber-500/60 bg-amber-500/20 px-2.5 py-0.5 text-[10px] font-mono font-bold text-amber-500 shadow-sm">

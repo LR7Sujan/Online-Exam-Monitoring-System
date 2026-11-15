@@ -21,6 +21,7 @@ import { useFaceDetection } from '../hooks/useFaceDetection';
 import { ViolationWarningOverlay } from '../components/student/ViolationWarningOverlay';
 import { FullscreenExitOverlay } from '../components/student/FullscreenExitOverlay';
 import { CameraDeniedBlocker } from '../components/student/CameraDeniedBlocker';
+import { TimeExtensionModal } from '../components/student/TimeExtensionModal';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { api } from '../lib/api';
 import { getSocket } from '../lib/socket';
@@ -30,6 +31,7 @@ import type {
   ExamSession,
   QuestionItem,
   SessionStatus,
+  TimeExtensionRequest,
 } from '../types/domain';
 
 interface SessionQuestionsResponse {
@@ -80,7 +82,11 @@ export function StudentExamPage() {
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
   const [trustScore, setTrustScore] = useState<number>(100);
   const [minTrustScore, setMinTrustScore] = useState<number>(50);
+  const [maxExtensionMins, setMaxExtensionMins] = useState<number>(30);
   const [sessionStatus, setSessionStatus] = useState<SessionStatus>('IN_PROGRESS');
+  const [extensionRequest, setExtensionRequest] = useState<TimeExtensionRequest | null>(null);
+  const [isExtensionModalOpen, setIsExtensionModalOpen] = useState<boolean>(false);
+  const [grantedToast, setGrantedToast] = useState<number | null>(null);
 
   // Autosave & Offline Queue State
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'queued'>('saved');
@@ -112,6 +118,13 @@ export function StudentExamPage() {
       setTrustScore(s.trust_score);
       setSessionStatus(s.status);
       if (s.min_trust_score) setMinTrustScore(s.min_trust_score);
+      if (s.max_extension_mins !== undefined) setMaxExtensionMins(s.max_extension_mins);
+      if (s.extension_request) {
+        setExtensionRequest(s.extension_request);
+        if (s.extension_request.status === 'PENDING') {
+          setIsExtensionModalOpen(true);
+        }
+      }
     }
   }, [metaQuery.data]);
 
@@ -166,6 +179,7 @@ export function StudentExamPage() {
   // 3. Answer Selection with Instant Optimistic Update + Autosave
   const handleSelectOption = async (questionId: number, option: AnswerOption) => {
     if (sessionStatus !== 'IN_PROGRESS') return;
+    if (extensionRequest?.status === 'PENDING') return;
 
     // Optimistic local state update
     setAnswers((prev) => ({ ...prev, [questionId]: option }));
@@ -266,16 +280,54 @@ export function StudentExamPage() {
       setSessionStatus('TERMINATED_CHEATING');
     };
 
+    const onExtensionDecided = (payload: {
+      sessionId: number;
+      decision: 'APPROVED' | 'REJECTED';
+      grantedMinutes?: number;
+      status?: string;
+    }) => {
+      if (payload.sessionId !== numericSessionId) return;
+      if (payload.decision === 'APPROVED') {
+        const mins = Number(payload.grantedMinutes ?? 5);
+        setGrantedToast(mins);
+        setExtensionRequest(null);
+        setIsExtensionModalOpen(false);
+        setSecondsLeft(mins * 60);
+      } else if (payload.decision === 'REJECTED') {
+        setExtensionRequest((prev) =>
+          prev
+            ? { ...prev, status: 'REJECTED' }
+            : {
+                request_id: 0,
+                session_id: numericSessionId,
+                requested_minutes: 0,
+                reason: null,
+                status: 'REJECTED',
+                granted_minutes: 0,
+                decided_by: null,
+                decided_at: new Date().toISOString(),
+                created_at: new Date().toISOString(),
+              }
+        );
+        setIsExtensionModalOpen(true);
+        setTimeout(() => {
+          submitMutation.mutate();
+        }, 1500);
+      }
+    };
+
     socket.on('violation:new', onViolation);
     socket.on('session:update', onViolation);
     socket.on('session:terminated', onTerminated);
+    socket.on('extension:decided', onExtensionDecided);
 
     return () => {
       socket.off('violation:new', onViolation);
       socket.off('session:update', onViolation);
       socket.off('session:terminated', onTerminated);
+      socket.off('extension:decided', onExtensionDecided);
     };
-  }, [numericSessionId, token]);
+  }, [numericSessionId, token, submitMutation]);
 
   // 8. Server-Authoritative Timer Sync & Countdown
   useEffect(() => {
@@ -283,10 +335,17 @@ export function StudentExamPage() {
 
     const fetchTimeLeft = async () => {
       try {
-        const data = await api.get<TimeLeftResponse>(`/sessions/${numericSessionId}/time-left`);
+        const data = await api.get<TimeLeftResponse & { maxExtensionMins?: number; extensionRequest?: TimeExtensionRequest | null }>(`/sessions/${numericSessionId}/time-left`);
         setSecondsLeft(Math.max(0, data.secondsLeft));
         setTrustScore(data.trustScore);
         if (data.status) setSessionStatus(data.status);
+        if (data.maxExtensionMins !== undefined) setMaxExtensionMins(data.maxExtensionMins);
+        if (data.extensionRequest) {
+          setExtensionRequest(data.extensionRequest);
+          if (data.extensionRequest.status === 'PENDING') {
+            setIsExtensionModalOpen(true);
+          }
+        }
       } catch (err) {
         void err;
       }
@@ -315,12 +374,36 @@ export function StudentExamPage() {
     return () => clearInterval(tick);
   }, [sessionStatus, secondsLeft]);
 
-  // Auto-submit when time expires
+  // Auto-submit when time expires (or prompt for time extension if permitted)
   useEffect(() => {
     if (secondsLeft === 0 && sessionStatus === 'IN_PROGRESS') {
-      submitMutation.mutate();
+      const allowsExt = maxExtensionMins > 0;
+      if (allowsExt && (!extensionRequest || extensionRequest.status === 'PENDING')) {
+        setIsExtensionModalOpen(true);
+      } else {
+        submitMutation.mutate();
+      }
     }
-  }, [secondsLeft, sessionStatus, submitMutation]);
+  }, [secondsLeft, sessionStatus, maxExtensionMins, extensionRequest, submitMutation]);
+
+  const handleRequestExtension = async (minutes: number, reasonText?: string) => {
+    const res = await api.post<{ requestId: number; status: 'PENDING' }>(
+      `/sessions/${numericSessionId}/extension`,
+      { requestedMinutes: minutes, reason: reasonText }
+    );
+    setExtensionRequest({
+      request_id: res.requestId,
+      session_id: numericSessionId,
+      requested_minutes: minutes,
+      reason: reasonText ?? null,
+      status: 'PENDING',
+      granted_minutes: null,
+      decided_by: null,
+      decided_at: null,
+      created_at: new Date().toISOString(),
+    });
+    setIsExtensionModalOpen(true);
+  };
 
   const questions = sessionQuery.data?.questions ?? [];
   const currentQuestion = questions[currentIndex];
@@ -417,7 +500,7 @@ export function StudentExamPage() {
             }`}
           >
             <Clock className={`w-4 h-4 ${isTimeCritical ? 'text-rose-500 animate-spin' : 'text-brand'}`} />
-            <span>
+            <span data-testid="exam-timer">
               {secondsLeft !== null ? formatExamTimer(secondsLeft) : '--:--'}
             </span>
             {isTimeCritical && (
@@ -465,6 +548,44 @@ export function StudentExamPage() {
           </button>
         </div>
       </header>
+
+      {/* Time Extension Granted Toast */}
+      {grantedToast !== null && (
+        <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 pt-3">
+          <div className="bg-emerald-500/15 border border-emerald-500/40 text-emerald-500 text-xs font-mono px-4 py-2.5 rounded-2xl flex items-center justify-between shadow-sm">
+            <span className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 shrink-0" />
+              <span>Extra time approved! +{grantedToast} minutes granted. Your answers are unlocked.</span>
+            </span>
+            <button
+              type="button"
+              onClick={() => setGrantedToast(null)}
+              className="text-xs font-bold underline hover:opacity-80"
+            >
+              Dismiss
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Answers Locked / Pending Extension Banner */}
+      {extensionRequest?.status === 'PENDING' && (
+        <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 pt-3">
+          <div className="bg-amber-500/15 border border-amber-500/40 text-amber-500 text-xs font-mono px-4 py-2.5 rounded-2xl flex items-center justify-between shadow-sm">
+            <span className="flex items-center gap-2">
+              <Clock className="w-4 h-4 animate-spin shrink-0" />
+              <span>Time extension pending proctor review ({extensionRequest.requested_minutes}m requested). Answers are temporarily locked.</span>
+            </span>
+            <button
+              type="button"
+              onClick={() => setIsExtensionModalOpen(true)}
+              className="text-xs font-bold underline hover:opacity-80"
+            >
+              View Request
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ============================================================== */}
       {/* MAIN EXAM WORKSPACE */}
@@ -791,6 +912,16 @@ export function StudentExamPage() {
 
       {/* Camera Denied Blocker Overlay */}
       {cameraDenied && <CameraDeniedBlocker onRetry={retryCamera} />}
+
+      {/* Time Extension Modal */}
+      <TimeExtensionModal
+        isOpen={isExtensionModalOpen || (secondsLeft === 0 && maxExtensionMins > 0 && sessionStatus === 'IN_PROGRESS')}
+        maxExtensionMins={maxExtensionMins}
+        existingRequest={extensionRequest}
+        onSubmitExam={() => submitMutation.mutate()}
+        onRequestExtension={handleRequestExtension}
+        isSubmittingExam={submitMutation.isPending}
+      />
     </div>
   );
 }

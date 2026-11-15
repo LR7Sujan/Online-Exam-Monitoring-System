@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import type { RowDataPacket } from 'mysql2/promise';
 import { z } from 'zod';
-import { queryRows } from '../config/db.js';
+import { executeSql, queryRows } from '../config/db.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 import { sendSuccess } from '../utils/response.js';
@@ -84,6 +84,66 @@ monitorRouter.get(
     }
   }
 );
+
+// GET /api/monitor/extensions — active and recent time extension requests
+monitorRouter.get('/extensions', async (_req, res, next) => {
+  try {
+    // 1. Auto-expire pending requests older than 180 seconds (3 minutes)
+    await executeSql(
+      `UPDATE Time_Extension_Requests
+          SET status = 'EXPIRED'
+        WHERE status = 'PENDING'
+          AND created_at <= DATE_SUB(NOW(), INTERVAL 180 SECOND)`
+    );
+
+    // 2. Fetch requests with session, exam, student, and decider details
+    const rows = await queryRows<RowDataPacket[]>(
+      `SELECT
+         ter.request_id,
+         ter.request_id AS id,
+         ter.session_id,
+         ter.requested_minutes,
+         ter.reason,
+         ter.status,
+         ter.granted_minutes,
+         ter.decided_by,
+         ter.decided_at,
+         ter.created_at,
+         TIMESTAMPDIFF(SECOND, ter.created_at, NOW()) AS age_seconds,
+         GREATEST(0, 180 - TIMESTAMPDIFF(SECOND, ter.created_at, NOW())) AS seconds_until_expiry,
+         es.exam_id,
+         es.student_id,
+         es.trust_score,
+         es.status AS session_status,
+         es.extra_minutes_granted,
+         es.server_deadline,
+         GREATEST(0, TIMESTAMPDIFF(SECOND, NOW(), es.server_deadline)) AS seconds_remaining,
+         e.title AS exam_title,
+         e.max_extension_mins,
+         e.duration_minutes,
+         u.full_name AS student_name,
+         u.email AS student_email,
+         decider.full_name AS decided_by_name,
+         COALESCE(pl.violation_count, 0) AS total_violations
+       FROM Time_Extension_Requests ter
+       JOIN Exam_Sessions es ON es.id = ter.session_id
+       JOIN Exams e ON e.id = es.exam_id
+       JOIN Users u ON u.id = es.student_id
+       LEFT JOIN Users decider ON decider.id = ter.decided_by
+       LEFT JOIN (
+         SELECT session_id, COUNT(*) AS violation_count
+           FROM Proctoring_Logs
+          GROUP BY session_id
+       ) pl ON pl.session_id = es.id
+      ORDER BY FIELD(ter.status, 'PENDING', 'APPROVED', 'REJECTED', 'EXPIRED'),
+               ter.created_at DESC`
+    );
+
+    sendSuccess(res, rows);
+  } catch (err) {
+    next(err);
+  }
+});
 
 // GET /api/monitor/audit — queries vw_ViolationAuditReport with filters
 monitorRouter.get(

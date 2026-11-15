@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   CheckCircle2,
+  Clock,
   Grid3X3,
   ListOrdered,
   Radio,
@@ -15,13 +16,14 @@ import { StudentTile } from '../components/proctor/StudentTile';
 import { LiveFeedSidebar, type LiveViolationItem } from '../components/proctor/LiveFeedSidebar';
 import { StudentDetailDrawer } from '../components/proctor/StudentDetailDrawer';
 import { ReviewQueueTable } from '../components/proctor/ReviewQueueTable';
+import { TimeExtensionRequestsDrawer } from '../components/proctor/TimeExtensionRequestsDrawer';
 import { SkeletonCard } from '../components/ui/Skeleton';
 import { EmptyState, ErrorState } from '../components/ui/EmptyState';
 import { api } from '../lib/api';
 import { getSocket } from '../lib/socket';
 import { useAuthStore } from '../store/authStore';
 import { playPingSound } from '../utils/audioAlert';
-import type { ExamItem, ProctorLiveMonitorRow, SessionStatus } from '../types/domain';
+import type { ExamItem, ProctorLiveMonitorRow, SessionStatus, TimeExtensionRequest } from '../types/domain';
 
 export function ProctorDashboardPage({ initialTab = 'monitor' }: { initialTab?: string } = {}) {
   const token = useAuthStore((s) => s.token);
@@ -46,6 +48,7 @@ export function ProctorDashboardPage({ initialTab = 'monitor' }: { initialTab?: 
   // Modals & Drawers
   const [inspectedSessionId, setInspectedSessionId] = useState<number | null>(null);
   const [criticalAlert, setCriticalAlert] = useState<CriticalViolationEvent | null>(null);
+  const [extensionDrawerOpen, setExtensionDrawerOpen] = useState<boolean>(false);
 
   // Shaking tiles map (sessionId -> boolean)
   const [shakingTiles, setShakingTiles] = useState<Record<number, boolean>>({});
@@ -81,6 +84,14 @@ export function ProctorDashboardPage({ initialTab = 'monitor' }: { initialTab?: 
     },
     refetchInterval: 12000,
   });
+
+  // 3b. Fetch Time Extension Requests for Indicator Badge
+  const extensionsQuery = useQuery({
+    queryKey: ['proctor-extensions'],
+    queryFn: () => api.get<TimeExtensionRequest[]>('/monitor/extensions'),
+    refetchInterval: 6000,
+  });
+  const pendingExtensionsCount = (extensionsQuery.data ?? []).filter((r) => r.status === 'PENDING').length;
 
   const rawSessions = useMemo(() => monitorQuery.data ?? [], [monitorQuery.data]);
   const exams = useMemo(() => examsQuery.data ?? [], [examsQuery.data]);
@@ -205,6 +216,17 @@ export function ProctorDashboardPage({ initialTab = 'monitor' }: { initialTab?: 
       }
     };
 
+    const onExtensionRequested = () => {
+      playPingSound('violation');
+      queryClient.invalidateQueries({ queryKey: ['proctor-extensions'] });
+      queryClient.invalidateQueries({ queryKey: ['proctor-live-monitor'] });
+    };
+
+    const onExtensionDecided = () => {
+      queryClient.invalidateQueries({ queryKey: ['proctor-extensions'] });
+      queryClient.invalidateQueries({ queryKey: ['proctor-live-monitor'] });
+    };
+
     socket.on('connect', onConnect);
     socket.on('disconnect', onDisconnect);
     socket.on('violation:new', onViolation);
@@ -214,6 +236,8 @@ export function ProctorDashboardPage({ initialTab = 'monitor' }: { initialTab?: 
     socket.on('exam:submitted', onSessionUpdate);
     socket.on('violation:reviewed', onSessionUpdate);
     socket.on('simulator:reset', onSimulatorReset);
+    socket.on('extension:requested', onExtensionRequested);
+    socket.on('extension:decided', onExtensionDecided);
 
     return () => {
       socket.off('connect', onConnect);
@@ -225,6 +249,8 @@ export function ProctorDashboardPage({ initialTab = 'monitor' }: { initialTab?: 
       socket.off('exam:submitted', onSessionUpdate);
       socket.off('violation:reviewed', onSessionUpdate);
       socket.off('simulator:reset', onSimulatorReset);
+      socket.off('extension:requested', onExtensionRequested);
+      socket.off('extension:decided', onExtensionDecided);
     };
   }, [inspectedSessionId, queryClient, token, triggerTileShake]);
 
@@ -372,6 +398,25 @@ export function ProctorDashboardPage({ initialTab = 'monitor' }: { initialTab?: 
             >
               <ListOrdered className="w-4 h-4" />
               <span>Adjudication Queue</span>
+            </button>
+
+            {/* Time Requests Drawer Trigger */}
+            <button
+              type="button"
+              onClick={() => setExtensionDrawerOpen(true)}
+              className={`flex items-center gap-2 rounded-xl px-3.5 py-2 text-xs font-mono font-medium transition-all cursor-pointer border ${
+                pendingExtensionsCount > 0
+                  ? 'border-amber-500/50 bg-amber-500/10 text-amber-500 hover:bg-amber-500/20'
+                  : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/40'
+              }`}
+            >
+              <Clock className="w-4 h-4 text-amber-500" />
+              <span>Time Requests</span>
+              {pendingExtensionsCount > 0 && (
+                <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-500 text-black text-[10px] font-bold px-1 animate-pulse">
+                  {pendingExtensionsCount}
+                </span>
+              )}
             </button>
           </div>
         </div>
@@ -521,6 +566,16 @@ export function ProctorDashboardPage({ initialTab = 'monitor' }: { initialTab?: 
       <StudentDetailDrawer
         sessionId={inspectedSessionId}
         onClose={() => setInspectedSessionId(null)}
+      />
+
+      {/* 5. TIME EXTENSION REQUESTS DRAWER */}
+      <TimeExtensionRequestsDrawer
+        isOpen={extensionDrawerOpen}
+        onClose={() => setExtensionDrawerOpen(false)}
+        onSelectSession={(sessId) => {
+          setExtensionDrawerOpen(false);
+          setInspectedSessionId(sessId);
+        }}
       />
     </div>
   );

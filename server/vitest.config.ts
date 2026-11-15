@@ -12,6 +12,7 @@ export default defineConfig({
       'tests/regressionBugAudit.test.ts',
       'tests/simulatorReset.api.test.ts',
       'tests/examsLifecycle.api.test.ts',
+      'tests/timeExtensions.api.test.ts',
     ],
     testTimeout: 25000,
     fileParallelism: false,

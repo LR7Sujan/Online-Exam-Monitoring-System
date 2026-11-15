@@ -168,3 +168,18 @@ export function emitSimulatorReset(payload?: Record<string, unknown>): void {
   if (!ioInstance) return;
   ioInstance.emit('simulator:reset', payload ?? { timestamp: new Date().toISOString() });
 }
+
+export function emitExtensionRequested(payload: Record<string, unknown>): void {
+  if (!ioInstance) return;
+  emitToProctors('extension:requested', payload);
+}
+
+export function emitExtensionDecided(
+  studentId: number,
+  sessionId: number,
+  payload: Record<string, unknown>
+): void {
+  if (!ioInstance) return;
+  ioInstance.to(`user:${studentId}`).to(`session:${sessionId}`).emit('extension:decided', payload);
+  emitToProctors('extension:decided', payload);
+}

@@ -10,6 +10,7 @@ import { requireAuth, requireRole, type AuthenticatedRequest } from '../middlewa
 import { validate } from '../middleware/validate.js';
 import {
   emitExamSubmitted,
+  emitExtensionRequested,
   emitSessionTerminated,
   emitSessionUpdate,
   emitViolationNew,
@@ -18,7 +19,7 @@ import {
   shouldDebounceViolation,
   violationRateLimiter,
 } from '../services/violationGuard.js';
-import type { ExamSessionRow, ResultRow, ViolationTypeRow } from '../types/api.js';
+import type { ExamSessionRow, ResultRow, TimeExtensionRequestRow, ViolationTypeRow } from '../types/api.js';
 import { AppError } from '../utils/errors.js';
 import { sendSuccess } from '../utils/response.js';
 import { extractClientIp, startOrResumeExamSession } from './exams.routes.js';
@@ -153,7 +154,7 @@ async function assertSessionAccess(
   user: AuthenticatedRequest['user']
 ): Promise<ExamSessionRow> {
   const rows = await queryRows<ExamSessionRow[]>(
-    `SELECT es.*, e.title AS exam_title, e.duration_minutes, e.min_trust_score,
+    `SELECT es.*, e.title AS exam_title, e.duration_minutes, e.min_trust_score, e.max_extension_mins,
             GREATEST(0, TIMESTAMPDIFF(SECOND, NOW(), es.server_deadline)) AS seconds_remaining
        FROM Exam_Sessions es
        JOIN Exams e ON e.id = es.exam_id
@@ -170,6 +171,17 @@ async function assertSessionAccess(
   if (user!.role === 'STUDENT' && session.student_id !== user!.sub) {
     throw new AppError(403, 'FORBIDDEN', 'You do not have access to this exam session.');
   }
+
+  const extRows = await queryRows<TimeExtensionRequestRow[]>(
+    `SELECT request_id, session_id, requested_minutes, reason, status, granted_minutes,
+            decided_by, decided_at, created_at
+       FROM Time_Extension_Requests
+      WHERE session_id = ?
+      ORDER BY request_id DESC
+      LIMIT 1`,
+    [sessionId]
+  );
+  session.extension_request = extRows[0] ?? null;
 
   return session;
 }
@@ -271,6 +283,7 @@ sessionsRouter.get(
         questions,
         responses,
         recentLogs,
+        extensionRequest: session.extension_request ?? null,
       });
     } catch (err) {
       next(err);
@@ -332,6 +345,7 @@ sessionsRouter.get(
                 server_deadline,
                 status,
                 trust_score,
+                extra_minutes_granted,
                 GREATEST(0, TIMESTAMPDIFF(SECOND, NOW(), server_deadline)) AS seconds_left
            FROM Exam_Sessions
           WHERE id = ?
@@ -350,6 +364,9 @@ sessionsRouter.get(
         serverDeadline: row.server_deadline,
         serverNow: row.server_now,
         serverTime: row.server_now,
+        maxExtensionMins: Number(session.max_extension_mins ?? 30),
+        extraMinutesGranted: Number(row.extra_minutes_granted ?? session.extra_minutes_granted ?? 0),
+        extensionRequest: session.extension_request ?? null,
       });
     } catch (err) {
       next(err);
@@ -366,7 +383,18 @@ async function handleUpsertAnswer(
     const { sessionId } = req.params as unknown as z.infer<typeof sessionIdParamSchema>;
     const { questionId, selectedOption } = req.body as z.infer<typeof upsertAnswerSchema>;
 
-    await assertSessionAccess(sessionId, req.user);
+    const session = await assertSessionAccess(sessionId, req.user);
+    if (session.status !== 'IN_PROGRESS') {
+      throw new AppError(409, 'SESSION_ALREADY_CLOSED', 'Exam session is not in progress.');
+    }
+
+    if (session.extension_request?.status === 'PENDING') {
+      throw new AppError(
+        403,
+        'EXTENSION_PENDING_ANSWERS_LOCKED',
+        'Answers are locked while your time extension request is pending proctor review.'
+      );
+    }
 
     await executeSql(
       `INSERT INTO Student_Responses (session_id, question_id, selected_option)
@@ -587,6 +615,7 @@ sessionsRouter.post(
           status: session.status,
           trustScore: session.trust_score,
           secondsRemaining: 0,
+          extensionRequest: session.extension_request ?? null,
         });
         return;
       }
@@ -596,7 +625,60 @@ sessionsRouter.post(
       ]);
 
       const refreshed = await assertSessionAccess(sessionId, req.user);
-      if (Number(refreshed.seconds_remaining ?? 0) <= 0 && refreshed.status === 'IN_PROGRESS') {
+      const remaining = Number(refreshed.seconds_remaining ?? 0);
+
+      if (remaining <= 0 && refreshed.status === 'IN_PROGRESS') {
+        const maxExt = Number(refreshed.max_extension_mins ?? 0);
+        const extReq = refreshed.extension_request;
+
+        // If an extension request is pending:
+        if (extReq && extReq.status === 'PENDING') {
+          const [ageRows] = await queryRows<RowDataPacket[]>(
+            `SELECT TIMESTAMPDIFF(SECOND, created_at, NOW()) AS age_secs
+               FROM Time_Extension_Requests
+              WHERE request_id = ? LIMIT 1`,
+            [extReq.request_id]
+          );
+          const ageSecs = Number(ageRows[0]?.age_secs ?? 0);
+          if (ageSecs < 180) {
+            // Still pending and unexpired: answers locked, don't auto-timeout
+            sendSuccess(res, {
+              sessionId,
+              status: refreshed.status,
+              trustScore: refreshed.trust_score,
+              secondsRemaining: 0,
+              extensionPending: true,
+              extensionRequest: extReq,
+            });
+            return;
+          }
+          // Expired (>= 180s): mark expired
+          await executeSql(
+            "UPDATE Time_Extension_Requests SET status = 'EXPIRED' WHERE request_id = ?",
+            [extReq.request_id]
+          );
+        } else if (maxExt > 0 && !extReq) {
+          // No extension request made yet and extensions are permitted:
+          // Give 60-second grace window from deadline for student to interact with modal
+          const [overdueRows] = await queryRows<RowDataPacket[]>(
+            `SELECT TIMESTAMPDIFF(SECOND, server_deadline, NOW()) AS overdue_secs
+               FROM Exam_Sessions WHERE id = ? LIMIT 1`,
+            [sessionId]
+          );
+          const overdueSecs = Number(overdueRows[0]?.overdue_secs ?? 0);
+          if (overdueSecs < 60) {
+            sendSuccess(res, {
+              sessionId,
+              status: refreshed.status,
+              trustScore: refreshed.trust_score,
+              secondsRemaining: 0,
+              extensionEligible: true,
+              extensionRequest: null,
+            });
+            return;
+          }
+        }
+
         const [resultSets] = await pool.query<RowDataPacket[][]>(
           'CALL sp_SubmitAndGradeExam(?, ?)',
           [sessionId, 'TIMEOUT']
@@ -624,8 +706,103 @@ sessionsRouter.post(
         sessionId,
         status: refreshed.status,
         trustScore: refreshed.trust_score,
-        secondsRemaining: Number(refreshed.seconds_remaining ?? 0),
+        secondsRemaining: remaining,
+        extensionRequest: refreshed.extension_request ?? null,
       });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+const requestExtensionSchema = z.object({
+  requestedMinutes: z.coerce.number().int().min(1, 'Requested minutes must be at least 1').max(120, 'Requested minutes cannot exceed 120'),
+  reason: z.string().trim().max(255, 'Reason cannot exceed 255 characters').optional().nullable(),
+});
+
+// POST /api/sessions/:sessionId/extension (STUDENT)
+sessionsRouter.post(
+  '/:sessionId/extension',
+  requireAuth,
+  requireRole('STUDENT'),
+  validate({ params: sessionIdParamSchema, body: requestExtensionSchema }),
+  async (req: AuthenticatedRequest, res, next) => {
+    try {
+      const { sessionId } = req.params as unknown as z.infer<typeof sessionIdParamSchema>;
+      const body = req.body as z.infer<typeof requestExtensionSchema>;
+      const session = await assertSessionAccess(sessionId, req.user);
+
+      if (session.status !== 'IN_PROGRESS') {
+        throw new AppError(400, 'SESSION_NOT_IN_PROGRESS', 'Cannot request time extension for an exam that is not in progress.');
+      }
+
+      const maxExt = Number(session.max_extension_mins ?? 30);
+      if (maxExt <= 0) {
+        throw new AppError(400, 'EXTENSIONS_DISABLED', 'Time extensions are not permitted for this examination.');
+      }
+
+      if (body.requestedMinutes > maxExt) {
+        throw new AppError(
+          400,
+          'EXCEEDS_MAX_EXTENSION',
+          `Requested extension (${body.requestedMinutes}m) exceeds the maximum allowed extension of ${maxExt}m.`
+        );
+      }
+
+      const remainingSecs = Number(session.seconds_remaining ?? 0);
+      if (remainingSecs > 60) {
+        throw new AppError(
+          400,
+          'TIME_NOT_EXPIRED',
+          'Time extension can only be requested when 60 seconds or less remain, or after time has expired.'
+        );
+      }
+
+      if (session.extension_request) {
+        throw new AppError(
+          409,
+          'EXTENSION_ALREADY_REQUESTED',
+          'An extension request has already been submitted for this exam session.'
+        );
+      }
+
+      const reasonText = body.reason?.trim() || null;
+      const insertRes = await executeSql(
+        `INSERT INTO Time_Extension_Requests (session_id, requested_minutes, reason, status)
+         VALUES (?, ?, ?, 'PENDING')`,
+        [sessionId, body.requestedMinutes, reasonText]
+      );
+      const requestId = insertRes.insertId;
+
+      const userEmail = req.user!.email;
+      const userName = req.user!.fullName;
+
+      emitExtensionRequested({
+        requestId,
+        sessionId,
+        studentId: session.student_id,
+        studentName: userName,
+        studentEmail: userEmail,
+        examId: session.exam_id,
+        examTitle: session.exam_title,
+        trustScore: session.trust_score,
+        requestedMinutes: body.requestedMinutes,
+        reason: reasonText,
+        createdAt: new Date().toISOString(),
+      });
+
+      sendSuccess(
+        res,
+        {
+          requestId,
+          sessionId,
+          requestedMinutes: body.requestedMinutes,
+          reason: reasonText,
+          status: 'PENDING',
+          createdAt: new Date().toISOString(),
+        },
+        201
+      );
     } catch (err) {
       next(err);
     }
@@ -642,6 +819,12 @@ sessionsRouter.post(
     try {
       const { sessionId } = req.params as unknown as z.infer<typeof sessionIdParamSchema>;
       const session = await assertSessionAccess(sessionId, req.user);
+
+      // Expire pending extension request if submitting
+      await executeSql(
+        "UPDATE Time_Extension_Requests SET status = 'EXPIRED' WHERE session_id = ? AND status = 'PENDING'",
+        [sessionId]
+      );
 
       const [resultSets] = await pool.query<RowDataPacket[][]>(
         'CALL sp_SubmitAndGradeExam(?, ?)',
@@ -748,9 +931,19 @@ sessionsRouter.get(
         [sessionId]
       );
 
+      const extensions = await queryRows<RowDataPacket[]>(
+        `SELECT ter.*, u.full_name AS decided_by_name
+           FROM Time_Extension_Requests ter
+           LEFT JOIN Users u ON u.id = ter.decided_by
+          WHERE ter.session_id = ?
+          ORDER BY ter.created_at ASC`,
+        [sessionId]
+      );
+
       sendSuccess(res, {
         session: monitors[0],
         timeline: logs,
+        extensions,
       });
     } catch (err) {
       next(err);

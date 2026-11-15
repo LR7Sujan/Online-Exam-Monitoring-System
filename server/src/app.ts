@@ -17,6 +17,7 @@ import { adminRouter } from './routes/admin.routes.js';
 import { analyticsRouter } from './routes/analytics.routes.js';
 import { authRouter } from './routes/auth.routes.js';
 import { examsRouter } from './routes/exams.routes.js';
+import { extensionsRouter } from './routes/extensions.routes.js';
 import { logsRouter } from './routes/logs.routes.js';
 import { monitorRouter } from './routes/monitor.routes.js';
 import { proctorRouter } from './routes/proctor.routes.js';
@@ -134,6 +135,7 @@ export function createApp() {
   app.use('/api/violation-types', violationTypesRouter);
   app.use('/api/analytics', analyticsRouter);
   app.use('/api/sessions', sessionsRouter);
+  app.use('/api/extensions', extensionsRouter);
   app.use('/api/monitor', monitorRouter);
   app.use('/api/logs', logsRouter);
   app.use('/api/violations', violationsRouter);

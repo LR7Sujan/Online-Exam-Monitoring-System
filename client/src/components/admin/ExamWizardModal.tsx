@@ -6,6 +6,7 @@ import {
   ArrowLeft,
   ArrowRight,
   CheckCircle2,
+  Clock,
   Download,
   FileSpreadsheet,
   FileText,
@@ -297,6 +298,7 @@ export function ExamWizardModal({
     editingExam?.end_window ? new Date(editingExam.end_window).toISOString().slice(0, 16) : weekLaterStr
   );
   const [minTrustScore, setMinTrustScore] = useState(editingExam?.min_trust_score ?? 50);
+  const [maxExtensionMins, setMaxExtensionMins] = useState(editingExam?.max_extension_mins ?? 30);
 
   // Step 3: Questions
   const [questions, setQuestions] = useState<QuestionDraft[]>([]);
@@ -374,6 +376,10 @@ export function ExamWizardModal({
     if (Number.isNaN(trust) || trust < 0 || trust > 100) {
       errs.minTrustScore = 'Minimum trust score must be between 0 and 100';
     }
+    const ext = Number(maxExtensionMins);
+    if (Number.isNaN(ext) || ext < 0 || ext > 120) {
+      errs.maxExtensionMins = 'Max extra time must be between 0 and 120 minutes';
+    }
     return errs;
   };
 
@@ -447,6 +453,7 @@ export function ExamWizardModal({
         description: description.trim() || undefined,
         durationMinutes: Number(durationMinutes) || 60,
         minTrustScore: Number(minTrustScore) || 50,
+        maxExtensionMins: Number.isFinite(Number(maxExtensionMins)) ? Number(maxExtensionMins) : 30,
         startWindow: startWindow ? new Date(startWindow).toISOString() : undefined,
         endWindow: endWindow ? new Date(endWindow).toISOString() : undefined,
         isPublished,
@@ -1072,6 +1079,65 @@ export function ExamWizardModal({
                     <strong className="text-foreground">{maxDevToolsBeforeTermination + 1}</strong> DevTools Inspection (-50 pts each).
                   </p>
                 </div>
+              </div>
+
+              {/* Max Extra Time Configuration */}
+              <div className="rounded-2xl border border-border bg-surface-elevated/70 p-5 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="text-sm font-bold text-foreground flex items-center gap-2">
+                      <Clock className="w-4 h-4 text-brand" />
+                      <span>Max Extra Time Allowed (Minutes)</span>
+                    </h4>
+                    <p className="text-xs text-muted-foreground">
+                      Maximum extra duration students can request when their exam time expires. Set to 0 to disable extensions.
+                    </p>
+                  </div>
+                  <span className="font-mono text-xl font-extrabold text-brand tabular-nums">
+                    {maxExtensionMins === 0 ? 'Disabled' : `${maxExtensionMins}m`}
+                  </span>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2 pt-1">
+                  {[0, 15, 30, 60].map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => {
+                        setMaxExtensionMins(preset);
+                        setTouched((prev) => ({ ...prev, maxExtensionMins: true }));
+                      }}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-mono font-medium transition-colors ${
+                        maxExtensionMins === preset
+                          ? 'bg-brand text-brand-foreground shadow-sm'
+                          : 'bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground'
+                      }`}
+                    >
+                      {preset === 0 ? '0m (Disabled)' : `${preset}m`}
+                    </button>
+                  ))}
+                  <div className="flex items-center gap-2 ml-auto">
+                    <span className="text-xs font-mono text-muted-foreground">Custom:</span>
+                    <input
+                      id="exam-wizard-max-extension"
+                      type="number"
+                      min={0}
+                      max={120}
+                      value={maxExtensionMins}
+                      onChange={(e) => {
+                        setMaxExtensionMins(Number(e.target.value));
+                        setTouched((prev) => ({ ...prev, maxExtensionMins: true }));
+                      }}
+                      className="w-20 rounded-lg border border-border bg-background p-1.5 text-xs text-foreground font-mono focus:outline-none focus:border-brand"
+                    />
+                  </div>
+                </div>
+                {touched.maxExtensionMins && step2Errors.maxExtensionMins && (
+                  <p className="text-xs font-mono text-rose-500 mt-1 flex items-center gap-1" role="alert">
+                    <AlertCircle className="w-3.5 h-3.5 inline shrink-0" />
+                    <span>{step2Errors.maxExtensionMins}</span>
+                  </p>
+                )}
               </div>
             </motion.div>
           )}

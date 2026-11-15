@@ -10,8 +10,13 @@ export async function runAutoTimeoutSweep(): Promise<number> {
     `SELECT es.id, es.student_id, es.exam_id
        FROM Exam_Sessions es
        JOIN Exams e ON e.id = es.exam_id
+       LEFT JOIN Time_Extension_Requests ter
+         ON ter.session_id = es.id
+        AND ter.status = 'PENDING'
+        AND ter.created_at >= DATE_SUB(NOW(), INTERVAL 3 MINUTE)
       WHERE es.status = 'IN_PROGRESS'
-        AND NOW() > DATE_ADD(es.started_at, INTERVAL e.duration_minutes MINUTE)`
+        AND ter.request_id IS NULL
+        AND NOW() > DATE_ADD(es.started_at, INTERVAL (e.duration_minutes + es.extra_minutes_granted) MINUTE)`
   );
 
   const [resultSets] = await pool.query<RowDataPacket[][]>('CALL sp_AutoTimeoutExpiredSessions()');

@@ -270,6 +270,20 @@ adminRouter.post('/simulator/stop', async (_req, res, next) => {
   }
 });
 
+// POST /api/admin/system/fast-forward
+adminRouter.post('/system/fast-forward', async (req, res, next) => {
+  try {
+    const { sessionId, secondsLeft } = req.body as { sessionId: number; secondsLeft: number };
+    await queryRows(
+      'UPDATE Exam_Sessions SET server_deadline = DATE_ADD(NOW(), INTERVAL ? SECOND) WHERE id = ?',
+      [secondsLeft ?? 2, sessionId]
+    );
+    sendSuccess(res, { updated: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // POST /api/admin/simulator/reset
 adminRouter.post('/simulator/reset', async (_req, res, next) => {
   try {

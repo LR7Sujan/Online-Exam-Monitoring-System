@@ -257,7 +257,7 @@ export function StudentDashboardPage() {
             const isUpcoming = new Date(exam.start_window).getTime() > now;
 
             return (
-              <div key={exam.id}>
+              <div key={exam.id} data-testid={`exam-card-${exam.id}`}>
                 <div className="p-6 rounded-2xl border border-border bg-surface/85 hover:bg-surface hover:border-brand/40 shadow-sm hover:shadow-layered-sm transition-all duration-300 flex flex-col justify-between h-full space-y-6">
                     <div>
                       {/* Top Badges */}

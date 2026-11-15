@@ -455,6 +455,44 @@ export function StudentDetailDrawer({ sessionId, onClose }: StudentDetailDrawerP
               </div>
             </div>
 
+            {/* Time Extension Status & Actions */}
+            {session?.extension_request_status && (
+              <div
+                className={`rounded-2xl border p-4 font-mono text-xs space-y-3 ${
+                  session.extension_request_status === 'PENDING'
+                    ? 'border-amber-500/40 bg-amber-500/10 text-amber-500'
+                    : session.extension_request_status === 'APPROVED'
+                    ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-500'
+                    : 'border-border bg-surface-elevated/70 text-muted-foreground'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-4 h-4" />
+                    <strong className="text-foreground font-bold">Time Extension Status</strong>
+                  </div>
+                  <span className="font-bold px-2 py-0.5 rounded-full text-[10px] uppercase bg-surface border border-border">
+                    {session.extension_request_status}
+                  </span>
+                </div>
+                <div className="space-y-1 text-foreground">
+                  <p>
+                    Requested: <strong>{session.requested_extension_minutes || 0} minutes</strong>
+                    {session.granted_extension_minutes ? ` • Granted: ${session.granted_extension_minutes}m` : ''}
+                  </p>
+                  {session.extension_reason && (
+                    <p className="text-muted-foreground italic">"{session.extension_reason}"</p>
+                  )}
+                  {session.extension_decided_by_name && (
+                    <p className="text-[11px] text-muted-foreground">
+                      Decided by {session.extension_decided_by_name} at{' '}
+                      {session.extension_decided_at ? new Date(session.extension_decided_at).toLocaleTimeString() : ''}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* 4. Violation Incident Ledger with Lightbox Snapshots */}
             <div className="rounded-2xl border border-border bg-surface-elevated/70 p-4 space-y-3">
               <div className="flex items-center justify-between">

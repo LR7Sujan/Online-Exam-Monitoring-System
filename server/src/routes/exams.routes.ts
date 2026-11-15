@@ -70,6 +70,7 @@ const createExamSchema = z
     description: z.string().trim().max(2000).optional().nullable(),
     durationMinutes: z.coerce.number().int().min(1, 'Duration must be between 1 and 600 minutes').max(600, 'Duration must be between 1 and 600 minutes').default(60),
     minTrustScore: z.coerce.number().int().min(0, 'Minimum trust score must be between 0 and 100').max(100, 'Minimum trust score must be between 0 and 100').default(50),
+    maxExtensionMins: z.coerce.number().int().min(0, 'Max extra time must be between 0 and 120 minutes').max(120, 'Max extra time must be between 0 and 120 minutes').default(30),
     startWindow: z.string().optional(),
     endWindow: z.string().optional(),
     isPublished: z.boolean().default(false),
@@ -150,6 +151,7 @@ const updateExamSchema = z
     description: z.string().trim().max(2000).optional().nullable(),
     durationMinutes: z.coerce.number().int().min(1, 'Duration must be between 1 and 600 minutes').max(600, 'Duration must be between 1 and 600 minutes').optional(),
     minTrustScore: z.coerce.number().int().min(0, 'Minimum trust score must be between 0 and 100').max(100, 'Minimum trust score must be between 0 and 100').optional(),
+    maxExtensionMins: z.coerce.number().int().min(0, 'Max extra time must be between 0 and 120 minutes').max(120, 'Max extra time must be between 0 and 120 minutes').optional(),
     startWindow: z.string().optional(),
     endWindow: z.string().optional(),
     isPublished: z.boolean().optional(),
@@ -289,7 +291,7 @@ export async function startOrResumeExamSession(params: {
       );
 
       const [createdRows] = await conn.execute<ExamSessionRow[]>(
-        `SELECT es.*, e.title AS exam_title, e.duration_minutes, e.min_trust_score,
+        `SELECT es.*, e.title AS exam_title, e.duration_minutes, e.min_trust_score, e.max_extension_mins,
                 GREATEST(0, TIMESTAMPDIFF(SECOND, NOW(), es.server_deadline)) AS seconds_remaining
            FROM Exam_Sessions es
            JOIN Exams e ON e.id = es.exam_id
@@ -316,7 +318,7 @@ examsRouter.get(
     try {
       const rows = await queryRows<RowDataPacket[]>(
         `SELECT
-           e.id, e.title, e.description, e.duration_minutes, e.min_trust_score,
+           e.id, e.title, e.description, e.duration_minutes, e.min_trust_score, e.max_extension_mins,
            e.start_window, e.end_window, e.is_published,
            (SELECT COUNT(*) FROM Questions q WHERE q.exam_id = e.id) AS question_count,
            (SELECT COALESCE(SUM(q.marks), 0) FROM Questions q WHERE q.exam_id = e.id) AS total_marks,
@@ -346,7 +348,7 @@ examsRouter.get('/', requireAuth, async (req: AuthenticatedRequest, res, next) =
     if (user.role === 'STUDENT') {
       const rows = await queryRows<RowDataPacket[]>(
         `SELECT
-           e.id, e.title, e.description, e.duration_minutes, e.min_trust_score,
+           e.id, e.title, e.description, e.duration_minutes, e.min_trust_score, e.max_extension_mins,
            e.start_window, e.end_window, e.is_published,
            (SELECT COUNT(*) FROM Questions q WHERE q.exam_id = e.id) AS question_count,
            (SELECT COALESCE(SUM(q.marks), 0) FROM Questions q WHERE q.exam_id = e.id) AS total_marks,
@@ -368,7 +370,7 @@ examsRouter.get('/', requireAuth, async (req: AuthenticatedRequest, res, next) =
 
     const rows = await queryRows<RowDataPacket[]>(
       `SELECT
-         e.id, e.title, e.description, e.duration_minutes, e.min_trust_score,
+         e.id, e.title, e.description, e.duration_minutes, e.min_trust_score, e.max_extension_mins,
          e.start_window, e.end_window, e.is_published, e.created_by, e.created_at,
          u.full_name AS creator_name,
          (SELECT COUNT(*) FROM Questions q WHERE q.exam_id = e.id) AS question_count,
@@ -394,7 +396,7 @@ examsRouter.get(
     try {
       const { examId } = req.params as unknown as z.infer<typeof examIdParamSchema>;
       const exams = await queryRows<ExamRow[]>(
-        `SELECT id, title, description, duration_minutes, min_trust_score,
+        `SELECT id, title, description, duration_minutes, min_trust_score, max_extension_mins,
                 start_window, end_window, is_published, created_by, created_at
            FROM Exams
           WHERE id = ?
@@ -483,13 +485,14 @@ examsRouter.post(
         try {
           const [result] = await conn.execute<ResultSetHeader>(
             `INSERT INTO Exams
-              (title, description, duration_minutes, min_trust_score, start_window, end_window, is_published, created_by)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+              (title, description, duration_minutes, min_trust_score, max_extension_mins, start_window, end_window, is_published, created_by)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
               body.title,
               body.description ?? null,
               body.durationMinutes ?? 60,
               body.minTrustScore ?? 50,
+              body.maxExtensionMins ?? 30,
               startWin,
               endWin,
               Boolean(body.isPublished),
@@ -577,6 +580,7 @@ async function handleUpdateExam(req: AuthenticatedRequest, res: Parameters<typeo
           (body.description !== undefined && (body.description?.trim() ?? '') !== (existing.description ?? '')) ||
           (body.durationMinutes !== undefined && body.durationMinutes !== existing.duration_minutes) ||
           (body.minTrustScore !== undefined && body.minTrustScore !== existing.min_trust_score) ||
+          (body.maxExtensionMins !== undefined && body.maxExtensionMins !== existing.max_extension_mins) ||
           (body.startWindow !== undefined && new Date(body.startWindow).getTime() !== new Date(existing.start_window).getTime()) ||
           (body.endWindow !== undefined && new Date(body.endWindow).getTime() !== new Date(existing.end_window).getTime()) ||
           (body.questions && body.questions.length > 0);
@@ -647,6 +651,7 @@ async function handleUpdateExam(req: AuthenticatedRequest, res: Parameters<typeo
                   description = ?,
                   duration_minutes = ?,
                   min_trust_score = ?,
+                  max_extension_mins = ?,
                   start_window = ?,
                   end_window = ?,
                   is_published = ?
@@ -656,6 +661,7 @@ async function handleUpdateExam(req: AuthenticatedRequest, res: Parameters<typeo
             body.description !== undefined ? body.description : existing.description,
             body.durationMinutes ?? existing.duration_minutes,
             body.minTrustScore ?? existing.min_trust_score,
+            body.maxExtensionMins !== undefined ? body.maxExtensionMins : existing.max_extension_mins,
             startWin,
             endWin,
             targetPublished,

@@ -4,6 +4,7 @@ export type ReviewStatus = 'PENDING' | 'CONFIRMED' | 'DISMISSED';
 export type IntegrityStatus = 'CLEAN' | 'FLAGGED' | 'DISQUALIFIED';
 export type AnswerOption = 'A' | 'B' | 'C' | 'D';
 export type ViolationSeverity = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+export type ExtensionRequestStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'EXPIRED';
 export type ViolationCode =
   | 'TAB_SWITCH'
   | 'FULLSCREEN_EXIT'
@@ -35,6 +36,7 @@ export interface ExamItem {
   description: string | null;
   duration_minutes: number;
   min_trust_score: number;
+  max_extension_mins?: number;
   start_window: string;
   end_window: string;
   is_published: boolean | number;
@@ -70,6 +72,7 @@ export interface ExamSession {
   trust_score: number;
   status: SessionStatus;
   needs_reinstatement?: boolean | number;
+  extra_minutes_granted?: number;
   ip_address?: string | null;
   device_fingerprint?: string | null;
   started_at: string;
@@ -80,6 +83,31 @@ export interface ExamSession {
   exam_title?: string;
   duration_minutes?: number;
   min_trust_score?: number;
+  max_extension_mins?: number;
+  extension_request?: TimeExtensionRequest | null;
+}
+
+export interface TimeExtensionRequest {
+  request_id: number;
+  session_id: number;
+  requested_minutes: number;
+  reason: string | null;
+  status: ExtensionRequestStatus;
+  granted_minutes: number | null;
+  decided_by: number | null;
+  decided_at: string | null;
+  created_at: string;
+  student_id?: number;
+  student_name?: string;
+  student_email?: string;
+  exam_id?: number;
+  exam_title?: string;
+  trust_score?: number;
+  total_violations?: number;
+  seconds_remaining?: number;
+  decided_by_name?: string | null;
+  expires_at?: string;
+  max_extension_mins?: number;
 }
 
 export interface ViolationType {
@@ -146,6 +174,20 @@ export interface ProctorLiveMonitorRow {
   total_marks: number | string | null;
   percentage: number | string | null;
   integrity_status: IntegrityStatus | null;
+  max_extension_mins?: number;
+  extra_minutes_granted?: number;
+  extension_request_id?: number | null;
+  extension_status?: ExtensionRequestStatus | null;
+  extension_requested_minutes?: number | null;
+  extension_granted_minutes?: number | null;
+  extension_request_status?: ExtensionRequestStatus | null;
+  requested_extension_minutes?: number | null;
+  granted_extension_minutes?: number | null;
+  extension_reason?: string | null;
+  extension_created_at?: string | null;
+  extension_decided_at?: string | null;
+  extension_decided_by?: number | null;
+  extension_decided_by_name?: string | null;
 }
 
 export interface ViolationAuditRow {

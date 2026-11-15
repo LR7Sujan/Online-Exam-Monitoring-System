@@ -50,6 +50,7 @@ interface ExamDetailResponse {
     description: string | null;
     duration_minutes: number;
     min_trust_score: number;
+    max_extension_mins?: number;
     start_window: string;
     end_window: string;
     is_published: boolean | number;
@@ -98,6 +99,7 @@ export function ExamDetailPage() {
   const [description, setDescription] = useState('');
   const [durationMinutes, setDurationMinutes] = useState(60);
   const [minTrustScore, setMinTrustScore] = useState(50);
+  const [maxExtensionMins, setMaxExtensionMins] = useState(30);
   const [startWindow, setStartWindow] = useState('');
   const [endWindow, setEndWindow] = useState('');
   const [isEditingParams, setIsEditingParams] = useState(false);
@@ -127,6 +129,7 @@ export function ExamDetailPage() {
       setDescription(exam.description ?? '');
       setDurationMinutes(exam.duration_minutes);
       setMinTrustScore(exam.min_trust_score);
+      setMaxExtensionMins(Number(exam.max_extension_mins ?? 30));
 
       // Format ISO string to datetime-local input format (YYYY-MM-DDTHH:mm)
       const toLocalDt = (isoStr: string) => {
@@ -374,6 +377,11 @@ export function ExamDetailPage() {
       }
     }
 
+    const ext = Number(maxExtensionMins);
+    if (Number.isNaN(ext) || ext < 0 || ext > 120) {
+      errs.maxExtensionMins = 'Max extra time must be between 0 and 120 minutes';
+    }
+
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
       return;
@@ -385,6 +393,7 @@ export function ExamDetailPage() {
       description: description.trim() || null,
       durationMinutes,
       minTrustScore,
+      maxExtensionMins,
       startWindow: startWindow ? new Date(startWindow).toISOString() : undefined,
       endWindow: endWindow ? new Date(endWindow).toISOString() : undefined,
     });
@@ -396,6 +405,7 @@ export function ExamDetailPage() {
       setDescription(exam.description ?? '');
       setDurationMinutes(exam.duration_minutes);
       setMinTrustScore(exam.min_trust_score);
+      setMaxExtensionMins(Number(exam.max_extension_mins ?? 30));
       setIsEditingParams(false);
       setErrors({});
     }
@@ -630,8 +640,8 @@ export function ExamDetailPage() {
                 )}
               </div>
 
-              {/* Numerical Grid: Duration & Min Trust */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-border">
+              {/* Numerical Grid: Duration, Min Trust & Max Extension */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2 border-t border-border">
                 <div>
                   <label className="block text-muted-foreground text-[11px] mb-1 font-semibold">
                     DURATION (MINUTES) {!isPublished && <span className="text-rose-500">*</span>}
@@ -687,6 +697,37 @@ export function ExamDetailPage() {
                     </>
                   ) : (
                     <p className="text-rose-500 font-bold">{exam.min_trust_score}%</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-muted-foreground text-[11px] mb-1 font-semibold">
+                    MAX EXTRA TIME (MINS) {!isPublished && <span className="text-muted-foreground font-normal">(0-120)</span>}
+                  </label>
+                  {isEditingParams && !isPublished ? (
+                    <>
+                      <input
+                        type="number"
+                        min={0}
+                        max={120}
+                        value={maxExtensionMins}
+                        onChange={(e) => {
+                          setMaxExtensionMins(parseInt(e.target.value, 10) || 0);
+                          if (errors.maxExtensionMins)
+                            setErrors((prev) => ({ ...prev, maxExtensionMins: '' }));
+                        }}
+                        className={`w-full rounded-xl border bg-background p-2.5 text-xs text-foreground font-mono focus:outline-none ${
+                          errors.maxExtensionMins ? 'border-rose-500' : 'border-border focus:border-brand'
+                        }`}
+                      />
+                      {errors.maxExtensionMins && (
+                        <p className="text-rose-500 text-[11px] mt-1">{errors.maxExtensionMins}</p>
+                      )}
+                    </>
+                  ) : (
+                    <p className="text-foreground font-bold">
+                      {Number(exam.max_extension_mins ?? 30) === 0 ? 'Disabled (0 mins)' : `${exam.max_extension_mins ?? 30} minutes`}
+                    </p>
                   )}
                 </div>
               </div>

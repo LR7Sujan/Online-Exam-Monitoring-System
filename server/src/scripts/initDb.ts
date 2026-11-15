@@ -71,6 +71,8 @@ async function run(): Promise<void> {
   });
 
   try {
+    await conn.query('SET FOREIGN_KEY_CHECKS = 0;');
+
     for (const file of migrationFiles) {
       const filePath = path.join(migrationsDir, file);
       console.log(`[db:init] Applying migration db/migrations/${file}...`);
@@ -85,6 +87,8 @@ async function run(): Promise<void> {
     for (const stmt of parseSqlScript(seedSql)) {
       await conn.query(stmt);
     }
+
+    await conn.query('SET FOREIGN_KEY_CHECKS = 1;');
     console.log('[db:init] Database created, migrated, and seeded successfully.');
   } finally {
     await conn.end();
