@@ -86,7 +86,7 @@ describe('Sub-Phase 11.4: Comprehensive Security Probes & Vulnerability Audit', 
         minTrustScore: 50,
         startWindow: new Date(Date.now() - 3600000).toISOString(),
         endWindow: new Date(Date.now() + 7200000).toISOString(),
-        isPublished: true,
+        isPublished: false,
         questions: [
           {
             questionText: 'Security Question Initial',
@@ -116,6 +116,12 @@ describe('Sub-Phase 11.4: Comprehensive Security Probes & Vulnerability Audit', 
       });
     expect(qRes.status).toBe(201);
     testQuestionId = qRes.body.data.id;
+
+    // Publish exam so students can start sessions
+    const pubRes = await request(app)
+      .patch(`/api/exams/${testExamId}/publish`)
+      .set('Authorization', `Bearer ${adminToken}`);
+    expect(pubRes.status).toBe(200);
 
     // 6. Start sessions for Student A and Student B
     const startARes = await request(app)
@@ -449,6 +455,7 @@ describe('Sub-Phase 11.4: Comprehensive Security Probes & Vulnerability Audit', 
     });
 
     it('stores SVG XSS payload in question text safely', async () => {
+      await executeSql('UPDATE Exams SET is_published = FALSE WHERE id = ?', [testExamId]);
       const xssQuestion = '<svg/onload=alert("XSS_QUESTION")>';
       const res = await request(app)
         .post(`/api/exams/${testExamId}/questions`)
@@ -464,6 +471,7 @@ describe('Sub-Phase 11.4: Comprehensive Security Probes & Vulnerability Audit', 
       expect(res.status).toBe(201);
       expect(res.body.data.question_text || res.body.data.questionText).toBe(xssQuestion);
       await executeSql('DELETE FROM Questions WHERE id = ?', [res.body.data.id]);
+      await executeSql('UPDATE Exams SET is_published = TRUE WHERE id = ?', [testExamId]);
     });
 
     it('verifies client codebase contains zero dangerouslySetInnerHTML references', () => {

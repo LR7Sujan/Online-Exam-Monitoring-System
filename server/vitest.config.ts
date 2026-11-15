@@ -11,6 +11,7 @@ export default defineConfig({
       'tests/realtimeAndLoad.test.ts',
       'tests/regressionBugAudit.test.ts',
       'tests/simulatorReset.api.test.ts',
+      'tests/examsLifecycle.api.test.ts',
     ],
     testTimeout: 25000,
     fileParallelism: false,

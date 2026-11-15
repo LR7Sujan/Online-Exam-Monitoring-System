@@ -1,13 +1,12 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
 import { createApp } from '../src/app.js';
-import { pool, executeSql } from '../src/config/db.js';
+import { pool } from '../src/config/db.js';
 
 describe('Exams Validation & Publish Rules API Tests', () => {
   const app = createApp();
 
   let adminToken: string;
-  let studentToken: string;
 
   beforeAll(async () => {
     // 1. Admin login
@@ -16,13 +15,6 @@ describe('Exams Validation & Publish Rules API Tests', () => {
       .send({ email: 'admin@proctoriq.io', password: 'ProctorIQ#2026' });
     expect(adminRes.status).toBe(200);
     adminToken = adminRes.body.data.token;
-
-    // 2. Student login
-    const studentRes = await request(app)
-      .post('/api/auth/login')
-      .send({ email: 'student@proctoriq.io', password: 'ProctorIQ#2026' });
-    expect(studentRes.status).toBe(200);
-    studentToken = studentRes.body.data.token;
   });
 
   afterAll(async () => {

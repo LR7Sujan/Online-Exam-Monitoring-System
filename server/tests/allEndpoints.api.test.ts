@@ -73,7 +73,7 @@ describe('Comprehensive API Endpoint Test Suite (All Endpoints: 200/201, 400, 40
         minTrustScore: 50,
         startWindow: new Date(Date.now() - 3600000).toISOString(),
         endWindow: new Date(Date.now() + 7200000).toISOString(),
-        isPublished: true,
+        isPublished: false,
         questions: [
           {
             questionText: 'Initial Comprehensive Question',
@@ -87,7 +87,7 @@ describe('Comprehensive API Endpoint Test Suite (All Endpoints: 200/201, 400, 40
     expect(examRes.status).toBe(201);
     testExamId = examRes.body.data.id;
 
-    // 6. Add questions to test exam
+    // 6. Add questions to test exam (allowed while draft)
     const qRes = await request(app)
       .post(`/api/exams/${testExamId}/questions`)
       .set('Authorization', `Bearer ${adminToken}`)
@@ -103,6 +103,12 @@ describe('Comprehensive API Endpoint Test Suite (All Endpoints: 200/201, 400, 40
       });
     expect(qRes.status).toBe(201);
     testQuestionId = qRes.body.data.id;
+
+    // Publish exam so students can start sessions
+    const pubRes = await request(app)
+      .patch(`/api/exams/${testExamId}/publish`)
+      .set('Authorization', `Bearer ${adminToken}`);
+    expect(pubRes.status).toBe(200);
 
     // 7. Start an active session for primary student
     const sessRes = await request(app)

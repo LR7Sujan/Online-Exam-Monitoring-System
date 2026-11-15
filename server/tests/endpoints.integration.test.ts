@@ -88,7 +88,7 @@ test('All Admin, Student, Proctor endpoints and Socket.IO events work end-to-end
         minTrustScore: 50,
         startWindow: new Date(Date.now() - 3600_000).toISOString(),
         endWindow: new Date(Date.now() + 3600_000).toISOString(),
-        isPublished: true,
+        isPublished: false,
         questions: [
           {
             questionText: 'E2E sample question initial?',
@@ -120,6 +120,13 @@ test('All Admin, Student, Proctor endpoints and Socket.IO events work end-to-end
     });
     assert.equal(addQ.status, 201);
     const qId = addQ.json.data.id;
+
+    // Publish exam
+    const pub = await apiFetch(baseUrl, `/exams/${createdExamId}/publish`, {
+      method: 'PATCH',
+      token: adminToken,
+    });
+    assert.equal(pub.status, 200);
 
     const createVt = await apiFetch<{ id: number }>(baseUrl, '/violation-types', {
       method: 'POST',

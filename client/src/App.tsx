@@ -31,6 +31,7 @@ const LoadingEmptySection = lazy(() => import('./pages/styleguide/sections/Loadi
 const MotionSection = lazy(() => import('./pages/styleguide/sections/MotionSection').then((m) => ({ default: m.MotionSection })));
 
 const AdminDashboardPage = lazy(() => import('./pages/AdminDashboardPage').then((m) => ({ default: m.AdminDashboardPage })));
+const ExamDetailPage = lazy(() => import('./pages/admin/ExamDetailPage').then((m) => ({ default: m.ExamDetailPage })));
 const SimulatorPage = lazy(() => import('./pages/SimulatorPage').then((m) => ({ default: m.SimulatorPage })));
 const ProctorDashboardPage = lazy(() => import('./pages/ProctorDashboardPage').then((m) => ({ default: m.ProctorDashboardPage })));
 const StudentDashboardPage = lazy(() => import('./pages/StudentDashboardPage').then((m) => ({ default: m.StudentDashboardPage })));
@@ -170,6 +171,14 @@ export function App() {
                       element={
                         <RequireRole roles={['ADMIN']}>
                           <AdminDashboardPage initialTab="exams" />
+                        </RequireRole>
+                      }
+                    />
+                    <Route
+                      path="/admin/exams/:id"
+                      element={
+                        <RequireRole roles={['ADMIN']}>
+                          <ExamDetailPage />
                         </RequireRole>
                       }
                     />

@@ -423,7 +423,39 @@ examsRouter.get(
         [examId]
       );
 
-      sendSuccess(res, { exam, questions });
+      const creatorRows = await queryRows<RowDataPacket[]>(
+        'SELECT id, full_name, email FROM Users WHERE id = ? LIMIT 1',
+        [exam.created_by]
+      );
+      const creator = creatorRows[0] || {
+        id: exam.created_by,
+        full_name: 'Administrator',
+        email: 'admin@proctoriq.io',
+      };
+
+      const statsRows = await queryRows<RowDataPacket[]>(
+        `SELECT
+           COUNT(*) AS total_sessions,
+           SUM(CASE WHEN status = 'IN_PROGRESS' THEN 1 ELSE 0 END) AS in_progress_sessions,
+           SUM(CASE WHEN status = 'SUBMITTED' THEN 1 ELSE 0 END) AS completed_sessions,
+           SUM(CASE WHEN status = 'TERMINATED_CHEATING' THEN 1 ELSE 0 END) AS disqualified_sessions,
+           SUM(CASE WHEN status = 'TIMED_OUT' THEN 1 ELSE 0 END) AS timed_out_sessions
+         FROM Exam_Sessions
+         WHERE exam_id = ?`,
+        [examId]
+      );
+
+      const stats = {
+        totalSessions: Number(statsRows[0]?.total_sessions ?? 0),
+        inProgressSessions: Number(statsRows[0]?.in_progress_sessions ?? 0),
+        completedSessions: Number(statsRows[0]?.completed_sessions ?? 0),
+        disqualifiedSessions: Number(statsRows[0]?.disqualified_sessions ?? 0),
+        timedOutSessions: Number(statsRows[0]?.timed_out_sessions ?? 0),
+        questionCount: questions.length,
+        totalMarks: questions.reduce((sum, q) => sum + Number(q.marks || 0), 0),
+      };
+
+      sendSuccess(res, { exam, creator, stats, questions });
     } catch (err) {
       next(err);
     }
@@ -525,6 +557,39 @@ async function handleUpdateExam(req: AuthenticatedRequest, res: Parameters<typeo
     const startWin = body.startWindow ? toMysqlDateTime(body.startWindow) : existing.start_window;
     const endWin = body.endWindow ? toMysqlDateTime(body.endWindow) : existing.end_window;
     const targetPublished = body.isPublished !== undefined ? body.isPublished : Boolean(existing.is_published);
+
+    if (existing.is_published) {
+      if (targetPublished === false) {
+        const activeSessions = await queryRows<RowDataPacket[]>(
+          "SELECT id, student_id FROM Exam_Sessions WHERE exam_id = ? AND status = 'IN_PROGRESS'",
+          [examId]
+        );
+        if (activeSessions.length > 0) {
+          throw new AppError(
+            409,
+            'ACTIVE_SESSIONS_IN_PROGRESS',
+            `Cannot unpublish exam while ${activeSessions.length} student session(s) are currently IN_PROGRESS. Please wait for sessions to conclude or terminate them first.`
+          );
+        }
+      } else {
+        const isEditingContent =
+          (body.title !== undefined && body.title.trim() !== existing.title) ||
+          (body.description !== undefined && (body.description?.trim() ?? '') !== (existing.description ?? '')) ||
+          (body.durationMinutes !== undefined && body.durationMinutes !== existing.duration_minutes) ||
+          (body.minTrustScore !== undefined && body.minTrustScore !== existing.min_trust_score) ||
+          (body.startWindow !== undefined && new Date(body.startWindow).getTime() !== new Date(existing.start_window).getTime()) ||
+          (body.endWindow !== undefined && new Date(body.endWindow).getTime() !== new Date(existing.end_window).getTime()) ||
+          (body.questions && body.questions.length > 0);
+
+        if (isEditingContent) {
+          throw new AppError(
+            409,
+            'EXAM_PUBLISHED',
+            'Cannot modify parameters or questions of a published exam. Unpublish the exam first.'
+          );
+        }
+      }
+    }
 
     if (targetPublished) {
       const finalTitle = (body.title ?? existing.title).trim();
@@ -724,6 +789,42 @@ async function handlePublishExam(
   }
 }
 
+// Unpublish Exam Handler
+async function handleUnpublishExam(
+  req: AuthenticatedRequest,
+  res: Parameters<typeof sendSuccess>[0],
+  next: (e?: unknown) => void
+) {
+  try {
+    const { examId } = req.params as unknown as z.infer<typeof examIdParamSchema>;
+    const existingRows = await queryRows<ExamRow[]>('SELECT * FROM Exams WHERE id = ? LIMIT 1', [
+      examId,
+    ]);
+    const exam = existingRows[0];
+    if (!exam) {
+      throw new AppError(404, 'EXAM_NOT_FOUND', 'Exam not found.');
+    }
+
+    const activeSessions = await queryRows<RowDataPacket[]>(
+      "SELECT id, student_id FROM Exam_Sessions WHERE exam_id = ? AND status = 'IN_PROGRESS'",
+      [examId]
+    );
+    if (activeSessions.length > 0) {
+      throw new AppError(
+        409,
+        'ACTIVE_SESSIONS_IN_PROGRESS',
+        `Cannot unpublish exam while ${activeSessions.length} student session(s) are currently IN_PROGRESS. Please wait for sessions to conclude or terminate them first.`
+      );
+    }
+
+    await executeSql('UPDATE Exams SET is_published = FALSE WHERE id = ?', [examId]);
+    const updated = await queryRows<ExamRow[]>('SELECT * FROM Exams WHERE id = ? LIMIT 1', [examId]);
+    sendSuccess(res, updated[0]);
+  } catch (err) {
+    next(err);
+  }
+}
+
 // PATCH & POST /api/exams/:examId/publish (ADMIN)
 examsRouter.patch(
   '/:examId/publish',
@@ -739,6 +840,23 @@ examsRouter.post(
   requireRole('ADMIN'),
   validate({ params: examIdParamSchema }),
   handlePublishExam
+);
+
+// PATCH & POST /api/exams/:examId/unpublish (ADMIN)
+examsRouter.patch(
+  '/:examId/unpublish',
+  requireAuth,
+  requireRole('ADMIN'),
+  validate({ params: examIdParamSchema }),
+  handleUnpublishExam
+);
+
+examsRouter.post(
+  '/:examId/unpublish',
+  requireAuth,
+  requireRole('ADMIN'),
+  validate({ params: examIdParamSchema }),
+  handleUnpublishExam
 );
 
 // PUT & PATCH /api/exams/:examId (ADMIN)
@@ -767,6 +885,30 @@ examsRouter.delete(
   async (req, res, next) => {
     try {
       const { examId } = req.params as unknown as z.infer<typeof examIdParamSchema>;
+      const existingRows = await queryRows<ExamRow[]>('SELECT id, title, is_published FROM Exams WHERE id = ? LIMIT 1', [examId]);
+      const exam = existingRows[0];
+      if (!exam) {
+        throw new AppError(404, 'EXAM_NOT_FOUND', 'Exam not found.');
+      }
+
+      if (exam.is_published) {
+        throw new AppError(409, 'EXAM_PUBLISHED', 'Cannot delete a published exam. Unpublish it first or archive it.');
+      }
+
+      const sessionCountRows = await queryRows<RowDataPacket[]>(
+        'SELECT COUNT(*) AS count FROM Exam_Sessions WHERE exam_id = ?',
+        [examId]
+      );
+      const sessionCount = Number(sessionCountRows[0]?.count ?? 0);
+      if (sessionCount > 0) {
+        throw new AppError(
+          409,
+          'AUDIT_DATA_EXISTS',
+          'This exam cannot be deleted because audit records and exam sessions exist in the system. The forensic audit trail must remain intact.'
+        );
+      }
+
+      await executeSql('DELETE FROM Questions WHERE exam_id = ?', [examId]);
       const result = await executeSql('DELETE FROM Exams WHERE id = ?', [examId]);
       if (result.affectedRows === 0) {
         throw new AppError(404, 'EXAM_NOT_FOUND', 'Exam not found.');
@@ -869,11 +1011,14 @@ examsRouter.post(
       const { examId } = req.params as unknown as z.infer<typeof examIdParamSchema>;
       const body = req.body as z.infer<typeof createQuestionSchema>;
 
-      const exams = await queryRows<ExamRow[]>('SELECT id FROM Exams WHERE id = ? LIMIT 1', [
+      const exams = await queryRows<ExamRow[]>('SELECT id, is_published FROM Exams WHERE id = ? LIMIT 1', [
         examId,
       ]);
       if (!exams[0]) {
         throw new AppError(404, 'EXAM_NOT_FOUND', 'Exam not found.');
+      }
+      if (exams[0].is_published) {
+        throw new AppError(409, 'EXAM_PUBLISHED', 'Cannot modify questions of a published exam. Unpublish the exam first.');
       }
 
       const orderRows = await queryRows<RowDataPacket[]>(
@@ -935,9 +1080,12 @@ examsRouter.post(
         throw new AppError(400, 'INVALID_BODY', 'Array of questions is required');
       }
 
-      const exams = await queryRows<ExamRow[]>('SELECT id FROM Exams WHERE id = ? LIMIT 1', [examId]);
+      const exams = await queryRows<ExamRow[]>('SELECT id, is_published FROM Exams WHERE id = ? LIMIT 1', [examId]);
       if (!exams[0]) {
         throw new AppError(404, 'EXAM_NOT_FOUND', 'Exam not found.');
+      }
+      if (exams[0].is_published) {
+        throw new AppError(409, 'EXAM_PUBLISHED', 'Cannot modify questions of a published exam. Unpublish the exam first.');
       }
 
       const orderRows = await queryRows<RowDataPacket[]>(
@@ -989,6 +1137,56 @@ examsRouter.post(
   }
 );
 
+const reorderQuestionsSchema = z.object({
+  questionIds: z.array(z.coerce.number().int().positive()).min(1),
+});
+
+// PUT /api/exams/:examId/questions/reorder (ADMIN)
+examsRouter.put(
+  '/:examId/questions/reorder',
+  requireAuth,
+  requireRole('ADMIN'),
+  validate({ params: examIdParamSchema, body: reorderQuestionsSchema }),
+  async (req, res, next) => {
+    try {
+      const { examId } = req.params as unknown as z.infer<typeof examIdParamSchema>;
+      const { questionIds } = req.body as z.infer<typeof reorderQuestionsSchema>;
+
+      const exams = await queryRows<ExamRow[]>('SELECT id, is_published FROM Exams WHERE id = ? LIMIT 1', [examId]);
+      if (!exams[0]) {
+        throw new AppError(404, 'EXAM_NOT_FOUND', 'Exam not found.');
+      }
+      if (exams[0].is_published) {
+        throw new AppError(409, 'EXAM_PUBLISHED', 'Cannot modify questions of a published exam. Unpublish the exam first.');
+      }
+
+      await withConnection(async (conn) => {
+        await conn.beginTransaction();
+        try {
+          for (let i = 0; i < questionIds.length; i++) {
+            await conn.execute(
+              'UPDATE Questions SET order_index = ? WHERE id = ? AND exam_id = ?',
+              [i + 1, questionIds[i], examId]
+            );
+          }
+          await conn.commit();
+        } catch (e) {
+          await conn.rollback();
+          throw e;
+        }
+      });
+
+      const updated = await queryRows<QuestionRow[]>(
+        'SELECT * FROM Questions WHERE exam_id = ? ORDER BY order_index ASC, id ASC',
+        [examId]
+      );
+      sendSuccess(res, updated);
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
 async function handleUpdateQuestion(
   req: AuthenticatedRequest,
   res: Parameters<typeof sendSuccess>[0],
@@ -997,6 +1195,14 @@ async function handleUpdateQuestion(
   try {
     const { examId, questionId } = req.params as unknown as z.infer<typeof questionIdParamSchema>;
     const body = req.body as z.infer<typeof updateQuestionSchema>;
+
+    const exams = await queryRows<ExamRow[]>('SELECT id, is_published FROM Exams WHERE id = ? LIMIT 1', [examId]);
+    if (!exams[0]) {
+      throw new AppError(404, 'EXAM_NOT_FOUND', 'Exam not found.');
+    }
+    if (exams[0].is_published) {
+      throw new AppError(409, 'EXAM_PUBLISHED', 'Cannot modify questions of a published exam. Unpublish the exam first.');
+    }
 
     const rows = await queryRows<QuestionRow[]>(
       'SELECT * FROM Questions WHERE id = ? AND exam_id = ? LIMIT 1',
@@ -1067,6 +1273,15 @@ examsRouter.delete(
   async (req, res, next) => {
     try {
       const { examId, questionId } = req.params as unknown as z.infer<typeof questionIdParamSchema>;
+
+      const exams = await queryRows<ExamRow[]>('SELECT id, is_published FROM Exams WHERE id = ? LIMIT 1', [examId]);
+      if (!exams[0]) {
+        throw new AppError(404, 'EXAM_NOT_FOUND', 'Exam not found.');
+      }
+      if (exams[0].is_published) {
+        throw new AppError(409, 'EXAM_PUBLISHED', 'Cannot modify questions of a published exam. Unpublish the exam first.');
+      }
+
       const result = await executeSql('DELETE FROM Questions WHERE id = ? AND exam_id = ?', [
         questionId,
         examId,

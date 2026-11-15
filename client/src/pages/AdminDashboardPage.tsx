@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   BarChart3,
@@ -10,11 +11,17 @@ import {
   Trash2,
   Users,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { AdminOverviewDashboard } from '../components/admin/AdminOverviewDashboard';
 import { ExamWizardModal } from '../components/admin/ExamWizardModal';
 import { ViolationRulesManager } from '../components/admin/ViolationRulesManager';
 import { UsersManagerTable } from '../components/admin/UsersManagerTable';
 import { ResultsAndExportTable } from '../components/admin/ResultsAndExportTable';
+import {
+  UnpublishConfirmModal,
+  DeleteExamModal,
+  ExamStatusMenu,
+} from '../components/admin/ExamLifecycleModals';
 import { NeonButton } from '../components/ui/NeonButton';
 import { SkeletonCard } from '../components/ui/Skeleton';
 import { EmptyState, ErrorState } from '../components/ui/EmptyState';
@@ -50,9 +57,17 @@ export function AdminDashboardPage({
   }, [initialTab]);
 
   // Exam Management States
+  const navigate = useNavigate();
   const [wizardOpen, setWizardOpen] = useState(false);
   const [editingExam, setEditingExam] = useState<ExamItem | null>(null);
   const [selectedExamId, setSelectedExamId] = useState<number | null>(null);
+
+  // Lifecycle Modals State
+  const [unpublishModalOpen, setUnpublishModalOpen] = useState(false);
+  const [targetUnpublishExam, setTargetUnpublishExam] = useState<ExamItem | null>(null);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [targetDeleteExam, setTargetDeleteExam] = useState<ExamItem | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   // Queries
   const examsQuery = useQuery({
@@ -72,11 +87,52 @@ export function AdminDashboardPage({
     enabled: activeTab === 'db',
   });
 
-  const togglePublishMutation = useMutation({
-    mutationFn: (vars: { examId: number; isPublished: boolean }) =>
-      api.patch(`/exams/${vars.examId}`, { isPublished: vars.isPublished }),
+  const publishExamMutation = useMutation({
+    mutationFn: (examId: number) => api.patch(`/exams/${examId}/publish`),
     onSuccess: () => {
+      toast.success('Examination published and active');
       queryClient.invalidateQueries({ queryKey: ['admin-exams-overview'] });
+    },
+    onError: (err: unknown) => {
+      const resp = (err as { response?: { data?: { error?: { message?: string; details?: { fieldErrors?: Record<string, string[]> } } } } })?.response;
+      const fieldErrors = resp?.data?.error?.details?.fieldErrors;
+      if (fieldErrors) {
+        const firstField = Object.keys(fieldErrors)[0];
+        toast.error(`Publish blocked: ${fieldErrors[firstField][0]}`);
+      } else {
+        toast.error(resp?.data?.error?.message || 'Failed to publish examination');
+      }
+    },
+  });
+
+  const unpublishExamMutation = useMutation({
+    mutationFn: (examId: number) => api.post(`/exams/${examId}/unpublish`),
+    onSuccess: () => {
+      toast.success('Examination unpublished');
+      setUnpublishModalOpen(false);
+      setTargetUnpublishExam(null);
+      queryClient.invalidateQueries({ queryKey: ['admin-exams-overview'] });
+    },
+    onError: (err: unknown) => {
+      const resp = (err as { response?: { data?: { error?: { message?: string } } } })?.response;
+      toast.error(resp?.data?.error?.message || 'Failed to unpublish examination');
+    },
+  });
+
+  const deleteExamMutation = useMutation({
+    mutationFn: (examId: number) => api.delete(`/exams/${examId}`),
+    onSuccess: () => {
+      toast.success('Examination permanently deleted');
+      setDeleteModalOpen(false);
+      setTargetDeleteExam(null);
+      setDeleteError(null);
+      queryClient.invalidateQueries({ queryKey: ['admin-exams-overview'] });
+    },
+    onError: (err: unknown) => {
+      const resp = (err as { response?: { data?: { error?: { message?: string } } } })?.response;
+      const msg = resp?.data?.error?.message || 'Failed to delete examination';
+      setDeleteError(msg);
+      toast.error(msg);
     },
   });
 
@@ -211,10 +267,11 @@ export function AdminDashboardPage({
                 return (
                   <div
                     key={exam.id}
-                    className={`rounded-2xl border p-5 shadow-sm transition-all space-y-4 ${
+                    onClick={() => navigate(`/admin/exams/${exam.id}`)}
+                    className={`rounded-2xl border p-5 shadow-sm transition-all space-y-4 cursor-pointer hover:border-brand/60 hover:shadow-md ${
                       isSelected
                         ? 'border-brand bg-surface-elevated ring-1 ring-brand/30'
-                        : 'border-border bg-surface hover:border-brand/40'
+                        : 'border-border bg-surface'
                     }`}
                   >
                     <div className="flex items-start justify-between gap-3">
@@ -226,15 +283,25 @@ export function AdminDashboardPage({
                           {exam.title}
                         </h4>
                       </div>
-                      <span
-                        className={`rounded-full px-2.5 py-0.5 font-mono text-[10px] font-semibold ${
-                          isPublished
-                            ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'
-                            : 'bg-muted text-muted-foreground border border-border'
-                        }`}
-                      >
-                        {isPublished ? 'PUBLISHED' : 'DRAFT'}
-                      </span>
+                      <div onClick={(e) => e.stopPropagation()}>
+                        <ExamStatusMenu
+                          exam={{
+                            id: exam.id,
+                            title: exam.title,
+                            is_published: exam.is_published,
+                          }}
+                          onPublish={() => publishExamMutation.mutate(exam.id)}
+                          onUnpublish={() => {
+                            setTargetUnpublishExam(exam);
+                            setUnpublishModalOpen(true);
+                          }}
+                          onDelete={() => {
+                            setTargetDeleteExam(exam);
+                            setDeleteError(null);
+                            setDeleteModalOpen(true);
+                          }}
+                        />
+                      </div>
                     </div>
 
                     <p className="text-xs text-muted-foreground line-clamp-2 min-h-[32px]">
@@ -263,44 +330,47 @@ export function AdminDashboardPage({
                     <div className="flex items-center justify-between gap-2 pt-1">
                       <button
                         type="button"
-                        onClick={() => setSelectedExamId(isSelected ? null : exam.id)}
-                        className={`rounded-lg px-3 py-1.5 text-xs font-mono font-medium transition-all cursor-pointer ${
-                          isSelected
-                            ? 'bg-brand/15 text-brand border border-brand/30'
-                            : 'bg-surface-elevated text-muted-foreground hover:text-foreground hover:bg-muted/50 border border-border'
+                        disabled={isPublished}
+                        title={isPublished ? 'Unpublish to view or edit questions' : 'Inspect Questions'}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (!isPublished) {
+                            setSelectedExamId(isSelected ? null : exam.id);
+                          }
+                        }}
+                        className={`rounded-lg px-3 py-1.5 text-xs font-mono font-medium transition-all ${
+                          isPublished
+                            ? 'opacity-50 cursor-not-allowed bg-surface text-muted-foreground/50 border border-border/50'
+                            : isSelected
+                              ? 'bg-brand/15 text-brand border border-brand/30 cursor-pointer'
+                              : 'bg-surface-elevated text-muted-foreground hover:text-foreground hover:bg-muted/50 border border-border cursor-pointer'
                         }`}
                       >
                         {isSelected ? 'Close Questions' : 'Inspect Questions'}
                       </button>
 
-                      <div className="flex items-center gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setEditingExam(exam);
-                            setWizardOpen(true);
-                          }}
-                          className="rounded-lg px-2.5 py-1.5 text-xs font-mono font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 border border-border transition-colors cursor-pointer"
-                        >
-                          Edit
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() =>
-                            togglePublishMutation.mutate({
-                              examId: exam.id,
-                              isPublished: !isPublished,
-                            })
-                          }
-                          className={`rounded-lg px-2.5 py-1.5 text-xs font-mono font-medium transition-colors cursor-pointer ${
-                            isPublished
-                              ? 'text-rose-500 hover:bg-rose-500/10 border border-rose-500/20'
-                              : 'text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 border border-emerald-500/20'
-                          }`}
-                        >
-                          {isPublished ? 'Unpublish' : 'Publish'}
-                        </button>
+                      <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                        {isPublished ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setTargetUnpublishExam(exam);
+                              setUnpublishModalOpen(true);
+                            }}
+                            className="rounded-lg px-2.5 py-1.5 text-xs font-mono font-medium text-rose-500 hover:bg-rose-500/10 border border-rose-500/20 transition-colors cursor-pointer"
+                          >
+                            Unpublish
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => publishExamMutation.mutate(exam.id)}
+                            disabled={publishExamMutation.isPending}
+                            className="rounded-lg px-2.5 py-1.5 text-xs font-mono font-medium text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 border border-emerald-500/20 transition-colors cursor-pointer"
+                          >
+                            Publish
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -487,6 +557,56 @@ export function AdminDashboardPage({
         onSuccess={() => {
           queryClient.invalidateQueries({ queryKey: ['admin-exams-overview'] });
         }}
+      />
+
+      {/* UNPUBLISH CONFIRMATION MODAL */}
+      <UnpublishConfirmModal
+        isOpen={unpublishModalOpen}
+        onClose={() => {
+          setUnpublishModalOpen(false);
+          setTargetUnpublishExam(null);
+        }}
+        exam={
+          targetUnpublishExam
+            ? {
+                id: targetUnpublishExam.id,
+                title: targetUnpublishExam.title,
+                active_sessions: targetUnpublishExam.active_sessions,
+              }
+            : null
+        }
+        onConfirm={() => {
+          if (targetUnpublishExam) {
+            unpublishExamMutation.mutate(targetUnpublishExam.id);
+          }
+        }}
+        isLoading={unpublishExamMutation.isPending}
+      />
+
+      {/* DELETE CONFIRMATION MODAL */}
+      <DeleteExamModal
+        isOpen={deleteModalOpen}
+        onClose={() => {
+          setDeleteModalOpen(false);
+          setTargetDeleteExam(null);
+          setDeleteError(null);
+        }}
+        exam={
+          targetDeleteExam
+            ? {
+                id: targetDeleteExam.id,
+                title: targetDeleteExam.title,
+                total_sessions: targetDeleteExam.total_sessions,
+              }
+            : null
+        }
+        onConfirm={() => {
+          if (targetDeleteExam) {
+            deleteExamMutation.mutate(targetDeleteExam.id);
+          }
+        }}
+        isLoading={deleteExamMutation.isPending}
+        error={deleteError}
       />
     </div>
   );
