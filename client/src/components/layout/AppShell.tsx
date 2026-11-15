@@ -136,10 +136,81 @@ export function AppShell() {
   type NotifSeverityFilter = 'ALL' | 'CRITICAL' | 'HIGH' | 'MEDIUM_LOW';
   const [notifFilter, setNotifFilter] = useState<NotifSeverityFilter>('ALL');
 
-  // Sub-menu expansion states (Phase 13.6 expandable groups readiness)
+  // Sub-menu expansion states (Phase 13.6 expandable groups readiness) - default collapsed per Phase 16
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({
-    '/styleguide': true,
+    '/styleguide': false,
   });
+
+  // UI Styleguide Popover Flyout states (Solid surface, search, 13 sub-items)
+  const [styleguideFlyoutOpen, setStyleguideFlyoutOpen] = useState<boolean>(false);
+  const [styleguideSearch, setStyleguideSearch] = useState<string>('');
+  const [styleguideFlyoutTop, setStyleguideFlyoutTop] = useState<number>(200);
+  const styleguideTriggerRef = useRef<HTMLDivElement | null>(null);
+  const styleguideFlyoutRef = useRef<HTMLDivElement | null>(null);
+  const sidebarNavRef = useRef<HTMLElement | null>(null);
+
+  // Position and auto-clamp styleguide flyout when open
+  useEffect(() => {
+    if (styleguideFlyoutOpen && styleguideTriggerRef.current) {
+      const rect = styleguideTriggerRef.current.getBoundingClientRect();
+      const flyoutHeight = Math.min(window.innerHeight * 0.7, 480);
+      let targetTop = rect.top;
+      if (targetTop + flyoutHeight > window.innerHeight - 20) {
+        targetTop = Math.max(16, window.innerHeight - flyoutHeight - 20);
+      }
+      setStyleguideFlyoutTop(targetTop);
+    }
+  }, [styleguideFlyoutOpen]);
+
+  // Outside click & Escape key listener for styleguide flyout
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        styleguideFlyoutRef.current &&
+        !styleguideFlyoutRef.current.contains(event.target as Node) &&
+        styleguideTriggerRef.current &&
+        !styleguideTriggerRef.current.contains(event.target as Node)
+      ) {
+        setStyleguideFlyoutOpen(false);
+      }
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setStyleguideFlyoutOpen(false);
+      }
+    };
+
+    if (styleguideFlyoutOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('keydown', handleKeyDown);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [styleguideFlyoutOpen]);
+
+  // Keep sidebar nav at scrollTop 0 on route change, unless active item is outside visible area
+  useEffect(() => {
+    if (!sidebarNavRef.current) return;
+    const nav = sidebarNavRef.current;
+    const activeEl = nav.querySelector<HTMLElement>('[data-nav-active="true"]');
+    if (!activeEl) {
+      nav.scrollTop = 0;
+      return;
+    }
+    const navRect = nav.getBoundingClientRect();
+    const elRect = activeEl.getBoundingClientRect();
+    const isVisible = elRect.top >= navRect.top && elRect.bottom <= navRect.bottom;
+    if (!isVisible) {
+      if (elRect.top < navRect.top) {
+        nav.scrollTop -= (navRect.top - elRect.top + 8);
+      } else if (elRect.bottom > navRect.bottom) {
+        nav.scrollTop += (elRect.bottom - navRect.bottom + 8);
+      }
+    }
+  }, [location.pathname]);
 
   // Dynamic route document.title updates
   useEffect(() => {
@@ -386,7 +457,7 @@ export function AppShell() {
         )}
 
         {/* Scrollable Nav Container (flex-1, overflow-y-auto, full height) */}
-        <nav className="flex-1 overflow-y-auto px-2.5 py-3 space-y-4 overflow-x-hidden">
+        <nav ref={sidebarNavRef} className="flex-1 overflow-y-auto px-2.5 py-3 space-y-4 overflow-x-hidden">
           {navSections.map(([sectionName, items]) => (
             <div key={sectionName} className="space-y-1">
               {/* Section Header */}
@@ -413,12 +484,40 @@ export function AppShell() {
                 const isGroupOpen = expandedGroups[item.to] ?? false;
 
                 if (isCollapsed) {
+                  // Collapsed 72px item - Styleguide opens the Popover Flyout
+                  if (item.to === '/styleguide') {
+                    return (
+                      <div key={item.to} ref={styleguideTriggerRef} className="relative flex justify-center py-0.5">
+                        <button
+                          type="button"
+                          data-nav-active={isActive ? 'true' : undefined}
+                          title="UI Styleguide (13 Components)"
+                          onClick={() => {
+                            setStyleguideFlyoutOpen((prev) => !prev);
+                            setStyleguideSearch('');
+                          }}
+                          className={`w-11 h-11 flex items-center justify-center rounded-xl relative transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-brand cursor-pointer ${
+                            isActive
+                              ? 'bg-brand/15 dark:bg-brand/20 text-brand shadow-sm font-semibold'
+                              : 'text-muted-foreground hover:text-foreground hover:bg-muted/70'
+                          }`}
+                        >
+                          {isActive && (
+                            <div className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-brand-gradient" />
+                          )}
+                          <Icon className={`w-5 h-5 shrink-0 ${isActive ? 'text-brand' : 'text-muted-foreground'}`} />
+                        </button>
+                      </div>
+                    );
+                  }
+
                   // Collapsed 72px square item (44px) with interactive hover/click flyout
                   return (
                     <div key={item.to} className="relative group/navitem flex justify-center py-0.5">
                       <NavLink
                         to={item.to}
                         title={item.label}
+                        data-nav-active={isActive ? 'true' : undefined}
                         onClick={() => {
                           if (hasChildren) {
                             setExpandedGroups((prev) => ({ ...prev, [item.to]: true }));
@@ -475,12 +574,52 @@ export function AppShell() {
                   );
                 }
 
+                // Expanded 260px item - Styleguide opens the Popover Flyout (Requirement B.2)
+                if (item.to === '/styleguide') {
+                  return (
+                    <div key={item.to} ref={styleguideTriggerRef} className="space-y-0.5">
+                      <button
+                        type="button"
+                        data-nav-active={isActive ? 'true' : undefined}
+                        onClick={() => {
+                          setStyleguideFlyoutOpen((prev) => !prev);
+                          setStyleguideSearch('');
+                        }}
+                        className={`relative w-full flex items-center gap-3 px-3 h-10 rounded-xl text-xs font-medium transition-all select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-brand cursor-pointer ${
+                          isActive
+                            ? 'bg-brand/10 dark:bg-brand/15 text-foreground font-semibold shadow-sm'
+                            : 'text-muted-foreground hover:text-foreground hover:bg-muted/70'
+                        }`}
+                      >
+                        {isActive && (
+                          <div className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-brand-gradient" />
+                        )}
+                        <Icon
+                          className={`w-5 h-5 shrink-0 transition-colors ${
+                            isActive ? 'text-brand' : 'text-muted-foreground'
+                          }`}
+                        />
+                        <span className="truncate flex-1 tracking-wide text-left">{item.label}</span>
+                        <span className="px-1.5 py-0.2 rounded-full text-[9px] font-mono font-semibold bg-brand/10 text-brand border border-brand/20 mr-1">
+                          13
+                        </span>
+                        <ChevronRight
+                          className={`w-3.5 h-3.5 text-muted-foreground transition-transform duration-200 ${
+                            styleguideFlyoutOpen ? 'rotate-90 text-brand' : ''
+                          }`}
+                        />
+                      </button>
+                    </div>
+                  );
+                }
+
                 // Expanded 260px item (40px high, 20px icon)
                 return (
                   <div key={item.to} className="space-y-0.5">
                     <div className="flex items-center gap-1">
                       <NavLink
                         to={item.to}
+                        data-nav-active={isActive ? 'true' : undefined}
                         onClick={() => {
                           if (hasChildren) {
                             setExpandedGroups((prev) => ({ ...prev, [item.to]: true }));
@@ -549,14 +688,14 @@ export function AppShell() {
                               <NavLink
                                 key={sub.to}
                                 to={sub.to}
-                                className={`block px-2.5 py-1.5 rounded-lg text-xs font-mono transition-all relative ${
+                                className={`block px-3 py-1.5 rounded-lg text-xs font-mono transition-all relative ${
                                   isSubActive
                                     ? 'text-brand font-semibold bg-brand/10 shadow-xs'
                                     : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
                                 }`}
                               >
                                 {isSubActive && (
-                                  <span className="absolute -left-[17px] top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-brand shadow-xs" />
+                                  <div className="absolute left-0 top-1.5 bottom-1.5 w-[2px] rounded-full bg-brand-gradient" />
                                 )}
                                 {sub.label}
                               </NavLink>
@@ -638,6 +777,121 @@ export function AppShell() {
       </motion.aside>
 
       {/* ============================================================== */}
+      {/* UI STYLEGUIDE POPOVER FLYOUT (Requirement B.2)                  */}
+      {/* Solid surface, z-50, max-height 70vh, own scroll, 13 items,    */}
+      {/* search box at top, active item highlighted with 2px gradient   */}
+      {/* ============================================================== */}
+      <AnimatePresence>
+        {styleguideFlyoutOpen && (
+          <motion.div
+            ref={styleguideFlyoutRef}
+            initial={{ opacity: 0, x: -8, scale: 0.98 }}
+            animate={{ opacity: 1, x: 0, scale: 1 }}
+            exit={{ opacity: 0, x: -8, scale: 0.98 }}
+            transition={{ duration: 0.15 }}
+            style={{
+              top: styleguideFlyoutTop,
+              left: isCollapsed ? 80 : 268,
+            }}
+            className="fixed z-50 w-72 max-h-[70vh] flex flex-col rounded-2xl border border-border bg-surface dark:bg-[#12131d] shadow-2xl p-3 select-none"
+          >
+            {/* Flyout Header */}
+            <div className="flex items-center justify-between pb-2 border-b border-border/80">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 rounded-lg bg-brand/10 border border-brand/20 text-brand">
+                  <Palette className="w-4 h-4" />
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="font-bold text-xs text-foreground">UI Styleguide</span>
+                  <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-brand/10 text-brand border border-brand/20">
+                    13
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setStyleguideFlyoutOpen(false)}
+                className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+                aria-label="Close styleguide flyout"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            {/* Search Box */}
+            <div className="relative my-2">
+              <Search className="w-3.5 h-3.5 text-muted-foreground absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                type="text"
+                value={styleguideSearch}
+                onChange={(e) => setStyleguideSearch(e.target.value)}
+                placeholder="Search components..."
+                className="w-full h-8 pl-8 pr-7 text-xs rounded-xl border border-border bg-background focus:outline-none focus:ring-2 focus:ring-brand font-mono text-foreground placeholder:text-muted-foreground"
+                autoFocus
+              />
+              {styleguideSearch && (
+                <button
+                  type="button"
+                  onClick={() => setStyleguideSearch('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  aria-label="Clear search"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              )}
+            </div>
+
+            {/* Sub-items List (Scrollable within max-height 70vh) */}
+            <div className="overflow-y-auto space-y-0.5 flex-1 pr-1 max-h-[calc(70vh-90px)] scrollbar-thin">
+              {STYLEGUIDE_NAV_CHILDREN.filter((sub) =>
+                sub.label.toLowerCase().includes(styleguideSearch.toLowerCase())
+              ).length === 0 ? (
+                <div className="py-6 text-center text-xs text-muted-foreground">
+                  No components match &ldquo;{styleguideSearch}&rdquo;
+                </div>
+              ) : (
+                STYLEGUIDE_NAV_CHILDREN.filter((sub) =>
+                  sub.label.toLowerCase().includes(styleguideSearch.toLowerCase())
+                ).map((sub) => {
+                  const isSubActive =
+                    sub.to === '/styleguide'
+                      ? location.pathname === '/styleguide'
+                      : location.pathname === sub.to || location.pathname.startsWith(sub.to + '/');
+
+                  return (
+                    <button
+                      key={sub.to}
+                      type="button"
+                      onClick={() => {
+                        setStyleguideFlyoutOpen(false);
+                        navigate(sub.to);
+                      }}
+                      className={`w-full px-3 py-2 rounded-xl text-xs font-mono relative flex items-center justify-between transition-colors text-left cursor-pointer ${
+                        isSubActive
+                          ? 'text-brand font-semibold bg-brand/10 dark:bg-brand/15'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-muted/70'
+                      }`}
+                    >
+                      {/* Requirement B.3: 2px gradient bar on the left, pill aligned to same left edge */}
+                      {isSubActive && (
+                        <div className="absolute left-0 top-1.5 bottom-1.5 w-[2px] rounded-full bg-brand-gradient" />
+                      )}
+                      <span className="truncate">{sub.label}</span>
+                      {isSubActive && (
+                        <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-brand/20 text-brand">
+                          active
+                        </span>
+                      )}
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ============================================================== */}
       {/* MAIN CONTAINER                                                 */}
       {/* ============================================================== */}
       <div ref={scrollContainerRef} className="flex-1 flex flex-col min-w-0 relative z-0 h-dvh overflow-y-auto">
@@ -680,7 +934,10 @@ export function AppShell() {
                   : location.pathname === '/styleguide'
                   ? 'UI Styleguide'
                   : location.pathname.startsWith('/styleguide/')
-                  ? `Styleguide / ${location.pathname.split('/')[2].replace(/-/g, ' ')}`
+                  ? `Styleguide / ${
+                      STYLEGUIDE_NAV_CHILDREN.find((c) => c.to === location.pathname)?.label ||
+                      location.pathname.split('/')[2].replace(/-/g, ' ')
+                    }`
                   : location.pathname.replace('/', '').replace(/-/g, ' ') || 'Overview'}
               </span>
             </div>
@@ -1126,21 +1383,28 @@ export function AppShell() {
                         </div>
 
                         {hasChildren && isGroupOpen && (
-                          <div className="pl-9 pr-2 space-y-0.5 border-l-2 border-border/70 ml-4 py-1">
+                          <div className="pl-6 pr-2 space-y-0.5 border-l-2 border-border/70 ml-4 py-1">
                             {item.children?.map((sub) => (
                               <NavLink
                                 key={sub.to}
                                 to={sub.to}
                                 onClick={() => setMobileMenuOpen(false)}
                                 className={({ isActive }) =>
-                                  `block px-2.5 py-1.5 rounded-lg text-xs font-mono transition-colors ${
+                                  `block px-3 py-1.5 rounded-lg text-xs font-mono relative transition-colors ${
                                     isActive
                                       ? 'text-brand font-semibold bg-brand/10'
                                       : 'text-muted-foreground hover:text-foreground'
                                   }`
                                 }
                               >
-                                {sub.label}
+                                {({ isActive }) => (
+                                  <>
+                                    {isActive && (
+                                      <div className="absolute left-0 top-1.5 bottom-1.5 w-[2px] rounded-full bg-brand-gradient" />
+                                    )}
+                                    <span>{sub.label}</span>
+                                  </>
+                                )}
                               </NavLink>
                             ))}
                           </div>
