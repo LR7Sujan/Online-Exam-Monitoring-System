@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Play,
   Pause,
   Square,
+  RotateCcw,
   Zap,
   Users,
   AlertTriangle,
@@ -22,6 +23,8 @@ import { NeonButton } from '../components/ui/NeonButton';
 import { StatusPill } from '../components/ui/StatusPill';
 import { TrustRing } from '../components/ui/TrustRing';
 import { LiveDot } from '../components/ui/LiveDot';
+import { Modal } from '../components/ui/Modal';
+import { toast } from 'sonner';
 import { api } from '../lib/api';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import type { ExamItem } from '../types/domain';
@@ -76,6 +79,11 @@ export const SimulatorPage: React.FC = () => {
   const [studentCount, setStudentCount] = useState<number>(12);
   const [speed, setSpeed] = useState<number>(2.0);
   const [chaos, setChaos] = useState<'low' | 'medium' | 'high'>('medium');
+  const [isResetModalOpen, setIsResetModalOpen] = useState<boolean>(false);
+
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const candidateGridRef = useRef<HTMLDivElement | null>(null);
+  const activityStreamRef = useRef<HTMLDivElement | null>(null);
 
   // Fetch published exams for dropdown
   const examsQuery = useQuery({
@@ -93,6 +101,19 @@ export const SimulatorPage: React.FC = () => {
   const sim = statusQuery.data;
   const isRunning = Boolean(sim?.isRunning);
   const isPaused = Boolean(sim?.isPaused);
+
+  // Determines whether the simulator has run or has any populated state to clear
+  const hasRun = Boolean(
+    isRunning ||
+    isPaused ||
+    (sim?.candidates && sim.candidates.length > 0) ||
+    (sim?.stats &&
+      (sim.stats.answersCount > 0 ||
+        sim.stats.infractionsCount > 0 ||
+        sim.stats.terminatedCount > 0 ||
+        sim.stats.activeCount > 0)) ||
+    (sim?.activityLogs && sim.activityLogs.length > 0)
+  );
 
   // Mutations
   const startMutation = useMutation({
@@ -122,6 +143,83 @@ export const SimulatorPage: React.FC = () => {
   });
 
   const exams = examsQuery.data ?? [];
+
+  const resetMutation = useMutation({
+    mutationFn: async () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      abortControllerRef.current = new AbortController();
+      return api.post<{
+        deletedLogs: number;
+        deletedResponses: number;
+        deletedResults: number;
+        deletedSessions: number;
+        deletedUsers: number;
+      }>('/simulator/reset', undefined, {
+        signal: abortControllerRef.current.signal,
+      });
+    },
+    onSuccess: () => {
+      // 1. Reset frontend query cache to fresh zero state immediately
+      queryClient.setQueryData(['simulator-status'], {
+        isRunning: false,
+        isPaused: false,
+        examId: exams[0]?.id ?? 1,
+        studentCount: 12,
+        speed: 2.0,
+        chaos: 'medium',
+        startedAt: null,
+        stats: {
+          activeCount: 0,
+          answersCount: 0,
+          infractionsCount: 0,
+          terminatedCount: 0,
+        },
+        candidates: [],
+        activityLogs: [],
+      });
+
+      // 2. Invalidate queries so other open dashboards re-sync
+      queryClient.invalidateQueries({ queryKey: ['simulator-status'] });
+      queryClient.invalidateQueries({ queryKey: ['proctor-live-monitor'] });
+      queryClient.invalidateQueries({ queryKey: ['proctor-kpis'] });
+      queryClient.invalidateQueries({ queryKey: ['proctor-audit-report'] });
+
+      // 3. Restore default control parameters
+      if (exams.length > 0) setSelectedExamId(exams[0].id);
+      setStudentCount(12);
+      setSpeed(2.0);
+      setChaos('medium');
+
+      // 4. Clear scroll positions
+      if (candidateGridRef.current) {
+        candidateGridRef.current.scrollTop = 0;
+      }
+      if (activityStreamRef.current) {
+        activityStreamRef.current.scrollTop = 0;
+      }
+
+      toast.success('Simulator reset');
+    },
+    onError: (err: unknown) => {
+      const error = err as { message?: string };
+      toast.error('Failed to reset simulator', {
+        description: error?.message || 'Could not clean up simulated data.',
+        action: {
+          label: 'Retry',
+          onClick: () => handleExecuteReset(),
+        },
+      });
+    },
+  });
+
+  const isResetDisabled = !hasRun || resetMutation.isPending;
+
+  const handleExecuteReset = () => {
+    setIsResetModalOpen(false);
+    resetMutation.mutate();
+  };
 
   return (
     <div className="space-y-6 pb-12">
@@ -219,24 +317,41 @@ export const SimulatorPage: React.FC = () => {
           </div>
 
           {/* Action Buttons */}
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap sm:flex-nowrap items-center gap-2">
             {!isRunning ? (
-              <NeonButton
-                variant="primary"
-                size="md"
-                isLoading={startMutation.isPending}
-                onClick={() => startMutation.mutate()}
-                className="flex items-center gap-2 font-mono uppercase"
-              >
-                <Play className="w-4 h-4 fill-current" />
-                <span>Launch Swarm</span>
-              </NeonButton>
+              <>
+                <NeonButton
+                  variant="primary"
+                  size="md"
+                  disabled={resetMutation.isPending}
+                  isLoading={startMutation.isPending}
+                  onClick={() => startMutation.mutate()}
+                  className="flex items-center gap-2 font-mono uppercase"
+                >
+                  <Play className="w-4 h-4 fill-current" />
+                  <span>Launch Swarm</span>
+                </NeonButton>
+
+                <NeonButton
+                  variant="outline"
+                  size="md"
+                  data-testid="simulator-reset-btn"
+                  disabled={isResetDisabled}
+                  isLoading={resetMutation.isPending}
+                  onClick={() => setIsResetModalOpen(true)}
+                  className="flex items-center gap-2 font-mono uppercase text-muted-foreground hover:text-foreground border-border hover:border-brand/40"
+                >
+                  <RotateCcw className={`w-4 h-4 ${resetMutation.isPending ? 'animate-spin' : ''}`} />
+                  <span>Reset</span>
+                </NeonButton>
+              </>
             ) : (
               <>
                 {isPaused ? (
                   <NeonButton
                     variant="success"
                     size="md"
+                    disabled={resetMutation.isPending}
                     isLoading={resumeMutation.isPending}
                     onClick={() => resumeMutation.mutate()}
                     className="flex items-center gap-2 font-mono"
@@ -248,6 +363,7 @@ export const SimulatorPage: React.FC = () => {
                   <NeonButton
                     variant="outline"
                     size="md"
+                    disabled={resetMutation.isPending}
                     isLoading={pauseMutation.isPending}
                     onClick={() => pauseMutation.mutate()}
                     className="flex items-center gap-2 font-mono text-amber border-amber/40"
@@ -259,12 +375,26 @@ export const SimulatorPage: React.FC = () => {
                 <NeonButton
                   variant="danger"
                   size="md"
+                  disabled={resetMutation.isPending}
                   isLoading={stopMutation.isPending}
                   onClick={() => stopMutation.mutate()}
                   className="flex items-center gap-2 font-mono"
                 >
                   <Square className="w-4 h-4 fill-current" />
                   <span>Halt Swarm</span>
+                </NeonButton>
+
+                <NeonButton
+                  variant="outline"
+                  size="md"
+                  data-testid="simulator-reset-btn"
+                  disabled={isResetDisabled}
+                  isLoading={resetMutation.isPending}
+                  onClick={() => setIsResetModalOpen(true)}
+                  className="flex items-center gap-2 font-mono uppercase text-muted-foreground hover:text-foreground border-border hover:border-brand/40"
+                >
+                  <RotateCcw className={`w-4 h-4 ${resetMutation.isPending ? 'animate-spin' : ''}`} />
+                  <span>Reset</span>
                 </NeonButton>
               </>
             )}
@@ -353,11 +483,10 @@ export const SimulatorPage: React.FC = () => {
                 type="button"
                 disabled={isRunning}
                 onClick={() => setChaos('low')}
-                className={`py-2 px-2 rounded-xl border text-xs font-mono font-bold transition-all ${
-                  chaos === 'low'
-                    ? 'border-emerald/60 bg-emerald/20 text-emerald shadow-[0_0_15px_rgba(16,185,129,0.2)]'
-                    : 'border-border bg-surface text-muted-foreground hover:text-foreground hover:bg-muted'
-                } disabled:opacity-50`}
+                className={`py-2 px-2 rounded-xl border text-xs font-mono font-bold transition-all ${chaos === 'low'
+                  ? 'border-emerald/60 bg-emerald/20 text-emerald shadow-[0_0_15px_rgba(16,185,129,0.2)]'
+                  : 'border-border bg-surface text-muted-foreground hover:text-foreground hover:bg-muted'
+                  } disabled:opacity-50`}
               >
                 LOW
               </button>
@@ -365,11 +494,10 @@ export const SimulatorPage: React.FC = () => {
                 type="button"
                 disabled={isRunning}
                 onClick={() => setChaos('medium')}
-                className={`py-2 px-2 rounded-xl border text-xs font-mono font-bold transition-all ${
-                  chaos === 'medium'
-                    ? 'border-amber/60 bg-amber/20 text-amber shadow-[0_0_15px_rgba(245,158,11,0.2)]'
-                    : 'border-border bg-surface text-muted-foreground hover:text-foreground hover:bg-muted'
-                } disabled:opacity-50`}
+                className={`py-2 px-2 rounded-xl border text-xs font-mono font-bold transition-all ${chaos === 'medium'
+                  ? 'border-amber/60 bg-amber/20 text-amber shadow-[0_0_15px_rgba(245,158,11,0.2)]'
+                  : 'border-border bg-surface text-muted-foreground hover:text-foreground hover:bg-muted'
+                  } disabled:opacity-50`}
               >
                 MED
               </button>
@@ -377,11 +505,10 @@ export const SimulatorPage: React.FC = () => {
                 type="button"
                 disabled={isRunning}
                 onClick={() => setChaos('high')}
-                className={`py-2 px-2 rounded-xl border text-xs font-mono font-bold transition-all ${
-                  chaos === 'high'
-                    ? 'border-rose/60 bg-rose/20 text-rose shadow-[0_0_15px_rgba(244,63,94,0.3)]'
-                    : 'border-border bg-surface text-muted-foreground hover:text-foreground hover:bg-muted'
-                } disabled:opacity-50`}
+                className={`py-2 px-2 rounded-xl border text-xs font-mono font-bold transition-all ${chaos === 'high'
+                  ? 'border-rose/60 bg-rose/20 text-rose shadow-[0_0_15px_rgba(244,63,94,0.3)]'
+                  : 'border-border bg-surface text-muted-foreground hover:text-foreground hover:bg-muted'
+                  } disabled:opacity-50`}
               >
                 HIGH 🔥
               </button>
@@ -416,7 +543,7 @@ export const SimulatorPage: React.FC = () => {
             </GlassCard>
           )}
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[560px] overflow-y-auto pr-1">
+          <div ref={candidateGridRef} className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[560px] overflow-y-auto pr-1">
             <AnimatePresence>
               {sim?.candidates.map((c) => {
                 const isTerminated = c.status === 'TERMINATED_CHEATING';
@@ -429,13 +556,12 @@ export const SimulatorPage: React.FC = () => {
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.9 }}
-                    className={`rounded-2xl border p-4 transition-all ${
-                      isTerminated
-                        ? 'border-rose/40 bg-rose/10 shadow-[0_0_20px_rgba(244,63,94,0.15)]'
-                        : isLow
+                    className={`rounded-2xl border p-4 transition-all ${isTerminated
+                      ? 'border-rose/40 bg-rose/10 shadow-[0_0_20px_rgba(244,63,94,0.15)]'
+                      : isLow
                         ? 'border-amber/40 bg-amber/10'
                         : 'border-border bg-surface/90 hover:border-brand/40 shadow-sm'
-                    }`}
+                      }`}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0 flex-1">
@@ -493,7 +619,10 @@ export const SimulatorPage: React.FC = () => {
             </span>
           </div>
 
-          <GlassCard className="p-4 bg-surface-elevated/70 border-border font-mono text-xs max-h-[560px] overflow-y-auto space-y-2">
+          <div
+            ref={activityStreamRef}
+            className="rounded-2xl border p-4 bg-surface-elevated/70 border-border font-mono text-xs max-h-[560px] overflow-y-auto space-y-2 backdrop-blur-md"
+          >
             {(!sim?.activityLogs || sim.activityLogs.length === 0) && (
               <div className="py-12 text-center text-muted-foreground text-xs">
                 Awaiting simulation events...
@@ -507,13 +636,12 @@ export const SimulatorPage: React.FC = () => {
               return (
                 <div
                   key={log.id}
-                  className={`p-2.5 rounded-lg border text-[11px] leading-relaxed transition-all ${
-                    isTerm
-                      ? 'border-rose/50 bg-rose/15 text-rose'
-                      : isViol
+                  className={`p-2.5 rounded-lg border text-[11px] leading-relaxed transition-all ${isTerm
+                    ? 'border-rose/50 bg-rose/15 text-rose'
+                    : isViol
                       ? 'border-amber/30 bg-amber/10 text-amber'
                       : 'border-border bg-surface/80 text-foreground'
-                  }`}
+                    }`}
                 >
                   <div className="flex items-center justify-between text-[10px] text-muted-foreground pb-1 mb-1 border-b border-border">
                     <span className="font-bold text-foreground flex items-center gap-1">
@@ -532,9 +660,41 @@ export const SimulatorPage: React.FC = () => {
                 </div>
               );
             })}
-          </GlassCard>
+          </div>
         </div>
       </div>
+
+      {/* 5. Reset Confirmation Modal */}
+      <Modal
+        isOpen={isResetModalOpen}
+        onClose={() => !resetMutation.isPending && setIsResetModalOpen(false)}
+        title="Reset simulator?"
+        size="sm"
+        footer={
+          <div className="flex items-center justify-end gap-2 w-full">
+            <NeonButton
+              variant="outline"
+              size="sm"
+              disabled={resetMutation.isPending}
+              onClick={() => setIsResetModalOpen(false)}
+            >
+              Cancel
+            </NeonButton>
+            <NeonButton
+              variant="danger"
+              size="sm"
+              isLoading={resetMutation.isPending}
+              onClick={handleExecuteReset}
+            >
+              Reset
+            </NeonButton>
+          </div>
+        }
+      >
+        <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+          This stops the swarm and clears the simulated candidates and activity. Existing real data is not affected.
+        </p>
+      </Modal>
     </div>
   );
 };

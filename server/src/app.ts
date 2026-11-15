@@ -11,6 +11,8 @@ import { env } from './config/env.js';
 import { openApiSpec } from './docs/openapi.js';
 import { corsMiddleware } from './middleware/cors.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
+import { requireAuth, requireRole } from './middleware/auth.js';
+import { simulatorEngine } from './services/simulator.js';
 import { adminRouter } from './routes/admin.routes.js';
 import { analyticsRouter } from './routes/analytics.routes.js';
 import { authRouter } from './routes/auth.routes.js';
@@ -137,6 +139,21 @@ export function createApp() {
   app.use('/api/violations', violationsRouter);
   app.use('/api/proctor', proctorRouter);
   app.use('/api/admin', adminRouter);
+
+  // Dedicated simulator reset endpoint
+  app.post(
+    '/api/simulator/reset',
+    requireAuth,
+    requireRole('ADMIN'),
+    async (_req, res, next) => {
+      try {
+        const counts = await simulatorEngine.reset();
+        sendSuccess(res, counts);
+      } catch (err) {
+        next(err);
+      }
+    }
+  );
 
   app.use(notFoundHandler);
   app.use(errorHandler);

@@ -163,3 +163,8 @@ export function emitExamSubmitted(
     status: studentPayload.status,
   });
 }
+
+export function emitSimulatorReset(payload?: Record<string, unknown>): void {
+  if (!ioInstance) return;
+  ioInstance.emit('simulator:reset', payload ?? { timestamp: new Date().toISOString() });
+}

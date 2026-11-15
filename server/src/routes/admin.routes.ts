@@ -270,3 +270,13 @@ adminRouter.post('/simulator/stop', async (_req, res, next) => {
   }
 });
 
+// POST /api/admin/simulator/reset
+adminRouter.post('/simulator/reset', async (_req, res, next) => {
+  try {
+    const counts = await simulatorEngine.reset();
+    sendSuccess(res, counts);
+  } catch (err) {
+    next(err);
+  }
+});
+

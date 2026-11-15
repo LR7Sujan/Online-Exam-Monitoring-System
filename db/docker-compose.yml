@@ -19,7 +19,9 @@ services:
       - ./migrations/004_snapshot_support.sql:/docker-entrypoint-initdb.d/04-snapshot-support.sql:ro
       # Mount migration 005 performance indexes
       - ./migrations/005_performance_indexes.sql:/docker-entrypoint-initdb.d/05-performance-indexes.sql:ro
-      - ./seed.sql:/docker-entrypoint-initdb.d/06-seed.sql:ro
+      # Mount migration 006 simulator reset procedure
+      - ./migrations/006_simulator_reset.sql:/docker-entrypoint-initdb.d/06-simulator-reset.sql:ro
+      - ./seed.sql:/docker-entrypoint-initdb.d/07-seed.sql:ro
     command:
       - --default-authentication-plugin=mysql_native_password
       - --character-set-server=utf8mb4

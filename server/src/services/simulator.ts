@@ -8,6 +8,7 @@ import { startOrResumeExamSession } from '../routes/exams.routes.js';
 import {
   emitSessionTerminated,
   emitSessionUpdate,
+  emitSimulatorReset,
   emitViolationNew,
 } from '../realtime/socket.js';
 import type { ExamSessionRow, ViolationTypeRow } from '../types/api.js';
@@ -257,6 +258,139 @@ class SimulatorEngine {
     this.state.isPaused = false;
     this.addLog('System Swarm Engine', 'status_change', 'Simulation halted.');
     return this.getState();
+  }
+
+  public async reset(): Promise<{
+    deletedLogs: number;
+    deletedResponses: number;
+    deletedResults: number;
+    deletedSessions: number;
+    deletedUsers: number;
+  }> {
+    // 1. Stop timer and clear in-memory state
+    if (this.timer) {
+      clearInterval(this.timer);
+      this.timer = null;
+    }
+
+    this.state = {
+      isRunning: false,
+      isPaused: false,
+      examId: 1,
+      studentCount: 12,
+      speed: 2.0,
+      chaos: 'medium',
+      startedAt: null,
+      stats: {
+        activeCount: 0,
+        answersCount: 0,
+        infractionsCount: 0,
+        terminatedCount: 0,
+      },
+      candidates: [],
+      activityLogs: [],
+    };
+
+    // 2. Remove any generated simulated snapshots from uploads directory
+    if (fs.existsSync(uploadsDir)) {
+      try {
+        const files = fs.readdirSync(uploadsDir);
+        for (const file of files) {
+          if (file.startsWith('sim-') && file.endsWith('.jpg')) {
+            try {
+              fs.unlinkSync(path.join(uploadsDir, file));
+            } catch (err) {
+              console.warn('[SimulatorEngine] Failed to delete simulated snapshot file:', file, err);
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('[SimulatorEngine] Error reading uploads dir for cleanup:', err);
+      }
+    }
+
+    // 3. Database cleanup: execute stored procedure or transactional fallback
+    let deletedCounts = {
+      deletedLogs: 0,
+      deletedResponses: 0,
+      deletedResults: 0,
+      deletedSessions: 0,
+      deletedUsers: 0,
+    };
+
+    try {
+      const [resultSets] = await pool.query<RowDataPacket[][]>('CALL sp_ResetSimulatorData()');
+      const counts = resultSets[0]?.[0] as {
+        deletedLogs?: number;
+        deletedResponses?: number;
+        deletedResults?: number;
+        deletedSessions?: number;
+        deletedUsers?: number;
+      } | undefined;
+      if (counts) {
+        deletedCounts = {
+          deletedLogs: Number(counts.deletedLogs ?? 0),
+          deletedResponses: Number(counts.deletedResponses ?? 0),
+          deletedResults: Number(counts.deletedResults ?? 0),
+          deletedSessions: Number(counts.deletedSessions ?? 0),
+          deletedUsers: Number(counts.deletedUsers ?? 0),
+        };
+      }
+    } catch (spErr: unknown) {
+      const msg = spErr instanceof Error ? spErr.message : String(spErr);
+      console.warn('[SimulatorEngine] sp_ResetSimulatorData failed, falling back to direct transaction:', msg);
+      const conn = await pool.getConnection();
+      await conn.beginTransaction();
+      try {
+        const [logs] = await conn.query<RowDataPacket[]>(
+          `SELECT COUNT(*) as cnt FROM Proctoring_Logs pl
+           JOIN Exam_Sessions es ON es.id = pl.session_id
+           JOIN Users u ON u.id = es.student_id
+          WHERE u.email LIKE 'virtual.candidate.%'`
+        );
+        deletedCounts.deletedLogs = Number(logs[0]?.cnt ?? 0);
+
+        const [resps] = await conn.query<RowDataPacket[]>(
+          `SELECT COUNT(*) as cnt FROM Student_Responses sr
+           JOIN Exam_Sessions es ON es.id = sr.session_id
+           JOIN Users u ON u.id = es.student_id
+          WHERE u.email LIKE 'virtual.candidate.%'`
+        );
+        deletedCounts.deletedResponses = Number(resps[0]?.cnt ?? 0);
+
+        const [results] = await conn.query<RowDataPacket[]>(
+          `SELECT COUNT(*) as cnt FROM Results r
+           JOIN Exam_Sessions es ON es.id = r.session_id
+           JOIN Users u ON u.id = es.student_id
+          WHERE u.email LIKE 'virtual.candidate.%'`
+        );
+        deletedCounts.deletedResults = Number(results[0]?.cnt ?? 0);
+
+        const [delSessions] = await conn.query<{ affectedRows: number } & RowDataPacket[]>(
+          `DELETE es FROM Exam_Sessions es
+           JOIN Users u ON u.id = es.student_id
+          WHERE u.email LIKE 'virtual.candidate.%'`
+        );
+        deletedCounts.deletedSessions = Number(delSessions.affectedRows ?? 0);
+
+        const [delUsers] = await conn.query<{ affectedRows: number } & RowDataPacket[]>(
+          `DELETE FROM Users WHERE email LIKE 'virtual.candidate.%'`
+        );
+        deletedCounts.deletedUsers = Number(delUsers.affectedRows ?? 0);
+
+        await conn.commit();
+      } catch (fallbackErr) {
+        await conn.rollback();
+        throw fallbackErr;
+      } finally {
+        conn.release();
+      }
+    }
+
+    // 4. Broadcast reset over Socket.IO to all listening dashboards
+    emitSimulatorReset(deletedCounts);
+
+    return deletedCounts;
   }
 
   private addLog(

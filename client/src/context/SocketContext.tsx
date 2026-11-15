@@ -98,12 +98,22 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       });
     };
 
+    const onSimulatorReset = () => {
+      setRecentAlerts((prev) =>
+        prev.filter((a) => !a.studentName?.startsWith('Virtual Candidate'))
+      );
+      setLastSessionEvent((prev) =>
+        prev?.studentName?.startsWith('Virtual Candidate') ? null : prev
+      );
+    };
+
     s.on('connect', onConnect);
     s.on('disconnect', onDisconnect);
     s.on('violation:new', onViolation);
     s.on('session:update', onSessionUpdate);
     s.on('session:terminated', onSessionTerminated);
     s.on('exam:submitted', onExamSubmitted);
+    s.on('simulator:reset', onSimulatorReset);
 
     if (s.connected) {
       setIsConnected(true);
@@ -116,6 +126,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       s.off('session:update', onSessionUpdate);
       s.off('session:terminated', onSessionTerminated);
       s.off('exam:submitted', onExamSubmitted);
+      s.off('simulator:reset', onSimulatorReset);
     };
   }, [token, user]);
 

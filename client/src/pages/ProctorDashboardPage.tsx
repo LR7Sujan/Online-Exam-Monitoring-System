@@ -191,6 +191,20 @@ export function ProctorDashboardPage({ initialTab = 'monitor' }: { initialTab?: 
       }
     };
 
+    // Simulator Reset Event
+    const onSimulatorReset = () => {
+      queryClient.invalidateQueries({ queryKey: ['proctor-live-monitor'] });
+      queryClient.invalidateQueries({ queryKey: ['proctor-kpis'] });
+      queryClient.invalidateQueries({ queryKey: ['proctor-audit-report'] });
+      queryClient.setQueryData<ProctorLiveMonitorRow[]>(['proctor-live-monitor'], (old) => {
+        if (!old) return old;
+        return old.filter((s) => !s.student_email.startsWith('virtual.candidate.'));
+      });
+      if (inspectedSessionId) {
+        queryClient.invalidateQueries({ queryKey: ['proctor-session-inspect', inspectedSessionId] });
+      }
+    };
+
     socket.on('connect', onConnect);
     socket.on('disconnect', onDisconnect);
     socket.on('violation:new', onViolation);
@@ -199,6 +213,7 @@ export function ProctorDashboardPage({ initialTab = 'monitor' }: { initialTab?: 
     socket.on('session:reinstated', onSessionUpdate);
     socket.on('exam:submitted', onSessionUpdate);
     socket.on('violation:reviewed', onSessionUpdate);
+    socket.on('simulator:reset', onSimulatorReset);
 
     return () => {
       socket.off('connect', onConnect);
@@ -209,6 +224,7 @@ export function ProctorDashboardPage({ initialTab = 'monitor' }: { initialTab?: 
       socket.off('session:reinstated', onSessionUpdate);
       socket.off('exam:submitted', onSessionUpdate);
       socket.off('violation:reviewed', onSessionUpdate);
+      socket.off('simulator:reset', onSimulatorReset);
     };
   }, [inspectedSessionId, queryClient, token, triggerTileShake]);
 
