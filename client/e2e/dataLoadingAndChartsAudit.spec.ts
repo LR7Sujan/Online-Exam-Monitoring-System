@@ -233,6 +233,17 @@ test.describe('Phase 13: Donut Charts, Skeletons & Data Loading Verification (Sc
     const integrityRegion = page.locator('div[aria-label="Integrity status split per assessment stacked bar chart"]');
     await expect(integrityRegion).toBeVisible();
 
+    // Verify X-axis uses subject codes (e.g. NET-220 or CS-401), not truncated titles with "..."
+    await expect(integrityRegion.getByText(/NET-220|CS-401|SEC-305/).first()).toBeVisible();
+    await expect(integrityRegion.getByText(/NET-220:\s*Com\.\.\./)).toHaveCount(0);
+
+    // Verify Legend: sans-serif under chart with swatches
+    const integrityLegend = integrityRegion.locator('.recharts-legend-wrapper');
+    await expect(integrityLegend).toBeVisible();
+    await expect(integrityLegend.getByText('Clean')).toBeVisible();
+    await expect(integrityLegend.getByText('Flagged')).toBeVisible();
+    await expect(integrityLegend.getByText('Disqualified')).toBeVisible();
+
     // Hover over bar to trigger tooltip
     const stackedBar = integrityRegion.locator('.recharts-bar-rectangle').first();
     if (await stackedBar.isVisible()) {
@@ -245,14 +256,28 @@ test.describe('Phase 13: Donut Charts, Skeletons & Data Loading Verification (Sc
       await expect(tooltip).toHaveClass(/font-sans/);
       await expect(tooltip).toHaveClass(/text-\[13px\]/);
 
+      // Verify Clean, Flagged, Disqualified and Total Graded rows
+      await expect(tooltip.getByText('Clean')).toBeVisible();
+      await expect(tooltip.getByText('Flagged')).toBeVisible();
+      await expect(tooltip.getByText('Disqualified')).toBeVisible();
+      await expect(tooltip.getByText('Total Graded')).toBeVisible();
+
       // Verify subtle cursor: no default light-gray #ccc block
       const grayCursor = integrityRegion.locator('.recharts-tooltip-cursor[fill="#ccc"], .recharts-tooltip-cursor[fill="#d0d0d0"]');
       await expect(grayCursor).toHaveCount(0);
+      // Capture screenshot of Integrity Status Split card with active tooltip
+      await integrityRegion.screenshot({
+        path: path.join(screenshotDir, 'integrity_status_split_card.png'),
+      });
     }
 
     // 2. Histogram Bar Chart: Trust Score Distribution
     const histogramRegion = page.locator('div[aria-label="Candidate trust score distribution histogram"]');
     await expect(histogramRegion).toBeVisible();
+
+    // Verify Value Labels rendered above bars
+    const valueLabels = histogramRegion.locator('.recharts-label-list text');
+    await expect(valueLabels.first()).toBeVisible();
 
     const histogramBar = histogramRegion.locator('.recharts-bar-rectangle').first();
     if (await histogramBar.isVisible()) {
@@ -263,10 +288,17 @@ test.describe('Phase 13: Donut Charts, Skeletons & Data Loading Verification (Sc
       await expect(histTooltip).toBeVisible();
       await expect(histTooltip).toHaveClass(/font-sans/);
       await expect(histTooltip).toContainText('Bucket:');
+      await expect(histTooltip.getByText('Candidate Count')).toBeVisible();
+      await expect(histTooltip.getByText('Share of Cohort')).toBeVisible();
 
       // Verify no gray cursor block
       const grayCursorHist = histogramRegion.locator('.recharts-tooltip-cursor[fill="#ccc"], .recharts-tooltip-cursor[fill="#d0d0d0"]');
       await expect(grayCursorHist).toHaveCount(0);
+
+      // Capture screenshot of Candidate Trust Score Histogram card with active tooltip and value labels
+      await histogramRegion.screenshot({
+        path: path.join(screenshotDir, 'candidate_trust_score_card.png'),
+      });
     }
 
     // 3. Take screenshots of charts in Dark Mode

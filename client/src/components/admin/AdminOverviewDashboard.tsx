@@ -26,6 +26,7 @@ import {
   ResponsiveContainer,
   Legend,
   CartesianGrid,
+  LabelList,
 } from 'recharts';
 import { StatCard } from '../ui/StatCard';
 import { StatusPill } from '../ui/StatusPill';
@@ -58,6 +59,7 @@ interface DashboardData {
   integritySplit: Array<{
     exam_id: number;
     exam_title: string;
+    subject_code?: string;
     clean_count: number;
     flagged_count: number;
     disqualified_count: number;
@@ -158,6 +160,27 @@ export function AdminOverviewDashboard() {
     cheatingRate: 7.5,
   };
 
+  // Format Integrity Status Split with subject_code fallback
+  const integritySplitData = (data?.integritySplit ?? []).map((item) => {
+    const clean = Number(item.clean_count || 0);
+    const flagged = Number(item.flagged_count || 0);
+    const disqualified = Number(item.disqualified_count || 0);
+    const total = Number(item.total_graded || 0) > 0 ? Number(item.total_graded) : clean + flagged + disqualified;
+    const subjectCode =
+      item.subject_code ||
+      (item.exam_title && item.exam_title.includes(':')
+        ? item.exam_title.split(':')[0].trim()
+        : `EX-${item.exam_id}`);
+    return {
+      ...item,
+      clean_count: clean,
+      flagged_count: flagged,
+      disqualified_count: disqualified,
+      total_candidates: total,
+      subject_code: subjectCode,
+    };
+  });
+
   // Format Trust Score Histogram
   const histogramData = [
     { range: '0-49%', count: Number(data?.trustHistogram?.bucket_0_49 ?? 0), fill: '#F43F5E' },
@@ -166,6 +189,7 @@ export function AdminOverviewDashboard() {
     { range: '85-99%', count: Number(data?.trustHistogram?.bucket_85_99 ?? 0), fill: '#6366F1' },
     { range: '100%', count: Number(data?.trustHistogram?.bucket_100 ?? 0), fill: '#10B981' },
   ];
+  const totalHistogramCandidates = histogramData.reduce((acc, h) => acc + h.count, 0);
 
   // Prepare Heatmap Matrix (24 hours x distinct violation codes)
   const heatmapCodes = Array.from(
@@ -576,31 +600,44 @@ export function AdminOverviewDashboard() {
           <div className="h-64 w-full" aria-hidden="true">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
-                data={data?.integritySplit ?? []}
-                margin={{ top: 10, right: 12, left: -20, bottom: 0 }}
+                data={integritySplitData}
+                margin={{ top: 12, right: 12, left: -20, bottom: 4 }}
               >
                 <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.gridlines} opacity={0.6} vertical={false} />
                 <XAxis
-                  dataKey="exam_title"
+                  dataKey="subject_code"
+                  stroke={chartTheme.axisLine}
+                  tick={{ fill: chartTheme.axisText, fontSize: 11, fontFamily: 'sans-serif' }}
+                  tickLine={false}
+                  interval={0}
+                />
+                <YAxis
                   stroke={chartTheme.axisLine}
                   tick={{ fill: chartTheme.axisText, fontSize: 10, fontFamily: 'sans-serif' }}
                   tickLine={false}
-                  tickFormatter={(t: string) => t.slice(0, 12) + '...'}
+                  domain={[0, (dataMax: number) => Math.max(10, Math.ceil(dataMax * 1.35))]}
                 />
-                <YAxis stroke={chartTheme.axisLine} tick={{ fill: chartTheme.axisText, fontSize: 10, fontFamily: 'sans-serif' }} tickLine={false} />
                 <Tooltip
                   {...chartTheme.barTooltipProps}
+                  position={{ y: 0 }}
+                  offset={16}
+                  allowEscapeViewBox={{ x: false, y: false }}
                   content={({ active, payload }) => {
                     if (active && payload && payload.length) {
                       const item = payload[0].payload;
+                      const clean = Number(item.clean_count || 0);
+                      const flagged = Number(item.flagged_count || 0);
+                      const disqualified = Number(item.disqualified_count || 0);
+                      const total = Number(item.total_candidates || clean + flagged + disqualified);
                       return (
                         <ChartTooltip
                           active={active}
                           title={item.exam_title}
                           payload={[
-                            { name: 'Clean', value: item.clean_count, color: chartTheme.series.emerald },
-                            { name: 'Flagged', value: item.flagged_count, color: chartTheme.series.amber },
-                            { name: 'Disqualified', value: item.disqualified_count, color: chartTheme.series.rose },
+                            { name: 'Clean', value: clean, color: chartTheme.series.emerald },
+                            { name: 'Flagged', value: flagged, color: chartTheme.series.amber },
+                            { name: 'Disqualified', value: disqualified, color: chartTheme.series.rose },
+                            { name: 'Total Graded', value: total, color: chartTheme.series.indigo },
                           ]}
                         />
                       );
@@ -608,7 +645,17 @@ export function AdminOverviewDashboard() {
                     return null;
                   }}
                 />
-                <Legend wrapperStyle={{ fontSize: 11, fontFamily: 'sans-serif' }} />
+                <Legend
+                  verticalAlign="bottom"
+                  height={32}
+                  iconType="circle"
+                  iconSize={8}
+                  wrapperStyle={{
+                    fontSize: '12px',
+                    fontFamily: 'sans-serif',
+                    paddingTop: '6px',
+                  }}
+                />
                 <Bar dataKey="clean_count" name="Clean" stackId="a" fill={chartTheme.series.emerald} />
                 <Bar dataKey="flagged_count" name="Flagged" stackId="a" fill={chartTheme.series.amber} />
                 <Bar dataKey="disqualified_count" name="Disqualified" stackId="a" fill={chartTheme.series.rose} radius={[4, 4, 0, 0]} />
@@ -616,7 +663,7 @@ export function AdminOverviewDashboard() {
             </ResponsiveContainer>
           </div>
           <div className="sr-only">
-            {(data?.integritySplit ?? []).map((e) => `${e.exam_title}: ${e.clean_count} clean, ${e.flagged_count} flagged, ${e.disqualified_count} disqualified`).join('; ')}
+            {integritySplitData.map((e) => `${e.exam_title} (${e.subject_code}): ${e.clean_count} clean, ${e.flagged_count} flagged, ${e.disqualified_count} disqualified`).join('; ')}
           </div>
         </div>
 
@@ -640,16 +687,32 @@ export function AdminOverviewDashboard() {
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
                 data={histogramData}
-                margin={{ top: 10, right: 12, left: -20, bottom: 0 }}
+                margin={{ top: 20, right: 12, left: -20, bottom: 0 }}
               >
                 <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.gridlines} opacity={0.6} vertical={false} />
-                <XAxis dataKey="range" stroke={chartTheme.axisLine} tick={{ fill: chartTheme.axisText, fontSize: 10, fontFamily: 'sans-serif' }} tickLine={false} />
-                <YAxis stroke={chartTheme.axisLine} tick={{ fill: chartTheme.axisText, fontSize: 10, fontFamily: 'sans-serif' }} tickLine={false} />
+                <XAxis
+                  dataKey="range"
+                  stroke={chartTheme.axisLine}
+                  tick={{ fill: chartTheme.axisText, fontSize: 11, fontFamily: 'sans-serif' }}
+                  tickLine={false}
+                  interval={0}
+                />
+                <YAxis
+                  stroke={chartTheme.axisLine}
+                  tick={{ fill: chartTheme.axisText, fontSize: 10, fontFamily: 'sans-serif' }}
+                  tickLine={false}
+                  domain={[0, (dataMax: number) => Math.max(10, Math.ceil(dataMax * 1.35))]}
+                />
                 <Tooltip
                   {...chartTheme.barTooltipProps}
+                  position={{ y: 0 }}
+                  offset={16}
+                  allowEscapeViewBox={{ x: false, y: false }}
                   content={({ active, payload }) => {
                     if (active && payload && payload.length) {
                       const item = payload[0].payload;
+                      const count = Number(item.count || 0);
+                      const pct = totalHistogramCandidates > 0 ? Math.round((count / totalHistogramCandidates) * 100) : 0;
                       return (
                         <ChartTooltip
                           active={active}
@@ -657,10 +720,17 @@ export function AdminOverviewDashboard() {
                           payload={[
                             {
                               name: 'Candidate Count',
-                              value: `${item.count} Candidates`,
+                              value: `${count} Candidates`,
+                              color: item.fill,
+                              payload: { percent: pct },
+                            },
+                            {
+                              name: 'Share of Cohort',
+                              value: `${pct}%`,
                               color: item.fill,
                             },
                           ]}
+                          showPercent
                         />
                       );
                     }
@@ -668,6 +738,15 @@ export function AdminOverviewDashboard() {
                   }}
                 />
                 <Bar dataKey="count" name="Candidate Count" radius={[6, 6, 0, 0]}>
+                  <LabelList
+                    dataKey="count"
+                    position="top"
+                    fill={chartTheme.axisText}
+                    fontSize={11}
+                    fontFamily="monospace"
+                    offset={6}
+                    formatter={(val: number) => (val > 0 ? val : '')}
+                  />
                   {histogramData.map((entry, idx) => (
                     <Cell key={`hist-${idx}`} fill={entry.fill} />
                   ))}

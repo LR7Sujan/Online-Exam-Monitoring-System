@@ -105,7 +105,7 @@ export function ChartTooltip({
     >
       {/* Tooltip Header / Title */}
       {resolvedTitle && (
-        <div className="font-semibold text-foreground text-[13px] font-sans pb-1.5 mb-1.5 border-b border-border/60 truncate">
+        <div className="font-semibold text-foreground text-[13px] font-sans pb-1.5 mb-1.5 border-b border-border/60 leading-snug break-words max-w-full">
           {resolvedTitle}
         </div>
       )}

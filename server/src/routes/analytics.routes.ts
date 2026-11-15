@@ -56,6 +56,10 @@ analyticsRouter.get('/dashboard', async (req, res, next) => {
     const integritySplit = await queryRows<RowDataPacket[]>(
       `SELECT e.id AS exam_id,
               e.title AS exam_title,
+              CASE
+                WHEN e.title LIKE '%:%' THEN TRIM(SUBSTRING_INDEX(e.title, ':', 1))
+                ELSE CONCAT('EX-', e.id)
+              END AS subject_code,
               COALESCE(SUM(CASE WHEN r.integrity_status = 'CLEAN' THEN 1 ELSE 0 END), 0) AS clean_count,
               COALESCE(SUM(CASE WHEN r.integrity_status = 'FLAGGED' THEN 1 ELSE 0 END), 0) AS flagged_count,
               COALESCE(SUM(CASE WHEN r.integrity_status = 'DISQUALIFIED' THEN 1 ELSE 0 END), 0) AS disqualified_count,
