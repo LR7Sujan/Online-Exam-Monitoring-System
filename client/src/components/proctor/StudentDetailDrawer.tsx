@@ -30,6 +30,7 @@ import { ParticleBurst } from '../ui/ParticleBurst';
 import { useAuthStore } from '../../store/authStore';
 import { StatusPill } from '../ui/StatusPill';
 import { SeverityBadge } from '../ui/SeverityBadge';
+import { ChartTooltip, useChartTheme } from '../charts/shared';
 import { api } from '../../lib/api';
 import { playPingSound } from '../../utils/audioAlert';
 import type {
@@ -59,6 +60,7 @@ export function StudentDetailDrawer({ sessionId, onClose }: StudentDetailDrawerP
     time: string;
   } | null>(null);
   const [showReinstateBurst, setShowReinstateBurst] = useState(false);
+  const chartTheme = useChartTheme();
 
   const [warnModalOpen, setWarnModalOpen] = useState<boolean>(false);
   const [warnMessage, setWarnMessage] = useState<string>('Please ensure your face remains centered in the camera frame.');
@@ -357,32 +359,39 @@ export function StudentDetailDrawer({ sessionId, onClose }: StudentDetailDrawerP
                   <AreaChart data={timelineData} margin={{ top: 8, right: 12, left: -20, bottom: 0 }}>
                     <defs>
                       <linearGradient id="trustGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor={currentScore < minThreshold ? '#F43F5E' : '#6366F1'} stopOpacity={0.35} />
-                        <stop offset="95%" stopColor={currentScore < minThreshold ? '#F43F5E' : '#6366F1'} stopOpacity={0.0} />
+                        <stop offset="5%" stopColor={currentScore < minThreshold ? chartTheme.series.rose : chartTheme.series.indigo} stopOpacity={0.35} />
+                        <stop offset="95%" stopColor={currentScore < minThreshold ? chartTheme.series.rose : chartTheme.series.indigo} stopOpacity={0.0} />
                       </linearGradient>
                     </defs>
                     <XAxis
                       dataKey="time"
-                      stroke="#71717A"
-                      fontSize={10}
+                      stroke={chartTheme.axisLine}
+                      tick={{ fill: chartTheme.axisText, fontSize: 10, fontFamily: 'sans-serif' }}
                       tickLine={false}
                     />
                     <YAxis
                       domain={[0, 100]}
-                      stroke="#71717A"
-                      fontSize={10}
+                      stroke={chartTheme.axisLine}
+                      tick={{ fill: chartTheme.axisText, fontSize: 10, fontFamily: 'sans-serif' }}
                       tickLine={false}
                     />
                     <Tooltip
+                      {...chartTheme.lineTooltipProps}
                       content={({ active, payload }) => {
                         if (active && payload && payload.length) {
                           const data = payload[0].payload;
                           return (
-                            <div className="rounded-xl border border-border bg-surface p-2.5 text-xs font-mono shadow-layered-md">
-                              <p className="text-foreground font-bold">{data.label}</p>
-                              <p className="text-brand">Trust Score: {data.trustScore}%</p>
-                              <p className="text-muted-foreground text-[10px]">{data.time}</p>
-                            </div>
+                            <ChartTooltip
+                              active={active}
+                              title={data.time}
+                              payload={[
+                                {
+                                  name: data.label,
+                                  value: `${data.trustScore}%`,
+                                  color: currentScore < minThreshold ? chartTheme.series.rose : chartTheme.series.indigo,
+                                },
+                              ]}
+                            />
                           );
                         }
                         return null;
@@ -390,14 +399,14 @@ export function StudentDetailDrawer({ sessionId, onClose }: StudentDetailDrawerP
                     />
                     <ReferenceLine
                       y={minThreshold}
-                      stroke="#F43F5E"
+                      stroke={chartTheme.series.rose}
                       strokeDasharray="4 4"
-                      label={{ value: `Limit: ${minThreshold}%`, fill: '#F43F5E', fontSize: 10, position: 'insideBottomRight' }}
+                      label={{ value: `Limit: ${minThreshold}%`, fill: chartTheme.series.rose, fontSize: 10, position: 'insideBottomRight' }}
                     />
                     <Area
                       type="monotone"
                       dataKey="trustScore"
-                      stroke={currentScore < minThreshold ? '#F43F5E' : '#6366F1'}
+                      stroke={currentScore < minThreshold ? chartTheme.series.rose : chartTheme.series.indigo}
                       strokeWidth={2}
                       fillOpacity={1}
                       fill="url(#trustGradient)"

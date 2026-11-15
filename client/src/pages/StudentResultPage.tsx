@@ -21,6 +21,7 @@ import { SeverityBadge } from '../components/ui/SeverityBadge';
 import { TrustRing } from '../components/ui/TrustRing';
 import { SkeletonCard } from '../components/ui/Skeleton';
 import { ErrorState } from '../components/ui/EmptyState';
+import { ChartTooltip, useChartTheme } from '../components/charts/shared';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { api } from '../lib/api';
 import type {
@@ -41,6 +42,7 @@ export function StudentResultPage() {
   const { sessionId } = useParams<{ sessionId: string }>();
   const numericSessionId = Number(sessionId);
   const navigate = useNavigate();
+  const chartTheme = useChartTheme();
 
   const [animatedPercentage, setAnimatedPercentage] = useState<number>(0);
 
@@ -241,23 +243,27 @@ export function StudentResultPage() {
                       ))}
                     </Pie>
                     <Tooltip
+                      {...chartTheme.tooltipProps}
                       offset={24}
                       content={({ active, payload }) => {
                         if (active && payload && payload.length && !isAllZero) {
                           const data = payload[0];
                           const val = Number(data.value ?? 0);
                           const pct = totalMarks > 0 ? Math.round((val / totalMarks) * 100) : 0;
-                          const color = (data.payload as { color?: string })?.color ?? 'var(--brand)';
+                          const color = (data.payload as { color?: string })?.color ?? chartTheme.series.emerald;
                           return (
-                            <div className="rounded-xl border border-border bg-surface dark:bg-[#12131d] p-2.5 text-sm font-sans shadow-2xl space-y-1 z-50 pointer-events-none">
-                              <div className="flex items-center gap-2">
-                                <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: color }} />
-                                <span className="font-semibold text-foreground text-sm">{data.name}</span>
-                              </div>
-                              <p className="text-muted-foreground text-xs font-mono pl-5">
-                                <strong className="text-foreground">{val} Marks</strong> ({pct}%)
-                              </p>
-                            </div>
+                            <ChartTooltip
+                              active={active}
+                              payload={[
+                                {
+                                  name: data.name,
+                                  value: `${val} Marks`,
+                                  color,
+                                  payload: { percent: pct },
+                                },
+                              ]}
+                              showPercent
+                            />
                           );
                         }
                         return null;

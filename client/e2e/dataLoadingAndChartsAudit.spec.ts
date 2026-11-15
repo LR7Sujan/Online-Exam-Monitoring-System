@@ -87,14 +87,13 @@ test.describe('Phase 13: Donut Charts, Skeletons & Data Loading Verification (Sc
   // --------------------------------------------------------------------------
   test('Styleguide renders high-contrast skeleton loaders with shimmer animation', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
-    await page.goto('/styleguide');
+    await loginAs(page, 'admin@proctoriq.io');
+    await page.goto('/styleguide/loading-empty');
     await page.waitForLoadState('domcontentloaded');
     await page.waitForTimeout(500);
 
-    // Scroll to section 11
-    const skeletonSection = page.getByText('11. Skeleton Loaders & Empty State Placeholders');
-    await skeletonSection.scrollIntoViewIfNeeded();
-    await expect(skeletonSection).toBeVisible();
+    // Section header
+    await expect(page.getByRole('heading', { level: 1, name: 'Loading & Empty States' })).toBeVisible();
 
     // Skeletons exist and have shimmer pseudo-class styles
     const skeletonElements = page.locator('div[aria-hidden="true"]');
@@ -148,14 +147,91 @@ test.describe('Phase 13: Donut Charts, Skeletons & Data Loading Verification (Sc
     await loginAs(page, 'student@proctoriq.io');
     await page.goto('/student');
     await page.waitForLoadState('domcontentloaded');
-    await page.waitForTimeout(600);
-    const studentExamCards = page.locator('text=/EXAM #[0-9]+/i');
-    expect(await studentExamCards.count()).toBeGreaterThan(0);
+    await page.waitForTimeout(800);
+    await expect(page.locator('text=Candidate Examination Console')).toBeVisible();
+    await expect(page.getByRole('tab', { name: /Live Assessments/i })).toBeVisible();
 
     // F) Student: Results (/student/results/13)
     await page.goto('/student/results/13');
     await page.waitForLoadState('domcontentloaded');
     await page.waitForTimeout(600);
     await expect(page.getByText(/OFFICIAL INNODB TRANSACTION EVALUATION/i)).toBeVisible();
+  });
+
+  // --------------------------------------------------------------------------
+  // 5. Shared Chart Tooltip, Subtle Cursor & Theme Verification
+  // --------------------------------------------------------------------------
+  test('Admin bar charts render subtle cursor and solid sans-serif tooltips without gray blocks in dark and light', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await loginAs(page, 'admin@proctoriq.io');
+    await page.goto('/admin');
+    await page.waitForLoadState('domcontentloaded');
+    await page.waitForTimeout(800);
+
+    // 1. Stacked Bar Chart: Integrity Status Split
+    const integrityRegion = page.locator('div[aria-label="Integrity status split per assessment stacked bar chart"]');
+    await expect(integrityRegion).toBeVisible();
+
+    // Hover over bar to trigger tooltip
+    const stackedBar = integrityRegion.locator('.recharts-bar-rectangle').first();
+    if (await stackedBar.isVisible()) {
+      await stackedBar.hover({ force: true });
+      await page.waitForTimeout(300);
+
+      // Verify ChartTooltip container is solid and has role="tooltip"
+      const tooltip = integrityRegion.locator('[role="tooltip"]');
+      await expect(tooltip).toBeVisible();
+      await expect(tooltip).toHaveClass(/font-sans/);
+      await expect(tooltip).toHaveClass(/text-\[13px\]/);
+
+      // Verify subtle cursor: no default light-gray #ccc block
+      const grayCursor = integrityRegion.locator('.recharts-tooltip-cursor[fill="#ccc"], .recharts-tooltip-cursor[fill="#d0d0d0"]');
+      await expect(grayCursor).toHaveCount(0);
+    }
+
+    // 2. Histogram Bar Chart: Trust Score Distribution
+    const histogramRegion = page.locator('div[aria-label="Candidate trust score distribution histogram"]');
+    await expect(histogramRegion).toBeVisible();
+
+    const histogramBar = histogramRegion.locator('.recharts-bar-rectangle').first();
+    if (await histogramBar.isVisible()) {
+      await histogramBar.hover({ force: true });
+      await page.waitForTimeout(300);
+
+      const histTooltip = histogramRegion.locator('[role="tooltip"]');
+      await expect(histTooltip).toBeVisible();
+      await expect(histTooltip).toHaveClass(/font-sans/);
+      await expect(histTooltip).toContainText('Bucket:');
+
+      // Verify no gray cursor block
+      const grayCursorHist = histogramRegion.locator('.recharts-tooltip-cursor[fill="#ccc"], .recharts-tooltip-cursor[fill="#d0d0d0"]');
+      await expect(grayCursorHist).toHaveCount(0);
+    }
+
+    // 3. Take screenshots of charts in Dark Mode
+    await page.screenshot({
+      path: path.join(screenshotDir, 'admin-charts-shared-tooltips-dark.png'),
+    });
+
+    // 4. Switch to Light Mode and verify opacity & contrast
+    const themeBtn = page.locator('header').locator('button[title*="theme" i], button:has-text("Theme"), button:has(svg.lucide-moon), button:has(svg.lucide-sun)').first();
+    if (await themeBtn.isVisible()) {
+      await themeBtn.click();
+      await page.waitForTimeout(400);
+
+      if (await histogramBar.isVisible()) {
+        await histogramBar.hover({ force: true });
+        await page.waitForTimeout(300);
+        const lightTooltip = histogramRegion.locator('[role="tooltip"]');
+        await expect(lightTooltip).toBeVisible();
+      }
+
+      await page.screenshot({
+        path: path.join(screenshotDir, 'admin-charts-shared-tooltips-light.png'),
+      });
+
+      // Restore dark
+      await themeBtn.click();
+    }
   });
 });

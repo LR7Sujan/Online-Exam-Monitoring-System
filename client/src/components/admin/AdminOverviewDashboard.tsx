@@ -31,7 +31,7 @@ import { StatCard } from '../ui/StatCard';
 import { StatusPill } from '../ui/StatusPill';
 import { SkeletonCard } from '../ui/Skeleton';
 import { ErrorState } from '../ui/EmptyState';
-import { useTheme } from '../../context/ThemeContext';
+import { ChartTooltip, useChartTheme } from '../charts/shared';
 import { api } from '../../lib/api';
 
 interface DashboardData {
@@ -106,11 +106,7 @@ const DONUT_COLORS = [
 
 export function AdminOverviewDashboard() {
   const [daysWindow, setDaysWindow] = useState<number>(7);
-  const { resolvedTheme } = useTheme();
-  const isDark = resolvedTheme === 'dark';
-
-  const axisStroke = isDark ? '#71717A' : '#A1A1AA';
-  const gridStroke = isDark ? '#27272A' : '#E4E4E7';
+  const chartTheme = useChartTheme();
 
   const query = useQuery({
     queryKey: ['admin-overview-dashboard', daysWindow],
@@ -277,35 +273,33 @@ export function AdminOverviewDashboard() {
                     <stop offset="95%" stopColor="#8B5CF6" stopOpacity={0.0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} opacity={0.5} vertical={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.gridlines} opacity={0.6} vertical={false} />
                 <XAxis
                   dataKey="date"
-                  stroke={axisStroke}
-                  fontSize={10}
+                  stroke={chartTheme.axisLine}
+                  tick={{ fill: chartTheme.axisText, fontSize: 10, fontFamily: 'sans-serif' }}
                   tickLine={false}
                   tickFormatter={(val: string) => {
                     const d = new Date(val);
                     return `${d.getMonth() + 1}/${d.getDate()}`;
                   }}
                 />
-                <YAxis stroke={axisStroke} fontSize={10} tickLine={false} />
+                <YAxis stroke={chartTheme.axisLine} tick={{ fill: chartTheme.axisText, fontSize: 10, fontFamily: 'sans-serif' }} tickLine={false} />
                 <Tooltip
+                  {...chartTheme.lineTooltipProps}
                   content={({ active, payload }) => {
                     if (active && payload && payload.length) {
                       const item = payload[0].payload;
                       return (
-                        <div className="rounded-xl border border-border bg-surface/98 p-3 text-xs font-mono shadow-xl space-y-1">
-                          <p className="text-foreground font-bold">{item.date}</p>
-                          <p className="text-brand font-semibold">
-                            Violations: {item.violation_count}
-                          </p>
-                          <p className="text-rose-500 text-[11px] font-medium">
-                            Points Deducted: -{item.total_penalty} PTS
-                          </p>
-                          <p className="text-muted-foreground text-[10px]">
-                            Candidates Impacted: {item.impacted_sessions}
-                          </p>
-                        </div>
+                        <ChartTooltip
+                          active={active}
+                          title={item.date}
+                          payload={[
+                            { name: 'Incidents Logged', value: item.violation_count, color: chartTheme.series.indigo },
+                            { name: 'Points Deducted', value: `-${item.total_penalty} PTS`, color: chartTheme.series.rose },
+                            { name: 'Impacted Candidates', value: item.impacted_sessions, color: chartTheme.series.amber },
+                          ]}
+                        />
                       );
                     }
                     return null;
@@ -368,6 +362,7 @@ export function AdminOverviewDashboard() {
                   )}
                 </Pie>
                 <Tooltip
+                  {...chartTheme.tooltipProps}
                   offset={20}
                   content={({ active, payload }) => {
                     if (active && payload && payload.length) {
@@ -375,13 +370,22 @@ export function AdminOverviewDashboard() {
                       if (item.isPlaceholder) return null;
                       const total = (data?.violationDistribution ?? []).reduce((acc, v) => acc + Number(v.count || 0), 0);
                       const pct = total > 0 ? Math.round((Number(item.count || 0) / total) * 100) : 0;
+                      const colorIndex = (data?.violationDistribution ?? []).indexOf(item);
+                      const swatch = item.fill || DONUT_COLORS[(colorIndex >= 0 ? colorIndex : 0) % DONUT_COLORS.length];
                       return (
-                        <div className="rounded-xl border border-border bg-surface dark:bg-[#12131d] p-2.5 text-sm font-sans shadow-2xl z-50 pointer-events-none space-y-1">
-                          <p className="text-foreground font-semibold text-sm">{item.label}</p>
-                          <p className="text-xs text-muted-foreground font-mono">
-                            <strong className="text-brand font-bold">{item.count}</strong> incidents ({pct}%)
-                          </p>
-                        </div>
+                        <ChartTooltip
+                          active={active}
+                          title={item.label}
+                          payload={[
+                            {
+                              name: 'Incidents Logged',
+                              value: item.count,
+                              color: swatch,
+                              payload: { percent: pct },
+                            },
+                          ]}
+                          showPercent
+                        />
                       );
                     }
                     return null;
@@ -510,35 +514,39 @@ export function AdminOverviewDashboard() {
                 data={data?.integritySplit ?? []}
                 margin={{ top: 10, right: 12, left: -20, bottom: 0 }}
               >
-                <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} opacity={0.5} vertical={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.gridlines} opacity={0.6} vertical={false} />
                 <XAxis
                   dataKey="exam_title"
-                  stroke={axisStroke}
-                  fontSize={10}
+                  stroke={chartTheme.axisLine}
+                  tick={{ fill: chartTheme.axisText, fontSize: 10, fontFamily: 'sans-serif' }}
                   tickLine={false}
                   tickFormatter={(t: string) => t.slice(0, 12) + '...'}
                 />
-                <YAxis stroke={axisStroke} fontSize={10} tickLine={false} />
+                <YAxis stroke={chartTheme.axisLine} tick={{ fill: chartTheme.axisText, fontSize: 10, fontFamily: 'sans-serif' }} tickLine={false} />
                 <Tooltip
+                  {...chartTheme.barTooltipProps}
                   content={({ active, payload }) => {
                     if (active && payload && payload.length) {
                       const item = payload[0].payload;
                       return (
-                        <div className="rounded-xl border border-border bg-surface/98 p-3 text-xs font-mono shadow-xl space-y-1">
-                          <p className="text-foreground font-bold">{item.exam_title}</p>
-                          <p className="text-emerald-500 font-medium">Clean: {item.clean_count}</p>
-                          <p className="text-amber-500 font-medium">Flagged: {item.flagged_count}</p>
-                          <p className="text-rose-500 font-medium">Disqualified: {item.disqualified_count}</p>
-                        </div>
+                        <ChartTooltip
+                          active={active}
+                          title={item.exam_title}
+                          payload={[
+                            { name: 'Clean', value: item.clean_count, color: chartTheme.series.emerald },
+                            { name: 'Flagged', value: item.flagged_count, color: chartTheme.series.amber },
+                            { name: 'Disqualified', value: item.disqualified_count, color: chartTheme.series.rose },
+                          ]}
+                        />
                       );
                     }
                     return null;
                   }}
                 />
-                <Legend wrapperStyle={{ fontSize: 11, fontFamily: 'monospace' }} />
-                <Bar dataKey="clean_count" name="Clean" stackId="a" fill="#10B981" />
-                <Bar dataKey="flagged_count" name="Flagged" stackId="a" fill="#F59E0B" />
-                <Bar dataKey="disqualified_count" name="Disqualified" stackId="a" fill="#F43F5E" radius={[4, 4, 0, 0]} />
+                <Legend wrapperStyle={{ fontSize: 11, fontFamily: 'sans-serif' }} />
+                <Bar dataKey="clean_count" name="Clean" stackId="a" fill={chartTheme.series.emerald} />
+                <Bar dataKey="flagged_count" name="Flagged" stackId="a" fill={chartTheme.series.amber} />
+                <Bar dataKey="disqualified_count" name="Disqualified" stackId="a" fill={chartTheme.series.rose} radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -569,18 +577,26 @@ export function AdminOverviewDashboard() {
                 data={histogramData}
                 margin={{ top: 10, right: 12, left: -20, bottom: 0 }}
               >
-                <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} opacity={0.5} vertical={false} />
-                <XAxis dataKey="range" stroke={axisStroke} fontSize={10} tickLine={false} />
-                <YAxis stroke={axisStroke} fontSize={10} tickLine={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.gridlines} opacity={0.6} vertical={false} />
+                <XAxis dataKey="range" stroke={chartTheme.axisLine} tick={{ fill: chartTheme.axisText, fontSize: 10, fontFamily: 'sans-serif' }} tickLine={false} />
+                <YAxis stroke={chartTheme.axisLine} tick={{ fill: chartTheme.axisText, fontSize: 10, fontFamily: 'sans-serif' }} tickLine={false} />
                 <Tooltip
+                  {...chartTheme.barTooltipProps}
                   content={({ active, payload }) => {
                     if (active && payload && payload.length) {
                       const item = payload[0].payload;
                       return (
-                        <div className="rounded-xl border border-border bg-surface/98 p-2.5 text-xs font-mono shadow-xl">
-                          <p className="text-foreground font-bold">Bucket: {item.range}</p>
-                          <p className="text-brand font-medium">{item.count} Candidates</p>
-                        </div>
+                        <ChartTooltip
+                          active={active}
+                          title={`Bucket: ${item.range}`}
+                          payload={[
+                            {
+                              name: 'Candidate Count',
+                              value: `${item.count} Candidates`,
+                              color: item.fill,
+                            },
+                          ]}
+                        />
                       );
                     }
                     return null;
