@@ -1,5 +1,4 @@
 import { useQuery } from '@tanstack/react-query';
-import { motion } from 'framer-motion';
 import {
   ArrowLeft,
   Award,
@@ -135,11 +134,7 @@ export function StudentResultPage() {
       </div>
 
       {/* Hero Result Banner */}
-      <motion.div
-        initial={{ opacity: 0, y: 15 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-      >
+      <div>
         <div className="p-6 sm:p-8 rounded-3xl border border-border bg-surface/90 backdrop-blur-xl shadow-layered-md relative overflow-hidden space-y-6">
           {/* Top highlight bar */}
           <div
@@ -195,10 +190,7 @@ export function StudentResultPage() {
                 Grade Percentage
               </span>
               <div className="flex items-baseline justify-center">
-                <motion.span
-                  initial={{ scale: 0.5, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  transition={{ type: 'spring', stiffness: 250, damping: 20 }}
+                <span
                   className={`font-mono text-5xl font-black tracking-tight ${
                     percentage >= 70
                       ? 'text-emerald-500'
@@ -208,7 +200,7 @@ export function StudentResultPage() {
                   }`}
                 >
                   {animatedPercentage}
-                </motion.span>
+                </span>
                 <span className="font-mono text-lg text-muted-foreground ml-1">%</span>
               </div>
               <div className="text-xs font-mono text-foreground">
@@ -357,7 +349,7 @@ export function StudentResultPage() {
             )}
           </div>
         </div>
-      </motion.div>
+      </div>
 
       {/* Violation Audit History Section */}
       <div className="space-y-4">

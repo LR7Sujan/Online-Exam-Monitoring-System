@@ -1,4 +1,3 @@
-import { motion } from 'framer-motion';
 import { Compass, Home } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { NeonButton } from '../components/ui/NeonButton';
@@ -11,12 +10,7 @@ export function NotFoundPage() {
       {/* Background glow orb */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-brand/10 rounded-full blur-3xl pointer-events-none" />
 
-      <motion.div
-        initial={{ opacity: 0, scale: 0.9 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.3 }}
-        className="max-w-md w-full p-8 rounded-3xl border border-border bg-surface/80 backdrop-blur-xl shadow-layered-md space-y-6 relative z-10"
-      >
+      <div className="max-w-md w-full p-8 rounded-3xl border border-border bg-surface/80 backdrop-blur-xl shadow-layered-md space-y-6 relative z-10">
         <div className="w-16 h-16 mx-auto rounded-2xl border border-border bg-surface-elevated flex items-center justify-center text-brand shadow-sm">
           <Compass className="w-8 h-8 animate-spin-slow" />
         </div>
@@ -44,7 +38,7 @@ export function NotFoundPage() {
             Return to Mission Control
           </NeonButton>
         </div>
-      </motion.div>
+      </div>
     </div>
   );
 }

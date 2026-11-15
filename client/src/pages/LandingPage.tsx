@@ -1,4 +1,3 @@
-import { motion } from 'framer-motion';
 import {
   ArrowRight,
   Cpu,
@@ -75,12 +74,7 @@ export function LandingPage() {
       {/* ============================================================== */}
       <section className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
         {/* Left Column: Headline, Subtitle, Two CTAs, Live DBMS Badges */}
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
-          className="lg:col-span-7 space-y-4 sm:space-y-5"
-        >
+        <div className="lg:col-span-7 space-y-4 sm:space-y-5">
           {/* System Status Pill */}
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-mono font-medium border border-brand/30 bg-brand/10 text-brand shadow-sm">
             <span className="relative flex h-2 w-2">
@@ -144,17 +138,12 @@ export function LandingPage() {
               </div>
             </div>
           </div>
-        </motion.div>
+        </div>
 
         {/* Right Column: Compact Mock Dashboard Card with Live-Ticking Numbers */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.98 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.4, delay: 0.1 }}
-          className="lg:col-span-5 w-full"
-        >
+        <div className="lg:col-span-5 w-full">
           <MockDashboardCard />
-        </motion.div>
+        </div>
       </section>
 
       {/* ============================================================== */}
@@ -258,13 +247,9 @@ export function LandingPage() {
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {VIOLATION_MATRIX.map((item, idx) => (
-            <motion.div
+          {VIOLATION_MATRIX.map((item) => (
+            <div
               key={item.code}
-              initial={{ opacity: 0, y: 12 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.35, delay: idx * 0.04 }}
               className="p-4 sm:p-5 rounded-2xl border border-border bg-surface hover:border-brand/40 shadow-sm transition-all flex flex-col justify-between"
             >
               <div className="flex items-start justify-between gap-3">
@@ -285,7 +270,7 @@ export function LandingPage() {
                   Auto-Deduct
                 </span>
               </div>
-            </motion.div>
+            </div>
           ))}
         </div>
       </section>

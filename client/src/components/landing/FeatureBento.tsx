@@ -1,4 +1,3 @@
-import { motion } from 'framer-motion';
 import { Radio, ShieldCheck, ScanFace, Database, ArrowUpRight, Sparkles } from 'lucide-react';
 
 interface FeatureItem {
@@ -74,17 +73,12 @@ export function FeatureBento() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {FEATURES.map((feature, idx) => {
+        {FEATURES.map((feature) => {
           const Icon = feature.icon;
           return (
-            <motion.div
+            <div
               key={feature.id}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: '-40px' }}
-              transition={{ duration: 0.45, delay: idx * 0.1 }}
-              whileHover={{ y: -3 }}
-              className="group relative p-5 rounded-2xl border border-border bg-surface/80 hover:bg-surface hover:border-brand/40 shadow-sm hover:shadow-layered-sm transition-all duration-300 flex flex-col justify-between overflow-hidden"
+              className="group relative p-5 rounded-2xl border border-border bg-surface/80 hover:bg-surface hover:border-brand/40 shadow-sm hover:shadow-layered-sm transition-all duration-300 flex flex-col justify-between overflow-hidden hover:-translate-y-1"
             >
               {/* Top ambient spotlight glow */}
               <div className="absolute -top-12 -right-12 w-28 h-28 bg-brand/10 rounded-full blur-2xl group-hover:bg-brand/20 transition-all pointer-events-none" />
@@ -112,7 +106,7 @@ export function FeatureBento() {
                 <span>{feature.detail}</span>
                 <ArrowUpRight className="w-3.5 h-3.5 opacity-60 group-hover:opacity-100 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
               </div>
-            </motion.div>
+            </div>
           );
         })}
       </div>

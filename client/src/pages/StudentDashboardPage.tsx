@@ -1,5 +1,4 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { motion, AnimatePresence } from 'framer-motion';
 import {
   Clock,
   Play,
@@ -166,14 +165,10 @@ export function StudentDashboardPage() {
 
       {/* Start Error Banner */}
       {startError && (
-        <motion.div
-          initial={{ opacity: 0, y: -6 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex items-start gap-2.5 rounded-2xl border border-rose-500/30 bg-rose-500/10 p-3.5 text-xs text-rose-600 dark:text-rose-200"
-        >
+        <div className="flex items-start gap-2.5 rounded-2xl border border-rose-500/30 bg-rose-500/10 p-3.5 text-xs text-rose-600 dark:text-rose-200">
           <AlertTriangle className="h-4 w-4 shrink-0 text-rose-500 mt-0.5" />
           <span>{startError}</span>
-        </motion.div>
+        </div>
       )}
 
       {/* Examination Tabs */}
@@ -246,32 +241,24 @@ export function StudentDashboardPage() {
         </div>
       ) : (
         <div className="grid gap-6 md:grid-cols-2">
-          <AnimatePresence mode="popLayout">
-            {filteredExams.map((exam, idx) => {
-              const hasSession = Boolean(exam.session_id);
-              const isInProgress = exam.session_status === 'IN_PROGRESS';
-              const isClosed = hasSession && exam.session_status && exam.session_status !== 'IN_PROGRESS';
+          {filteredExams.map((exam) => {
+            const hasSession = Boolean(exam.session_id);
+            const isInProgress = exam.session_status === 'IN_PROGRESS';
+            const isClosed = hasSession && exam.session_status && exam.session_status !== 'IN_PROGRESS';
 
-              const startCountdown = formatCountdown(exam.start_window);
-              const endCountdown = formatCountdown(exam.end_window);
+            const startCountdown = formatCountdown(exam.start_window);
+            const endCountdown = formatCountdown(exam.end_window);
 
-              const isWindowOpen =
-                (now >= new Date(exam.start_window).getTime() &&
-                  now <= new Date(exam.end_window).getTime()) ||
-                isInProgress;
+            const isWindowOpen =
+              (now >= new Date(exam.start_window).getTime() &&
+                now <= new Date(exam.end_window).getTime()) ||
+              isInProgress;
 
-              const isUpcoming = new Date(exam.start_window).getTime() > now;
+            const isUpcoming = new Date(exam.start_window).getTime() > now;
 
-              return (
-                <motion.div
-                  key={exam.id}
-                  layout
-                  initial={{ opacity: 0, y: 15 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  transition={{ delay: idx * 0.05 }}
-                >
-                  <div className="p-6 rounded-2xl border border-border bg-surface/85 hover:bg-surface hover:border-brand/40 shadow-sm hover:shadow-layered-sm transition-all duration-300 flex flex-col justify-between h-full space-y-6">
+            return (
+              <div key={exam.id}>
+                <div className="p-6 rounded-2xl border border-border bg-surface/85 hover:bg-surface hover:border-brand/40 shadow-sm hover:shadow-layered-sm transition-all duration-300 flex flex-col justify-between h-full space-y-6">
                     <div>
                       {/* Top Badges */}
                       <div className="flex items-start justify-between gap-2 mb-3">
@@ -402,10 +389,9 @@ export function StudentDashboardPage() {
                       )}
                     </div>
                   </div>
-                </motion.div>
+                </div>
               );
             })}
-          </AnimatePresence>
         </div>
       )}
 

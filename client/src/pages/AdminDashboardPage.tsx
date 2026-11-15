@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   BarChart3,
@@ -312,11 +311,7 @@ export function AdminDashboardPage({
 
             {/* Questions Inspection Panel */}
             {selectedExamId && selectedExamData && (
-              <motion.div
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="rounded-2xl border border-brand/30 bg-surface-elevated p-5 shadow-xl space-y-4"
-              >
+              <div className="rounded-2xl border border-brand/30 bg-surface-elevated p-5 shadow-xl space-y-4">
                 <div className="flex items-center justify-between border-b border-border pb-3">
                   <div>
                     <h4 className="text-sm font-bold text-foreground font-mono">
@@ -375,7 +370,7 @@ export function AdminDashboardPage({
                     </div>
                   ))}
                 </div>
-              </motion.div>
+              </div>
             )}
           </div>
         )}

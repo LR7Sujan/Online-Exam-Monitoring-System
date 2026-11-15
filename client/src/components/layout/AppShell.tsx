@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, Suspense } from 'react';
 import { NavLink, useLocation, useNavigate, Outlet } from 'react-router-dom';
-import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Home,
   Shield,
@@ -76,7 +76,31 @@ export function AppShell() {
   const logout = useAuthStore((s) => s.logout);
   const location = useLocation();
   const navigate = useNavigate();
-  const shouldReduceMotion = useReducedMotion();
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const mainContentRef = useRef<HTMLElement | null>(null);
+
+  // Scroll to top on every route transition
+  useEffect(() => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTo(0, 0);
+    }
+  }, [location.pathname]);
+
+  // Fail-safe: force visible any stuck opacity:0 / visibility:hidden elements 600ms after navigation
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (!mainContentRef.current) return;
+      const elements = mainContentRef.current.querySelectorAll<HTMLElement>('*');
+      elements.forEach((el) => {
+        const style = window.getComputedStyle(el);
+        if (style.opacity === '0' || style.visibility === 'hidden') {
+          el.style.setProperty('opacity', '1', 'important');
+          el.style.setProperty('visibility', 'visible', 'important');
+        }
+      });
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [location.pathname]);
 
   const { isConnected, violationCount, recentAlerts, clearAlerts, markAlertRead } =
     useSocketContext();
@@ -616,7 +640,7 @@ export function AppShell() {
       {/* ============================================================== */}
       {/* MAIN CONTAINER                                                 */}
       {/* ============================================================== */}
-      <div className="flex-1 flex flex-col min-w-0 relative z-0 h-dvh overflow-y-auto">
+      <div ref={scrollContainerRef} className="flex-1 flex flex-col min-w-0 relative z-0 h-dvh overflow-y-auto">
         {/* Sticky Header with Defined z-30 scale */}
         <header className="h-16 border-b border-border bg-surface/95 dark:bg-[#0c0d14]/95 backdrop-blur-xl sticky top-0 z-30 flex items-center justify-between px-4 sm:px-6 shrink-0">
           {/* Left: Mobile hamburger (<1024px) & Breadcrumbs */}
@@ -998,22 +1022,14 @@ export function AppShell() {
         {/* ============================================================== */}
         {/* PAGE CONTENT WITH SKELETON SUSPENSE & ERROR BOUNDARY SAFETY    */}
         {/* ============================================================== */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-[1440px] w-full mx-auto relative z-0">
-          <AnimatePresence mode="wait" initial={false}>
-            <motion.div
-              key={location.pathname}
-              initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: -8 }}
-              transition={shouldReduceMotion ? { duration: 0 } : { duration: 0.2, ease: 'easeOut' }}
-            >
-              <RouteErrorBoundary>
-                <Suspense fallback={<PageSkeleton />}>
-                  <Outlet />
-                </Suspense>
-              </RouteErrorBoundary>
-            </motion.div>
-          </AnimatePresence>
+        <main ref={mainContentRef} className="flex-1 p-4 sm:p-6 lg:p-8 max-w-[1440px] w-full mx-auto relative z-0">
+          <div key={location.pathname} className="route-enter w-full">
+            <RouteErrorBoundary key={location.pathname}>
+              <Suspense fallback={<PageSkeleton />}>
+                <Outlet />
+              </Suspense>
+            </RouteErrorBoundary>
+          </div>
         </main>
       </div>
 
