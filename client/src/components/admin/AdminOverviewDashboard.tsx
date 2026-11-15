@@ -347,7 +347,11 @@ export function AdminOverviewDashboard() {
           </div>
 
           {/* Chart Container with Smooth Fade & No Layout Jump */}
-          <div className="h-64 w-full relative">
+          <div
+            className="h-64 w-full relative"
+            data-testid="violations-timeline-chart-container"
+            data-points-count={data?.violationsOverTime?.length ?? 0}
+          >
             {query.isFetching && (
               <div className="absolute inset-0 bg-surface/30 backdrop-blur-[1px] pointer-events-none z-10 flex items-center justify-center transition-opacity duration-300">
                 <div className="h-1 w-24 bg-brand/30 overflow-hidden rounded-full absolute top-1">
@@ -697,7 +701,7 @@ export function AdminOverviewDashboard() {
               </BarChart>
             </ResponsiveContainer>
           </div>
-          <div className="sr-only">
+          <div className="sr-only" data-testid="integrity-subject-codes">
             {integritySplitData.map((e) => `${e.exam_title} (${e.subject_code}): ${e.clean_count} clean, ${e.flagged_count} flagged, ${e.disqualified_count} disqualified`).join('; ')}
           </div>
         </div>
