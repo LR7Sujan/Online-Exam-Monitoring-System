@@ -44,6 +44,7 @@ test('All Admin, Student, Proctor endpoints and Socket.IO events work end-to-end
   let createdExamId: number | null = null;
   let createdVtId: number | null = null;
   let studentSessionId: number | null = null;
+  let proctorSocket: ReturnType<typeof ioClient> | null = null;
 
   try {
     // Login Admin, Proctor, Student
@@ -69,7 +70,7 @@ test('All Admin, Student, Proctor endpoints and Socket.IO events work end-to-end
     const studentToken = studentLogin.json.data.token;
 
     // Connect Proctor Socket.IO listener
-    const proctorSocket = ioClient(origin, { auth: { token: proctorToken }, transports: ['websocket'] });
+    proctorSocket = ioClient(origin, { auth: { token: proctorToken }, transports: ['websocket'] });
     const receivedEvents: string[] = [];
     proctorSocket.on('violation:new', () => receivedEvents.push('violation:new'));
     proctorSocket.on('session:update', () => receivedEvents.push('session:update'));
@@ -289,18 +290,20 @@ test('All Admin, Student, Proctor endpoints and Socket.IO events work end-to-end
     assert.ok(receivedEvents.includes('violation:new'));
     assert.ok(receivedEvents.includes('session:update'));
     assert.ok(receivedEvents.includes('session:terminated'));
-
-    proctorSocket.disconnect();
   } finally {
+    if (proctorSocket) {
+      proctorSocket.disconnect();
+    }
     if (createdExamId !== null) {
       await pool.execute('DELETE FROM Exams WHERE id = ?', [createdExamId]);
     }
     if (createdVtId !== null) {
       await pool.execute('DELETE FROM Violation_Types WHERE id = ?', [createdVtId]);
     }
-    await new Promise<void>((resolve, reject) =>
-      httpServer.close((err) => (err ? reject(err) : resolve()))
-    );
+    await new Promise<void>((resolve) => {
+      httpServer.close(() => resolve());
+      setTimeout(resolve, 500);
+    });
     await pool.end();
   }
 });
