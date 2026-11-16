@@ -16,6 +16,7 @@ import {
   Terminal,
   Clock,
   Sparkles,
+  Loader2,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { GlassCard } from '../components/ui/GlassCard';
@@ -115,6 +116,24 @@ export const SimulatorPage: React.FC = () => {
     (sim?.activityLogs && sim.activityLogs.length > 0)
   );
 
+  const exams = examsQuery.data ?? [];
+  const selectedExam = exams.find((e) => e.id === selectedExamId);
+  const isExamPublished = selectedExam ? Boolean(selectedExam.is_published) : true;
+  const isExamWindowOpen = selectedExam ? Boolean(selectedExam.is_window_open ?? 1) : true;
+  const hasQuestions = selectedExam ? (selectedExam.question_count ?? 1) > 0 : true;
+
+  let unstartableReason: string | null = null;
+  if (selectedExam && !isExamPublished) {
+    unstartableReason = 'Selected exam is unpublished (DRAFT). Publish it before launching.';
+  } else if (selectedExam && !isExamWindowOpen) {
+    unstartableReason = 'Exam window is currently closed (expired or not yet open).';
+  } else if (selectedExam && !hasQuestions) {
+    unstartableReason = 'Selected exam has 0 questions configured.';
+  }
+  const isExamStartable = !unstartableReason;
+
+  const [isOpenWindowModalOpen, setIsOpenWindowModalOpen] = useState<boolean>(false);
+
   // Mutations
   const startMutation = useMutation({
     mutationFn: () =>
@@ -124,25 +143,77 @@ export const SimulatorPage: React.FC = () => {
         speed,
         chaos,
       }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['simulator-status'] }),
+    onSuccess: () => {
+      toast.success(`Launched simulator swarm with ${studentCount} candidates.`);
+      queryClient.invalidateQueries({ queryKey: ['simulator-status'] });
+    },
+    onError: (err: unknown) => {
+      const errorMsg = (err as { message?: string })?.message || 'Failed to launch simulator swarm.';
+      toast.error('Swarm Launch Failed', {
+        description: errorMsg,
+      });
+      // Append an activity log line so error is immediately visible in the activity stream
+      queryClient.setQueryData<SimulatorStatusResponse>(['simulator-status'], (prev) => {
+        if (!prev) return prev;
+        const newLog: SimActivityLog = {
+          id: `err-${Date.now()}`,
+          timestamp: new Date().toLocaleTimeString(),
+          candidateName: 'System Orchestrator',
+          type: 'status_change',
+          detail: `Launch swarm failed: ${errorMsg}`,
+          severity: 'HIGH',
+        };
+        return {
+          ...prev,
+          activityLogs: [newLog, ...(prev.activityLogs || [])],
+        };
+      });
+    },
   });
 
   const pauseMutation = useMutation({
     mutationFn: () => api.post('/admin/simulator/pause'),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['simulator-status'] }),
+    onError: (err: unknown) => {
+      toast.error('Failed to pause simulation', {
+        description: (err as { message?: string })?.message || 'Unknown error',
+      });
+    },
   });
 
   const resumeMutation = useMutation({
     mutationFn: () => api.post('/admin/simulator/resume'),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['simulator-status'] }),
+    onError: (err: unknown) => {
+      toast.error('Failed to resume simulation', {
+        description: (err as { message?: string })?.message || 'Unknown error',
+      });
+    },
   });
 
   const stopMutation = useMutation({
     mutationFn: () => api.post('/admin/simulator/stop'),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['simulator-status'] }),
+    onError: (err: unknown) => {
+      toast.error('Failed to stop simulation', {
+        description: (err as { message?: string })?.message || 'Unknown error',
+      });
+    },
   });
 
-  const exams = examsQuery.data ?? [];
+  const openWindowMutation = useMutation({
+    mutationFn: () => api.post(`/admin/exams/${selectedExamId}/open-window`),
+    onSuccess: () => {
+      toast.success('Exam window opened for testing and demo (valid for 24 hours).');
+      queryClient.invalidateQueries({ queryKey: ['admin-exams-list'] });
+      setIsOpenWindowModalOpen(false);
+    },
+    onError: (err: unknown) => {
+      toast.error('Could not open exam window', {
+        description: (err as { message?: string })?.message || 'Unknown error',
+      });
+    },
+  });
 
   const resetMutation = useMutation({
     mutationFn: async () => {
@@ -186,8 +257,7 @@ export const SimulatorPage: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['proctor-kpis'] });
       queryClient.invalidateQueries({ queryKey: ['proctor-audit-report'] });
 
-      // 3. Restore default control parameters
-      if (exams.length > 0) setSelectedExamId(exams[0].id);
+      // 3. Restore default control parameters (preserve current selected exam)
       setStudentCount(12);
       setSpeed(2.0);
       setChaos('medium');
@@ -323,13 +393,22 @@ export const SimulatorPage: React.FC = () => {
                 <NeonButton
                   variant="primary"
                   size="md"
-                  disabled={resetMutation.isPending}
+                  disabled={resetMutation.isPending || startMutation.isPending || !isExamStartable}
                   isLoading={startMutation.isPending}
-                  onClick={() => startMutation.mutate()}
+                  title={!isExamStartable ? unstartableReason || 'Exam cannot be started' : undefined}
+                  onClick={() => {
+                    if (!startMutation.isPending && !isRunning && isExamStartable) {
+                      startMutation.mutate();
+                    }
+                  }}
                   className="flex items-center gap-2 font-mono uppercase"
                 >
-                  <Play className="w-4 h-4 fill-current" />
-                  <span>Launch Swarm</span>
+                  {startMutation.isPending ? (
+                    <Loader2 className="w-4 h-4 animate-spin text-white" />
+                  ) : (
+                    <Play className="w-4 h-4 fill-current" />
+                  )}
+                  <span>{startMutation.isPending ? `Launching ${studentCount} candidates...` : 'Launch Swarm'}</span>
                 </NeonButton>
 
                 <NeonButton
@@ -414,11 +493,22 @@ export const SimulatorPage: React.FC = () => {
               onChange={(e) => setSelectedExamId(Number(e.target.value))}
               className="w-full rounded-xl border border-border bg-surface px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-brand disabled:opacity-50 transition-all"
             >
-              {exams.map((ex) => (
-                <option key={ex.id} value={ex.id} className="bg-surface text-foreground">
-                  #{ex.id}: {ex.title}
-                </option>
-              ))}
+              {exams.map((ex) => {
+                const published = Boolean(ex.is_published);
+                const windowOpen = Boolean(ex.is_window_open ?? 0);
+                const hasQs = (ex.question_count ?? 0) > 0;
+                const startable = published && windowOpen && hasQs;
+                const tag = !published ? ' [DRAFT]' : !windowOpen ? ' [CLOSED]' : !hasQs ? ' [0 Qs]' : '';
+                return (
+                  <option
+                    key={ex.id}
+                    value={ex.id}
+                    className={`bg-surface ${startable ? 'text-foreground' : 'text-muted-foreground'}`}
+                  >
+                    #{ex.id}: {ex.title}{tag}
+                  </option>
+                );
+              })}
               {exams.length === 0 && <option value={1} className="bg-surface text-foreground">Exam #1 (Default)</option>}
             </select>
           </div>
@@ -515,6 +605,25 @@ export const SimulatorPage: React.FC = () => {
             </div>
           </div>
         </div>
+
+        {/* Unstartable warning banner */}
+        {!isExamStartable && !isRunning && (
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 rounded-xl border border-amber/40 bg-amber/10 text-amber font-mono text-xs">
+            <div className="flex items-center gap-2.5">
+              <AlertTriangle className="w-4 h-4 shrink-0 text-amber" />
+              <span>{unstartableReason}</span>
+            </div>
+            {!isExamWindowOpen && isExamPublished && (
+              <button
+                type="button"
+                onClick={() => setIsOpenWindowModalOpen(true)}
+                className="px-3 py-1.5 rounded-lg border border-amber/50 bg-amber/20 hover:bg-amber/30 text-amber font-bold text-xs transition-colors cursor-pointer shrink-0"
+              >
+                Open exam window for demo
+              </button>
+            )}
+          </div>
+        )}
       </GlassCard>
 
       {/* 4. Swarm Candidate Grid + Live Activity Feed */}
@@ -664,7 +773,40 @@ export const SimulatorPage: React.FC = () => {
         </div>
       </div>
 
-      {/* 5. Reset Confirmation Modal */}
+      {/* 5. Open Exam Window Confirmation Modal */}
+      <Modal
+        isOpen={isOpenWindowModalOpen}
+        onClose={() => !openWindowMutation.isPending && setIsOpenWindowModalOpen(false)}
+        title="Open Exam Window for Demo?"
+        size="sm"
+        footer={
+          <div className="flex items-center justify-end gap-2 w-full">
+            <NeonButton
+              variant="outline"
+              size="sm"
+              disabled={openWindowMutation.isPending}
+              onClick={() => setIsOpenWindowModalOpen(false)}
+            >
+              Cancel
+            </NeonButton>
+            <NeonButton
+              variant="primary"
+              size="sm"
+              isLoading={openWindowMutation.isPending}
+              onClick={() => openWindowMutation.mutate()}
+            >
+              Open Window (24h)
+            </NeonButton>
+          </div>
+        }
+      >
+        <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+          Exam #{selectedExamId} ({selectedExam?.title || 'Selected Exam'}) is currently outside its scheduled window.
+          Opening the window sets it active starting 1 hour ago and lasting for 24 hours, allowing you to run testing and swarm simulations.
+        </p>
+      </Modal>
+
+      {/* 6. Reset Confirmation Modal */}
       <Modal
         isOpen={isResetModalOpen}
         onClose={() => !resetMutation.isPending && setIsResetModalOpen(false)}

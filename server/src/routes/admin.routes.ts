@@ -1,10 +1,11 @@
 import { Router } from 'express';
 import type { RowDataPacket } from 'mysql2/promise';
-import { queryRows } from '../config/db.js';
+import { executeSql, queryRows } from '../config/db.js';
 import { env } from '../config/env.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 import { simulatorEngine, type ChaosLevel } from '../services/simulator.js';
 import { sendSuccess } from '../utils/response.js';
+import { AppError } from '../utils/errors.js';
 
 export const adminRouter = Router();
 
@@ -265,6 +266,38 @@ adminRouter.post('/simulator/stop', async (_req, res, next) => {
   try {
     const state = await simulatorEngine.stop();
     sendSuccess(res, state);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/admin/exams/:examId/open-window (Opens exam window for demo/simulator)
+adminRouter.post('/exams/:examId/open-window', async (req, res, next) => {
+  try {
+    const examId = Number(req.params.examId);
+    if (!examId || Number.isNaN(examId)) {
+      throw new AppError(400, 'INVALID_EXAM_ID', 'Invalid exam id.');
+    }
+    const examRows = await queryRows<RowDataPacket[]>('SELECT * FROM Exams WHERE id = ? LIMIT 1', [examId]);
+    const exam = examRows[0];
+    if (!exam) {
+      throw new AppError(404, 'EXAM_NOT_FOUND', 'Exam not found.');
+    }
+    if (!exam.is_published) {
+      throw new AppError(409, 'EXAM_UNPUBLISHED', 'Cannot open window on an unpublished DRAFT exam. Publish the exam first.');
+    }
+    await executeSql(
+      'UPDATE Exams SET start_window = DATE_SUB(NOW(), INTERVAL 1 HOUR), end_window = DATE_ADD(NOW(), INTERVAL 24 HOUR) WHERE id = ?',
+      [examId]
+    );
+    const [updated] = await queryRows<RowDataPacket[]>(
+      'SELECT id, title, start_window, end_window, (NOW() BETWEEN start_window AND end_window) AS is_window_open FROM Exams WHERE id = ?',
+      [examId]
+    );
+    sendSuccess(res, {
+      message: 'Exam window opened for testing and simulator demo (valid for 24 hours).',
+      exam: updated,
+    });
   } catch (err) {
     next(err);
   }

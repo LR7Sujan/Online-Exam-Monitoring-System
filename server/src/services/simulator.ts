@@ -12,6 +12,7 @@ import {
   emitViolationNew,
 } from '../realtime/socket.js';
 import type { ExamSessionRow, ViolationTypeRow } from '../types/api.js';
+import { AppError } from '../utils/errors.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -120,13 +121,19 @@ class SimulatorEngine {
     const speed = Math.max(0.5, Math.min(5, config.speed ?? 1.5));
     const chaos = config.chaos ?? 'medium';
 
-    // Verify exam exists and is published
+    // Verify exam exists, is published, and has open window
     const exams = await queryRows<RowDataPacket[]>(
-      'SELECT id, title, min_trust_score FROM Exams WHERE id = ? LIMIT 1',
+      'SELECT id, title, min_trust_score, is_published, (NOW() BETWEEN start_window AND end_window) AS is_window_open FROM Exams WHERE id = ? LIMIT 1',
       [examId]
     );
     if (!exams[0]) {
-      throw new Error(`Target Exam ID ${examId} not found.`);
+      throw new AppError(404, 'EXAM_NOT_FOUND', `Target Exam ID ${examId} not found.`);
+    }
+    if (!exams[0].is_published) {
+      throw new AppError(409, 'EXAM_UNPUBLISHED', `Target Exam #${examId} ("${exams[0].title}") is unpublished (DRAFT). Publish it before launching the swarm.`);
+    }
+    if (!exams[0].is_window_open) {
+      throw new AppError(409, 'EXAM_WINDOW_CLOSED', `Target Exam #${examId} ("${exams[0].title}") window is closed. Open the exam window before launching the swarm.`);
     }
 
     // Cache exam questions
@@ -134,6 +141,9 @@ class SimulatorEngine {
       'SELECT id, marks FROM Questions WHERE exam_id = ? ORDER BY id ASC',
       [examId]
     );
+    if (this.questionCache.length === 0) {
+      throw new AppError(409, 'EXAM_NO_QUESTIONS', `Target Exam #${examId} ("${exams[0].title}") has no questions configured.`);
+    }
 
     // Cache violation types
     this.violationTypesCache = await queryRows<ViolationTypeRow[]>(

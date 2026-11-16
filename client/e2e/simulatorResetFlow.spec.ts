@@ -32,7 +32,7 @@ test.describe('Candidate Swarm Demo Simulator: Reset Button & Cleanup Lifecycle'
     const authRaw = await page.evaluate(() => localStorage.getItem('proctoriq_auth_v1'));
     const token = authRaw ? JSON.parse(authRaw).token : '';
     if (token) {
-      await page.request.post('http://localhost:4000/api/simulator/reset', {
+      await page.request.post('http://localhost:4001/api/simulator/reset', {
         headers: { Authorization: `Bearer ${token}` },
       });
     }

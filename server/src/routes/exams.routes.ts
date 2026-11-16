@@ -390,6 +390,7 @@ examsRouter.get('/', requireAuth, async (req: AuthenticatedRequest, res, next) =
       `SELECT
          e.id, e.title, e.description, e.duration_minutes, e.min_trust_score, e.max_extension_mins,
          e.start_window, e.end_window, e.is_published, e.created_by, e.created_at,
+         (NOW() BETWEEN e.start_window AND e.end_window) AS is_window_open,
          u.full_name AS creator_name,
          (SELECT COUNT(*) FROM Questions q WHERE q.exam_id = e.id) AS question_count,
          (SELECT COALESCE(SUM(q.marks), 0) FROM Questions q WHERE q.exam_id = e.id) AS total_marks,
