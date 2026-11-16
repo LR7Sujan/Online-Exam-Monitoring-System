@@ -337,4 +337,117 @@ describe('Exam Lifecycle, Confirmations & Audit Invariant API Tests', () => {
     const [qRows] = await pool.query<RowDataPacket[]>('SELECT id FROM Questions WHERE exam_id = ?', [exam.id]);
     expect(qRows.length).toBe(0);
   });
+
+  // 8. Question update API tests (valid, invalid, published exam 409, bulk delete)
+  it('8. Question update: valid update succeeds and persists in MySQL', async () => {
+    const exam = await createTestExam(false); // DRAFT exam
+    const [qRows] = await pool.query<RowDataPacket[]>(
+      'SELECT id, question_text, marks FROM Questions WHERE exam_id = ? ORDER BY id ASC',
+      [exam.id]
+    );
+    expect(qRows.length).toBeGreaterThan(0);
+    const targetQId = qRows[0].id;
+
+    const res = await fetch(`${serverOrigin}/api/exams/${exam.id}/questions/${targetQId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${adminToken}`,
+      },
+      body: JSON.stringify({
+        questionText: 'What is the updated question text for testing?',
+        optionA: 'Updated Alpha',
+        optionB: 'Updated Beta',
+        optionC: 'Updated Gamma',
+        optionD: 'Updated Delta',
+        correctOption: 'C',
+        marks: 5,
+      }),
+    });
+
+    const json = await res.json();
+    expect(res.status).toBe(200);
+    expect(json.success).toBe(true);
+    expect(json.data.question_text).toBe('What is the updated question text for testing?');
+    expect(json.data.correct_option).toBe('C');
+    expect(Number(json.data.marks)).toBe(5);
+
+    // Verify DB
+    const [updatedDb] = await pool.query<RowDataPacket[]>(
+      'SELECT question_text, correct_option, marks FROM Questions WHERE id = ?',
+      [targetQId]
+    );
+    expect(updatedDb[0].question_text).toBe('What is the updated question text for testing?');
+    expect(updatedDb[0].correct_option).toBe('C');
+    expect(Number(updatedDb[0].marks)).toBe(5);
+  });
+
+  it('9. Question update: invalid data (empty text or correctOption pointing to empty option) returns 400', async () => {
+    const exam = await createTestExam(false);
+    const [qRows] = await pool.query<RowDataPacket[]>(
+      'SELECT id FROM Questions WHERE exam_id = ? ORDER BY id ASC',
+      [exam.id]
+    );
+    const targetQId = qRows[0].id;
+
+    // A) Empty text
+    const emptyTextRes = await fetch(`${serverOrigin}/api/exams/${exam.id}/questions/${targetQId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${adminToken}`,
+      },
+      body: JSON.stringify({
+        questionText: '',
+      }),
+    });
+    expect(emptyTextRes.status).toBe(400);
+
+    // B) Correct option C pointing to empty option C
+    const invalidOptRes = await fetch(`${serverOrigin}/api/exams/${exam.id}/questions/${targetQId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${adminToken}`,
+      },
+      body: JSON.stringify({
+        correctOption: 'C',
+        optionC: '',
+      }),
+    });
+    expect(invalidOptRes.status).toBe(400);
+  });
+
+  it('10. Question bulk delete on draft exam removes selected questions', async () => {
+    const exam = await createTestExam(false);
+    const [qRows] = await pool.query<RowDataPacket[]>(
+      'SELECT id FROM Questions WHERE exam_id = ? ORDER BY id ASC',
+      [exam.id]
+    );
+    expect(qRows.length).toBe(2);
+
+    const idsToDelete = [qRows[0].id, qRows[1].id];
+    const res = await fetch(`${serverOrigin}/api/exams/${exam.id}/questions/bulk-delete`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${adminToken}`,
+      },
+      body: JSON.stringify({
+        questionIds: idsToDelete,
+      }),
+    });
+
+    const json = await res.json();
+    expect(res.status).toBe(200);
+    expect(json.success).toBe(true);
+    expect(json.data.deleted).toBe(true);
+    expect(json.data.count).toBe(2);
+
+    const [remaining] = await pool.query<RowDataPacket[]>(
+      'SELECT id FROM Questions WHERE exam_id = ?',
+      [exam.id]
+    );
+    expect(remaining.length).toBe(0);
+  });
 });

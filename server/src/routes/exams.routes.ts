@@ -53,16 +53,34 @@ const questionInputSchema = z
 
 const createQuestionSchema = questionInputSchema;
 
-const updateQuestionSchema = z.object({
-  questionText: z.string().trim().min(1).max(4000).optional(),
-  optionA: z.string().trim().min(1).max(500).optional(),
-  optionB: z.string().trim().min(1).max(500).optional(),
-  optionC: z.string().trim().max(500).optional(),
-  optionD: z.string().trim().max(500).optional(),
-  correctOption: z.enum(['A', 'B', 'C', 'D']).optional(),
-  marks: z.coerce.number().positive().max(1000).optional(),
-  orderIndex: z.coerce.number().int().positive().optional(),
-});
+const updateQuestionSchema = z
+  .object({
+    questionText: z.string().trim().min(1, 'Question prompt is required').max(4000).optional(),
+    optionA: z.string().trim().min(1, 'Option A is required').max(500).optional(),
+    optionB: z.string().trim().min(1, 'Option B is required').max(500).optional(),
+    optionC: z.string().trim().max(500).optional(),
+    optionD: z.string().trim().max(500).optional(),
+    correctOption: z.enum(['A', 'B', 'C', 'D']).optional(),
+    marks: z.coerce.number().positive('Marks must be greater than 0').max(1000).optional(),
+    negativeMarks: z.coerce.number().min(0).max(1000).optional(),
+    orderIndex: z.coerce.number().int().positive().optional(),
+  })
+  .superRefine((q, ctx) => {
+    if (q.correctOption === 'C' && q.optionC !== undefined && (q.optionC.trim() === '' || q.optionC === 'N/A')) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Correct option C points to an empty option',
+        path: ['correctOption'],
+      });
+    }
+    if (q.correctOption === 'D' && q.optionD !== undefined && (q.optionD.trim() === '' || q.optionD === 'N/A')) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Correct option D points to an empty option',
+        path: ['correctOption'],
+      });
+    }
+  });
 
 const createExamSchema = z
   .object({
@@ -1268,6 +1286,57 @@ examsRouter.patch(
   requireRole('ADMIN'),
   validate({ params: questionIdParamSchema, body: updateQuestionSchema }),
   handleUpdateQuestion
+);
+
+const bulkDeleteQuestionsSchema = z.object({
+  questionIds: z.array(z.coerce.number().int().positive()).min(1, 'At least 1 question ID is required'),
+});
+
+async function handleBulkDeleteQuestions(
+  req: AuthenticatedRequest,
+  res: Parameters<typeof sendSuccess>[0],
+  next: (e?: unknown) => void
+) {
+  try {
+    const { examId } = req.params as unknown as z.infer<typeof examIdParamSchema>;
+    const { questionIds } = req.body as z.infer<typeof bulkDeleteQuestionsSchema>;
+
+    const exams = await queryRows<ExamRow[]>('SELECT id, is_published FROM Exams WHERE id = ? LIMIT 1', [examId]);
+    if (!exams[0]) {
+      throw new AppError(404, 'EXAM_NOT_FOUND', 'Exam not found.');
+    }
+    if (exams[0].is_published) {
+      throw new AppError(409, 'EXAM_PUBLISHED', 'Cannot modify questions of a published exam. Unpublish the exam first.');
+    }
+
+    const placeholders = questionIds.map(() => '?').join(', ');
+    const result = await executeSql(
+      `DELETE FROM Questions WHERE exam_id = ? AND id IN (${placeholders})`,
+      [examId, ...questionIds]
+    );
+
+    sendSuccess(res, { deleted: true, count: result.affectedRows, questionIds });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// DELETE /api/exams/:examId/questions (ADMIN) - Bulk Delete
+examsRouter.delete(
+  '/:examId/questions',
+  requireAuth,
+  requireRole('ADMIN'),
+  validate({ params: examIdParamSchema, body: bulkDeleteQuestionsSchema }),
+  handleBulkDeleteQuestions
+);
+
+// POST /api/exams/:examId/questions/bulk-delete (ADMIN) - Alternative for clients without DELETE body support
+examsRouter.post(
+  '/:examId/questions/bulk-delete',
+  requireAuth,
+  requireRole('ADMIN'),
+  validate({ params: examIdParamSchema, body: bulkDeleteQuestionsSchema }),
+  handleBulkDeleteQuestions
 );
 
 // DELETE /api/exams/:examId/questions/:questionId (ADMIN)
