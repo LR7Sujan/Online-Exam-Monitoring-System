@@ -6,10 +6,18 @@ import { z } from 'zod';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+const isTestEnv = process.env.NODE_ENV === 'test';
+
 // Resolve .env candidate paths relative to script location / project root
 const candidateEnvPaths = [
   process.env.ENV_FILE,
   process.env.DOTENV_CONFIG_PATH,
+  ...(isTestEnv
+    ? [
+        path.resolve(__dirname, '../../.env.test'),
+        path.resolve(__dirname, '../../../.env.test'),
+      ]
+    : []),
   path.resolve(__dirname, '../../.env'),
   path.resolve(__dirname, '../../../.env'),
 ].filter(Boolean) as string[];
@@ -51,4 +59,33 @@ if (!parsed.success) {
 }
 
 export const env = parsed.data;
+
+/**
+ * Strict Safety Guard:
+ * Refuses execution of destructive, test, or seeding operations unless
+ * NODE_ENV === 'test' AND the target DB_NAME strictly ends with '_test'.
+ */
+export function assertTestDatabaseSafety(operation = 'test execution / destructive reset'): void {
+  if (env.NODE_ENV !== 'test') {
+    throw new Error(
+      `[SAFETY GUARD VIOLATION] Operation '${operation}' is prohibited because NODE_ENV is '${env.NODE_ENV}', not 'test'.`
+    );
+  }
+
+  if (!env.DB_NAME || !env.DB_NAME.endsWith('_test')) {
+    throw new Error(
+      `[SAFETY GUARD VIOLATION] Operation '${operation}' is prohibited because DB_NAME is '${env.DB_NAME}'. Target database MUST end with '_test' (e.g. 'exam_monitoring_test'). Real production/development database '${env.DB_NAME}' is strictly protected and will never be touched by tests.`
+    );
+  }
+}
+
+// Enforce guard at load time if in test mode
+if (env.NODE_ENV === 'test' && !env.DB_NAME.endsWith('_test')) {
+  console.error(
+    `\n🚨 [SAFETY GUARD TRIGGERED] Attempted to run tests with DB_NAME='${env.DB_NAME}'. Automated tests are strictly forbidden from pointing to real database. Target DB must end with '_test'.\n`
+  );
+  throw new Error(
+    `[SAFETY GUARD TRIGGERED] Test environment requires DB_NAME ending in '_test'. Found '${env.DB_NAME}'.`
+  );
+}
 

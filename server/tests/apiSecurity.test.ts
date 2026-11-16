@@ -4,26 +4,23 @@ import { createServer } from 'node:http';
 import { createApp } from '../src/app.js';
 import { initSocketServer } from '../src/realtime/socket.js';
 
-const API_BASE = 'http://localhost:4000/api';
-
 describe('API Security & Forensic Access Enforcement', () => {
   let studentToken: string;
   let refreshToken: string;
   let activeSessionId: number;
   let serverInstance: Server | null = null;
+  let API_BASE: string;
+  let SERVER_ORIGIN: string;
 
-  // Ensure test server is listening on port 4000 if not already running externally
   beforeAll(async () => {
-    try {
-      const res = await fetch('http://localhost:4000/api/health');
-      if (res.ok) return;
-    } catch {
-      // Port 4000 not listening; boot in-process server instance
-    }
     const app = createApp();
     serverInstance = createServer(app);
     initSocketServer(serverInstance);
-    await new Promise<void>((resolve) => serverInstance!.listen(4000, '127.0.0.1', resolve));
+    await new Promise<void>((resolve) => serverInstance!.listen(0, '127.0.0.1', () => resolve()));
+    const address = serverInstance.address();
+    const port = typeof address === 'object' && address ? address.port : 4001;
+    SERVER_ORIGIN = `http://127.0.0.1:${port}`;
+    API_BASE = `${SERVER_ORIGIN}/api`;
   });
 
   afterAll(async () => {
@@ -33,7 +30,7 @@ describe('API Security & Forensic Access Enforcement', () => {
   });
 
   it('enforces Helmet secure HTTP headers on all API responses', async () => {
-    const res = await fetch('http://localhost:4000/api/health');
+    const res = await fetch(`${API_BASE}/health`);
     expect(res.status).toBe(200);
 
     // Helmet security headers
@@ -146,17 +143,17 @@ describe('API Security & Forensic Access Enforcement', () => {
     expect(snapshotUrl).toMatch(/^\/uploads\/snapshot-/);
 
     // 2. Unauthenticated request to snapshot -> MUST return 401
-    const unauthRes = await fetch(`http://localhost:4000${snapshotUrl}`);
+    const unauthRes = await fetch(`${SERVER_ORIGIN}${snapshotUrl}`);
     const unauthData = await unauthRes.json();
     expect(unauthRes.status).toBe(401);
     expect(unauthData.error.code).toBe('UNAUTHORIZED_SNAPSHOT_ACCESS');
 
     // 3. Authenticated request using ?token= query parameter -> MUST return 200
-    const authQueryRes = await fetch(`http://localhost:4000${snapshotUrl}?token=${studentToken}`);
+    const authQueryRes = await fetch(`${SERVER_ORIGIN}${snapshotUrl}?token=${studentToken}`);
     expect(authQueryRes.status).toBe(200);
 
     // 4. Authenticated request using Bearer header -> MUST return 200
-    const authHeaderRes = await fetch(`http://localhost:4000${snapshotUrl}`, {
+    const authHeaderRes = await fetch(`${SERVER_ORIGIN}${snapshotUrl}`, {
       headers: { Authorization: `Bearer ${studentToken}` },
     });
     expect(authHeaderRes.status).toBe(200);

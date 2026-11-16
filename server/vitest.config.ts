@@ -16,6 +16,13 @@ export default defineConfig({
     ],
     testTimeout: 25000,
     fileParallelism: false,
+    env: {
+      NODE_ENV: 'test',
+      DB_NAME: 'exam_monitoring_test',
+      PORT: '4001',
+      CLIENT_ORIGIN: 'http://localhost:5174',
+      UPLOADS_DIR: './server/uploads-test',
+    },
   },
 });
 

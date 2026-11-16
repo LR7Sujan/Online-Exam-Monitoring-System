@@ -5,7 +5,7 @@
  */
 
 const { default: mysql } = await import('../../server/node_modules/mysql2/promise.js');
-import { env } from '../../server/src/config/env.js';
+import { env, assertTestDatabaseSafety } from '../../server/src/config/env.js';
 
 interface TestResult {
   suite: string;
@@ -17,6 +17,7 @@ interface TestResult {
 }
 
 const results: TestResult[] = [];
+const DUMMY_BCRYPT_HASH = '$2b$10$FlZlPTMFm3bi1YTpOqGSNu89sqsX7DOgiIkxk/G3lf7XPBXYDMgX2';
 
 async function logAndExecute(
   pool: any,
@@ -95,6 +96,8 @@ async function logAndExecute(
 }
 
 async function run() {
+  assertTestDatabaseSafety('Database test runner (db/tests/run_all_tests.ts)');
+
   const pool = mysql.createPool({
     host: env.DB_HOST,
     port: env.DB_PORT,
@@ -108,6 +111,7 @@ async function run() {
 
   console.log('================================================================================');
   console.log(' PROCTORIQ COMPREHENSIVE DATABASE & DBMS GUARANTEES SUITE');
+  console.log(` Target Test Database: ${env.DB_NAME}`);
   console.log('================================================================================');
 
   try {
@@ -120,7 +124,7 @@ async function run() {
       '1.1 Verify all 8 Primary Domain Tables exist',
       `SELECT table_name, engine, table_rows
          FROM information_schema.tables
-        WHERE table_schema = 'proctoriq'
+        WHERE table_schema = '${env.DB_NAME}'
           AND table_type = 'BASE TABLE'
         ORDER BY table_name;`
     );
@@ -131,7 +135,7 @@ async function run() {
       '1.2 Verify Foreign Keys for all relational dependencies',
       `SELECT constraint_name, table_name, column_name, referenced_table_name, referenced_column_name
          FROM information_schema.key_column_usage
-        WHERE table_schema = 'proctoriq'
+        WHERE table_schema = '${env.DB_NAME}'
           AND referenced_table_name IS NOT NULL
         ORDER BY table_name, constraint_name;`
     );
@@ -142,7 +146,7 @@ async function run() {
       '1.3 Verify UNIQUE Key constraints',
       `SELECT constraint_name, table_name, column_name
          FROM information_schema.key_column_usage
-        WHERE table_schema = 'proctoriq'
+        WHERE table_schema = '${env.DB_NAME}'
           AND constraint_name LIKE 'uq_%'
         ORDER BY table_name, constraint_name;`
     );
@@ -153,7 +157,7 @@ async function run() {
       '1.4 Verify CHECK Constraints in information_schema',
       `SELECT constraint_name, check_clause
          FROM information_schema.check_constraints
-        WHERE constraint_schema = 'proctoriq'
+        WHERE constraint_schema = '${env.DB_NAME}'
         ORDER BY constraint_name;`
     );
 
@@ -163,7 +167,7 @@ async function run() {
       '1.5 Verify Secondary Indexes on High-Traffic Columns',
       `SELECT table_name, index_name, GROUP_CONCAT(column_name ORDER BY seq_in_index) AS indexed_columns, non_unique
          FROM information_schema.statistics
-        WHERE table_schema = 'proctoriq'
+        WHERE table_schema = '${env.DB_NAME}'
           AND index_name NOT IN ('PRIMARY')
         GROUP BY table_name, index_name, non_unique
         ORDER BY table_name, index_name;`
@@ -223,7 +227,7 @@ async function run() {
     // ========================================================================
     // Create dedicated candidate session for violation testing
     const [u3Res]: any = await pool.query(
-      `INSERT INTO Users (full_name, email, password_hash, role) VALUES ('Suite 3 Candidate', 'suite3.${Date.now()}@proctoriq.io', 'h', 'STUDENT')`
+      `INSERT INTO Users (full_name, email, password_hash, role) VALUES ('Suite 3 Candidate', 'suite3.${Date.now()}@proctoriq.io', '${DUMMY_BCRYPT_HASH}', 'STUDENT')`
     );
     const s3StudentId = u3Res.insertId;
 
@@ -307,7 +311,7 @@ async function run() {
     // SUITE 4: REVIEW TRIGGER trg_after_review_update
     // ========================================================================
     const [u4Res]: any = await pool.query(
-      `INSERT INTO Users (full_name, email, password_hash, role) VALUES ('Suite 4 Candidate', 'suite4.${Date.now()}@proctoriq.io', 'h', 'STUDENT')`
+      `INSERT INTO Users (full_name, email, password_hash, role) VALUES ('Suite 4 Candidate', 'suite4.${Date.now()}@proctoriq.io', '${DUMMY_BCRYPT_HASH}', 'STUDENT')`
     );
     const s4StudentId = u4Res.insertId;
 
@@ -430,7 +434,7 @@ async function run() {
     const [qRows]: any = await pool.query(`SELECT id, order_index FROM Questions WHERE exam_id = ${e6ExamId} ORDER BY order_index ASC`);
 
     // Scenario 6.1: All-Correct Answers
-    const [u6a]: any = await pool.query(`INSERT INTO Users (full_name, email, password_hash, role) VALUES ('All Correct', 'allcor.${Date.now()}@proctoriq.io', 'h', 'STUDENT')`);
+    const [u6a]: any = await pool.query(`INSERT INTO Users (full_name, email, password_hash, role) VALUES ('All Correct', 'allcor.${Date.now()}@proctoriq.io', '${DUMMY_BCRYPT_HASH}', 'STUDENT')`);
     const [s6a]: any = await pool.query(`INSERT INTO Exam_Sessions (exam_id, student_id, trust_score, status, server_deadline) VALUES (${e6ExamId}, ${u6a.insertId}, 100, 'IN_PROGRESS', DATE_ADD(NOW(), INTERVAL 1 HOUR))`);
     const s6aId = s6a.insertId;
 
@@ -447,7 +451,7 @@ async function run() {
     );
 
     // Scenario 6.2: All-Wrong Answers
-    const [u6b]: any = await pool.query(`INSERT INTO Users (full_name, email, password_hash, role) VALUES ('All Wrong', 'allwr.${Date.now()}@proctoriq.io', 'h', 'STUDENT')`);
+    const [u6b]: any = await pool.query(`INSERT INTO Users (full_name, email, password_hash, role) VALUES ('All Wrong', 'allwr.${Date.now()}@proctoriq.io', '${DUMMY_BCRYPT_HASH}', 'STUDENT')`);
     const [s6b]: any = await pool.query(`INSERT INTO Exam_Sessions (exam_id, student_id, trust_score, status, server_deadline) VALUES (${e6ExamId}, ${u6b.insertId}, 100, 'IN_PROGRESS', DATE_ADD(NOW(), INTERVAL 1 HOUR))`);
     const s6bId = s6b.insertId;
 
@@ -464,7 +468,7 @@ async function run() {
     );
 
     // Scenario 6.3: Partial & Unanswered Questions
-    const [u6c]: any = await pool.query(`INSERT INTO Users (full_name, email, password_hash, role) VALUES ('Partial', 'part.${Date.now()}@proctoriq.io', 'h', 'STUDENT')`);
+    const [u6c]: any = await pool.query(`INSERT INTO Users (full_name, email, password_hash, role) VALUES ('Partial', 'part.${Date.now()}@proctoriq.io', '${DUMMY_BCRYPT_HASH}', 'STUDENT')`);
     const [s6c]: any = await pool.query(`INSERT INTO Exam_Sessions (exam_id, student_id, trust_score, status, server_deadline) VALUES (${e6ExamId}, ${u6c.insertId}, 100, 'IN_PROGRESS', DATE_ADD(NOW(), INTERVAL 1 HOUR))`);
     const s6cId = s6c.insertId;
 
@@ -482,7 +486,7 @@ async function run() {
     );
 
     // Scenario 6.4: Terminated Cheater Session
-    const [u6d]: any = await pool.query(`INSERT INTO Users (full_name, email, password_hash, role) VALUES ('Cheater', 'cheat.${Date.now()}@proctoriq.io', 'h', 'STUDENT')`);
+    const [u6d]: any = await pool.query(`INSERT INTO Users (full_name, email, password_hash, role) VALUES ('Cheater', 'cheat.${Date.now()}@proctoriq.io', '${DUMMY_BCRYPT_HASH}', 'STUDENT')`);
     const [s6d]: any = await pool.query(`INSERT INTO Exam_Sessions (exam_id, student_id, trust_score, status, server_deadline) VALUES (${e6ExamId}, ${u6d.insertId}, 100, 'IN_PROGRESS', DATE_ADD(NOW(), INTERVAL 1 HOUR))`);
     const s6dId = s6d.insertId;
 
@@ -529,8 +533,8 @@ async function run() {
     );
     const e7ExamId = e7Res.insertId;
 
-    const [u7a]: any = await pool.query(`INSERT INTO Users (full_name, email, password_hash, role) VALUES ('Expired Student', 'exp.${Date.now()}@proctoriq.io', 'h', 'STUDENT')`);
-    const [u7b]: any = await pool.query(`INSERT INTO Users (full_name, email, password_hash, role) VALUES ('Active Student', 'act.${Date.now()}@proctoriq.io', 'h', 'STUDENT')`);
+    const [u7a]: any = await pool.query(`INSERT INTO Users (full_name, email, password_hash, role) VALUES ('Expired Student', 'exp.${Date.now()}@proctoriq.io', '${DUMMY_BCRYPT_HASH}', 'STUDENT')`);
+    const [u7b]: any = await pool.query(`INSERT INTO Users (full_name, email, password_hash, role) VALUES ('Active Student', 'act.${Date.now()}@proctoriq.io', '${DUMMY_BCRYPT_HASH}', 'STUDENT')`);
 
     // Expired: started 45 mins ago on a 30-min exam
     const [s7a]: any = await pool.query(

@@ -116,6 +116,22 @@ For complete architectural details, sequence diagrams, and concurrency locking s
 
 ---
 
+## 🔒 Test Environment Isolation & Testing URLs
+
+ProctorIQ enforces strict environment and data isolation to guarantee that the production database (`proctoriq`) contains only real data and is never contaminated by automated or agent testing:
+
+| Environment | Purpose | Database | Client URL | API URL | Uploads Directory |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Real / Dev** | Manual testing & demo simulator | `proctoriq` | `http://localhost:5173` | `http://localhost:4000` | `/server/uploads` |
+| **Test / Agent** | Vitest, E2E & Browser Agent | `exam_monitoring_test` | `http://localhost:5174` | `http://localhost:4001` | `/server/uploads-test` |
+
+### Key Isolation Controls:
+1. **Safety Guard**: Server startup, seed operations, and test runners (`assertTestDatabaseSafety`) refuse to execute unless `NODE_ENV === 'test'` and `DB_NAME` ends with `_test`.
+2. **Browser-Agent Testing**: Browser agents in Antigravity must always interact with `http://localhost:5174` (targeting API on port `4001`).
+3. **Automated Teardown**: Global teardown scripts reset the test database to fixture state and remove transient artifacts (`uploads-test`, `test-results`) unless `KEEP_ARTIFACTS=1`.
+
+---
+
 ## 🧪 How to Run Tests
 
 ProctorIQ features a multi-tiered automated verification matrix covering database integrity, API security contracts, realtime invariants, Playwright end-to-end browser journeys, and Google Lighthouse production audits.
