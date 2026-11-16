@@ -251,7 +251,7 @@ export function ViolationRulesManager() {
             <TrustRing
               score={simulatedScore}
               minThreshold={simulatorThreshold}
-              size={80}
+              size="md"
               sublabel="Simulated"
             />
 

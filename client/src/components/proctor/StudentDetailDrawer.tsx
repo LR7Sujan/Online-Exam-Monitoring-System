@@ -263,7 +263,7 @@ export function StudentDetailDrawer({ sessionId, onClose }: StudentDetailDrawerP
                 <TrustRing
                   score={currentScore}
                   minThreshold={minThreshold}
-                  size={96}
+                  size="md"
                   sublabel="Score"
                 />
               </div>

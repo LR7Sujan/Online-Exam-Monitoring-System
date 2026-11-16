@@ -128,42 +128,44 @@ export function StudentTile({
       </div>
 
       {/* Middle Row: Mini TrustRing + Violations Badge */}
-      <div className="mt-4 flex items-center justify-between rounded-xl border border-border bg-surface-elevated/70 p-2.5">
-        <div className="flex items-center gap-2.5">
-          <TrustRing
-            score={score}
-            minThreshold={minThreshold}
-            size={48}
-            showThresholdMarker={false}
-          />
-          <div>
-            <div className="font-mono text-xs font-bold text-foreground">
+      <div className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-border bg-surface-elevated/70 p-2.5">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="w-10 h-10 shrink-0 flex items-center justify-center">
+            <TrustRing
+              score={score}
+              minThreshold={minThreshold}
+              size="xs"
+              showThresholdMarker={false}
+            />
+          </div>
+          <div className="min-w-0">
+            <div className="font-mono text-xs font-bold text-foreground truncate">
               {score}% <span className="text-[10px] font-normal text-muted-foreground">Trust</span>
             </div>
-            <div className="text-[10px] font-mono text-muted-foreground">
+            <div className="text-[10px] font-mono text-muted-foreground truncate">
               Min: {minThreshold}%
             </div>
           </div>
         </div>
 
         {/* Violations Count & Status */}
-        <div className="text-right">
+        <div className="text-right shrink-0">
           <div className="flex items-center justify-end gap-1 font-mono text-xs font-semibold">
             {Number(session.total_violations) > 0 ? (
-              <span className="flex items-center gap-1 text-rose-500">
-                <ShieldAlert className="w-3.5 h-3.5" />
-                {session.total_violations} {Number(session.total_violations) === 1 ? 'violation' : 'violations'}
+              <span className="flex items-center gap-1 text-rose-500 whitespace-nowrap">
+                <ShieldAlert className="w-3.5 h-3.5 shrink-0" />
+                <span>{session.total_violations} {Number(session.total_violations) === 1 ? 'violation' : 'violations'}</span>
               </span>
             ) : (
-              <span className="flex items-center gap-1 text-emerald-500">
-                <Shield className="w-3.5 h-3.5" />
-                Clean Record
+              <span className="flex items-center gap-1 text-emerald-500 whitespace-nowrap">
+                <Shield className="w-3.5 h-3.5 shrink-0" />
+                <span>Clean Record</span>
               </span>
             )}
           </div>
 
           {Number(session.pending_violations) > 0 && (
-            <span className="inline-block rounded-md bg-amber-500/15 border border-amber-500/30 px-1.5 py-0.2 font-mono text-[9px] font-bold text-amber-500 mt-0.5">
+            <span className="inline-block rounded-md bg-amber-500/15 border border-amber-500/30 px-1.5 py-0.5 font-mono text-[9px] font-bold text-amber-500 mt-0.5 whitespace-nowrap">
               {session.pending_violations} Pending Review
             </span>
           )}

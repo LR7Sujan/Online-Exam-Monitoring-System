@@ -1,85 +1,239 @@
 import { useState } from 'react';
 import { SectionDocPage } from '../SectionDocPage';
 import { ComponentPreview } from '../ComponentPreview';
-import { TrustRing, GlassCard } from '../../../components/ui';
+import { TrustRing, TRUST_RING_SIZES, type TrustRingSize, GlassCard } from '../../../components/ui';
 
 export function TrustRingSection() {
-  const [trustScore, setTrustScore] = useState(85);
-  const minLimit = 70;
+  const [trustScore, setTrustScore] = useState<number>(85);
+  const [selectedSize, setSelectedSize] = useState<TrustRingSize>('md');
+  const [minThreshold, setMinThreshold] = useState<number>(70);
+
+  const sizeKeys: Array<'xs' | 'sm' | 'md' | 'lg' | 'xl'> = ['xs', 'sm', 'md', 'lg', 'xl'];
 
   const toc = [
-    { id: 'interactive-simulator', label: 'Interactive Score Simulator' },
-    { id: 'scale-variants', label: 'Scale Variants (LG, MD, SM)' },
+    { id: 'interactive-simulator', label: 'Interactive Score & Size Simulator' },
+    { id: 'scale-variants', label: 'Standard Scale Matrix (XS to XL)' },
+    { id: 'geometry-and-markers', label: 'End Marker Dot & Threshold Arc' },
   ];
 
   return (
     <SectionDocPage slug="trust-ring" toc={toc}>
       <ComponentPreview
         id="interactive-simulator"
-        title="Dynamic Risk Meter & Score Simulator"
-        description="Drag the slider to test real-time SVG stroke-dashoffset transitions and automatic color transitions across thresholds."
+        title="Interactive Score & Size Simulator"
+        description="Test the mathematical alignment of the end-marker dot, stroke-dashoffset transitions, and proportional font scaling across all sizes and score tiers."
         badge="TrustRing"
         code={`import { TrustRing } from '@/components/ui';
 
 <TrustRing
   score={${trustScore}}
-  minThreshold={${minLimit}}
-  size="lg"
-  sublabel="Live Index"
+  minThreshold={${minThreshold}}
+  size="${selectedSize}"
+  sublabel="Live HUD"
 />`}
       >
         <GlassCard className="p-6 space-y-6 w-full">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="space-y-1">
-              <h4 className="text-sm font-semibold text-foreground">Integrity Score Controller</h4>
-              <p className="text-xs text-muted-foreground">
-                Score &gt;= 80%: Safe Emerald | 60-79%: Warning Amber | &lt; 60%: Danger Rose
-              </p>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <label className="text-xs font-mono font-semibold text-muted-foreground">SCORE: {trustScore}%</label>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pb-6 border-b border-border">
+            {/* Score Slider */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs font-mono">
+                <span className="text-muted-foreground font-semibold">TRUST SCORE</span>
+                <span className="text-brand font-bold px-2 py-0.5 rounded bg-brand/10 border border-brand/30">
+                  {trustScore}%
+                </span>
+              </div>
               <input
                 type="range"
                 min="0"
                 max="100"
                 value={trustScore}
                 onChange={(e) => setTrustScore(Number(e.target.value))}
-                className="w-44 accent-indigo-600"
+                className="w-full accent-indigo-500 cursor-pointer"
+                data-testid="styleguide-score-slider"
               />
+              <div className="flex justify-between text-[10px] font-mono text-muted-foreground">
+                <span>0 (Track)</span>
+                <span>50</span>
+                <span>100 (Full)</span>
+              </div>
+            </div>
+
+            {/* Threshold Slider */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs font-mono">
+                <span className="text-muted-foreground font-semibold">MIN THRESHOLD</span>
+                <span className="text-rose-500 font-bold px-2 py-0.5 rounded bg-rose-500/10 border border-rose-500/30">
+                  {minThreshold}%
+                </span>
+              </div>
+              <input
+                type="range"
+                min="10"
+                max="90"
+                value={minThreshold}
+                onChange={(e) => setMinThreshold(Number(e.target.value))}
+                className="w-full accent-rose-500 cursor-pointer"
+              />
+              <div className="flex justify-between text-[10px] font-mono text-muted-foreground">
+                <span>10%</span>
+                <span>50%</span>
+                <span>90%</span>
+              </div>
+            </div>
+
+            {/* Size Selector Slider */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs font-mono">
+                <span className="text-muted-foreground font-semibold">SIZE SELECTION</span>
+                <span className="text-cyan font-bold px-2 py-0.5 rounded bg-cyan/10 border border-cyan/30 uppercase">
+                  {selectedSize} ({TRUST_RING_SIZES[selectedSize as keyof typeof TRUST_RING_SIZES] ?? selectedSize}px)
+                </span>
+              </div>
+              <div className="grid grid-cols-5 gap-1.5 pt-1">
+                {sizeKeys.map((k) => (
+                  <button
+                    key={k}
+                    type="button"
+                    onClick={() => setSelectedSize(k)}
+                    className={`py-1.5 rounded-lg border text-xs font-mono font-bold uppercase transition-all ${
+                      selectedSize === k
+                        ? 'border-brand bg-brand/20 text-brand shadow-sm'
+                        : 'border-border bg-surface text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    {k}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
-          <div className="flex items-center justify-center pt-4 border-t border-border">
-            <TrustRing score={trustScore} minThreshold={minLimit} size="lg" sublabel="Live Index" />
+          {/* Interactive Preview Canvas */}
+          <div className="flex flex-col items-center justify-center p-8 bg-background/50 rounded-2xl border border-border/80 min-h-[260px]">
+            <TrustRing
+              score={trustScore}
+              minThreshold={minThreshold}
+              size={selectedSize}
+              sublabel={trustScore < minThreshold ? 'BREACH' : 'Live HUD'}
+            />
+            <div className="mt-4 text-xs font-mono text-muted-foreground text-center">
+              Tier:{' '}
+              <span
+                className={`font-bold ${
+                  trustScore < 60 || trustScore < minThreshold
+                    ? 'text-rose-500'
+                    : trustScore < 85
+                    ? 'text-amber-500'
+                    : 'text-emerald-500'
+                }`}
+              >
+                {trustScore < 60 || trustScore < minThreshold
+                  ? 'CRITICAL / DANGER'
+                  : trustScore < 85
+                  ? 'CAUTION / WARNING'
+                  : 'SAFE / CLEAN'}
+              </span>{' '}
+              • End Marker:{' '}
+              <span className="text-foreground font-bold">
+                {trustScore > 0 && trustScore < 100 ? 'Visible & Coupled' : 'Hidden (0% or 100%)'}
+              </span>
+            </div>
           </div>
         </GlassCard>
       </ComponentPreview>
 
       <ComponentPreview
         id="scale-variants"
-        title="Standardized Scale Variants"
-        description="Three responsive sizes tailored for full dashboard overviews, in-exam student HUDs, and compact table badges."
-        badge="Sizes"
-        code={`<TrustRing score={${trustScore}} size="lg" sublabel="Live Index" /> // 192px
-<TrustRing score={${trustScore}} size="md" sublabel="Exam HUD" />   // 144px
-<TrustRing score={${trustScore}} size="sm" />                      // 96px`}
+        title="Standard Scale Matrix (XS to XL)"
+        description="All five standardized sizes: XS (40px, tile slots), SM (56px, mini HUDs), MD (80px, standard dashboards), LG (160px, hero metrics), and XL (220px, kiosk displays)."
+        badge="5 Sizes"
+        code={`<TrustRing score={${trustScore}} size="xs" /> // 40px
+<TrustRing score={${trustScore}} size="sm" /> // 56px
+<TrustRing score={${trustScore}} size="md" sublabel="Live" /> // 80px
+<TrustRing score={${trustScore}} size="lg" sublabel="Metric" /> // 160px
+<TrustRing score={${trustScore}} size="xl" sublabel="Display" /> // 220px`}
       >
-        <div className="flex flex-wrap items-center justify-around gap-8 w-full">
+        <div className="flex flex-wrap items-end justify-around gap-8 w-full py-4">
           <div className="text-center space-y-2">
-            <TrustRing score={trustScore} minThreshold={minLimit} size="lg" sublabel="Live Index" />
-            <span className="text-xs font-mono text-muted-foreground block">Size: LG (192px)</span>
+            <div className="flex items-center justify-center h-56">
+              <TrustRing score={trustScore} minThreshold={minThreshold} size="xs" />
+            </div>
+            <span className="text-xs font-mono text-muted-foreground block font-bold">
+              XS (40px)
+            </span>
           </div>
 
           <div className="text-center space-y-2">
-            <TrustRing score={trustScore} minThreshold={minLimit} size="md" sublabel="Exam HUD" />
-            <span className="text-xs font-mono text-muted-foreground block">Size: MD (144px)</span>
+            <div className="flex items-center justify-center h-56">
+              <TrustRing score={trustScore} minThreshold={minThreshold} size="sm" />
+            </div>
+            <span className="text-xs font-mono text-muted-foreground block font-bold">
+              SM (56px)
+            </span>
           </div>
 
           <div className="text-center space-y-2">
-            <TrustRing score={trustScore} minThreshold={minLimit} size="sm" />
-            <span className="text-xs font-mono text-muted-foreground block">Size: SM (96px)</span>
+            <div className="flex items-center justify-center h-56">
+              <TrustRing score={trustScore} minThreshold={minThreshold} size="md" sublabel="Live" />
+            </div>
+            <span className="text-xs font-mono text-muted-foreground block font-bold">
+              MD (80px)
+            </span>
           </div>
+
+          <div className="text-center space-y-2">
+            <div className="flex items-center justify-center h-56">
+              <TrustRing score={trustScore} minThreshold={minThreshold} size="lg" sublabel="Metric" />
+            </div>
+            <span className="text-xs font-mono text-muted-foreground block font-bold">
+              LG (160px)
+            </span>
+          </div>
+
+          <div className="text-center space-y-2">
+            <div className="flex items-center justify-center h-56">
+              <TrustRing score={trustScore} minThreshold={minThreshold} size="xl" sublabel="Kiosk" />
+            </div>
+            <span className="text-xs font-mono text-muted-foreground block font-bold">
+              XL (220px)
+            </span>
+          </div>
+        </div>
+      </ComponentPreview>
+
+      <ComponentPreview
+        id="geometry-and-markers"
+        title="Arc Geometry & End-Marker Precision"
+        description="Verified at critical checkpoints (0%, 25%, 50%, 75%, 100%) showing clockwise progression from 12 o'clock and dynamic threshold radial tick."
+        badge="Geometry"
+        code={`// Verified Geometry:
+// Angle: (score / 100) * 2 * PI
+// x = 60 + 50 * sin(angle), y = 60 - 50 * cos(angle)
+// End dot renders only when 0 < score < 100`}
+      >
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-6 w-full py-2">
+          {[0, 25, 50, 75, 100].map((sampleScore) => (
+            <div
+              key={sampleScore}
+              className="flex flex-col items-center p-4 rounded-xl border border-border bg-surface-elevated/40 space-y-3"
+            >
+              <TrustRing
+                score={sampleScore}
+                minThreshold={minThreshold}
+                size="md"
+              />
+              <span className="text-xs font-mono font-bold text-foreground">
+                Score: {sampleScore}%
+              </span>
+              <span className="text-[10px] font-mono text-muted-foreground">
+                {sampleScore === 0
+                  ? 'Track Only'
+                  : sampleScore === 100
+                  ? 'Full Ring'
+                  : 'Arc + End Dot'}
+              </span>
+            </div>
+          ))}
         </div>
       </ComponentPreview>
     </SectionDocPage>
