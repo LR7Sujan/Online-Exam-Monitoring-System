@@ -1,25 +1,12 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import {
+  type TrustRingSize,
+  type TrustRingProps,
+  TRUST_RING_SIZES,
+} from './TrustRing.types';
 
-export type TrustRingSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl' | number;
-
-export interface TrustRingProps {
-  score: number;
-  minThreshold?: number;
-  size?: TrustRingSize;
-  showLabel?: boolean;
-  showThresholdMarker?: boolean;
-  sublabel?: string;
-  className?: string;
-}
-
-export const TRUST_RING_SIZES: Record<'xs' | 'sm' | 'md' | 'lg' | 'xl', number> = {
-  xs: 40,
-  sm: 56,
-  md: 80,
-  lg: 160,
-  xl: 220,
-};
+export type { TrustRingSize, TrustRingProps };
 
 interface Particle {
   id: number;
@@ -43,6 +30,7 @@ export function TrustRing({
   showThresholdMarker = true,
   sublabel,
   className = '',
+  'data-testid': testId = 'trust-ring',
 }: TrustRingProps) {
   const uniqueId = useId().replace(/:/g, '');
   const pixelSize = typeof size === 'number' ? size : TRUST_RING_SIZES[size] ?? 80;
@@ -160,7 +148,7 @@ export function TrustRing({
       aria-valuemax={100}
       aria-valuetext={valueText}
       aria-label={`Trust Score: ${clamped}%`}
-      data-testid="trust-ring"
+      data-testid={testId}
       data-score={clamped}
       data-size={pixelSize}
       style={{ width: `${pixelSize}px`, height: `${pixelSize}px` }}

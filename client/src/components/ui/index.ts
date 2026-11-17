@@ -2,6 +2,7 @@ export * from './GlassCard';
 export * from './NeonButton';
 export * from './StatCard';
 export * from './TrustRing';
+export * from './TrustRing.types';
 export * from './SeverityBadge';
 export * from './StatusPill';
 export * from './AnimatedTable';

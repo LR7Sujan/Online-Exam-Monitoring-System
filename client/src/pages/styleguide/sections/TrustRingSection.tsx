@@ -13,7 +13,8 @@ export function TrustRingSection() {
   const toc = [
     { id: 'interactive-simulator', label: 'Interactive Score & Size Simulator' },
     { id: 'scale-variants', label: 'Standard Scale Matrix (XS to XL)' },
-    { id: 'geometry-and-markers', label: 'End Marker Dot & Threshold Arc' },
+    { id: 'geometry-and-markers', label: 'Arc Geometry & End-Marker Precision' },
+    { id: 'verification-matrix', label: 'Visual Geometry Test Matrix' },
   ];
 
   return (
@@ -232,6 +233,48 @@ export function TrustRingSection() {
                   ? 'Full Ring'
                   : 'Arc + End Dot'}
               </span>
+            </div>
+          ))}
+        </div>
+      </ComponentPreview>
+
+      <ComponentPreview
+        id="verification-matrix"
+        title="Visual Geometry & Boundary Verification Matrix"
+        description="Full matrix testing all required scores (0, 1, 25, 50, 60, 75, 99, 100) across all standardized sizes (XS to XL) to guarantee tail-end marker coupling, inner clearance, and zero font overflow."
+        badge="Test Matrix"
+        code={`// Test Matrix Verification:
+// Scores: 0, 1, 25, 50, 60, 75, 99, 100
+// Sizes: XS (40px), SM (56px), MD (80px), LG (160px), XL (220px)`}
+      >
+        <div className="space-y-8 w-full py-4">
+          {(['xs', 'sm', 'md', 'lg', 'xl'] as const).map((sz) => (
+            <div key={sz} className="space-y-3">
+              <div className="flex items-center justify-between border-b border-border/70 pb-1.5">
+                <span className="font-mono text-xs font-bold uppercase tracking-wider text-brand">
+                  Size: {sz} ({TRUST_RING_SIZES[sz]}px)
+                </span>
+                <span className="text-[11px] font-mono text-muted-foreground">
+                  Clearance: {Math.floor(TRUST_RING_SIZES[sz] * (100 / 120))}px inner circle
+                </span>
+              </div>
+              <div className="flex flex-wrap items-center gap-4">
+                {[0, 1, 25, 50, 60, 75, 99, 100].map((sc) => (
+                  <div
+                    key={`${sz}-${sc}`}
+                    className="flex flex-col items-center justify-center p-3 rounded-xl border border-border bg-surface-elevated/40 min-w-[70px]"
+                  >
+                    <TrustRing
+                      score={sc}
+                      size={sz}
+                      data-testid={`trust-ring-${sz}-${sc}`}
+                    />
+                    <span className="text-[10px] font-mono text-muted-foreground mt-2 font-bold">
+                      {sc}%
+                    </span>
+                  </div>
+                ))}
+              </div>
             </div>
           ))}
         </div>
