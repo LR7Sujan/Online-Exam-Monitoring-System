@@ -86,6 +86,7 @@ export function StudentExamPage() {
   const [sessionStatus, setSessionStatus] = useState<SessionStatus>('IN_PROGRESS');
   const [extensionRequest, setExtensionRequest] = useState<TimeExtensionRequest | null>(null);
   const [isExtensionModalOpen, setIsExtensionModalOpen] = useState<boolean>(false);
+  const [inGraceWindow, setInGraceWindow] = useState<boolean>(false);
   const [grantedToast, setGrantedToast] = useState<number | null>(null);
 
   // Autosave & Offline Queue State
@@ -335,11 +336,18 @@ export function StudentExamPage() {
 
     const fetchTimeLeft = async () => {
       try {
-        const data = await api.get<TimeLeftResponse & { maxExtensionMins?: number; extensionRequest?: TimeExtensionRequest | null }>(`/sessions/${numericSessionId}/time-left`);
+        const data = await api.get<
+          TimeLeftResponse & {
+            maxExtensionMins?: number;
+            extensionRequest?: TimeExtensionRequest | null;
+            inGraceWindow?: boolean;
+          }
+        >(`/sessions/${numericSessionId}/time-left`);
         setSecondsLeft(Math.max(0, data.secondsLeft));
         setTrustScore(data.trustScore);
         if (data.status) setSessionStatus(data.status);
         if (data.maxExtensionMins !== undefined) setMaxExtensionMins(data.maxExtensionMins);
+        if (data.inGraceWindow !== undefined) setInGraceWindow(data.inGraceWindow);
         if (data.extensionRequest) {
           setExtensionRequest(data.extensionRequest);
           if (data.extensionRequest.status === 'PENDING') {
@@ -490,8 +498,8 @@ export function StudentExamPage() {
           </div>
         </div>
 
-        {/* Center: Server-Synced Countdown Timer & TrustRing */}
-        <div className="flex items-center gap-4">
+        {/* Center: Server-Synced Countdown Timer & HUD Extension Action */}
+        <div className="flex items-center gap-3">
           <div
             className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl border font-mono text-sm tracking-wider font-bold transition-all ${
               isTimeCritical
@@ -509,6 +517,39 @@ export function StudentExamPage() {
               </span>
             )}
           </div>
+
+          {/* Persistent Request Extra Time HUD button (visible when <= 10 mins, in grace window, or request exists) */}
+          {maxExtensionMins > 0 &&
+            sessionStatus === 'IN_PROGRESS' &&
+            ((secondsLeft !== null && secondsLeft <= 600) || inGraceWindow || extensionRequest !== null) && (
+              <div>
+                {extensionRequest?.status === 'PENDING' ? (
+                  <button
+                    type="button"
+                    disabled
+                    data-testid="hud-request-pending-button"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-amber-500/40 bg-amber-500/10 text-amber-500 font-mono text-xs font-semibold cursor-not-allowed opacity-90 shadow-sm"
+                  >
+                    <Clock className="w-3.5 h-3.5 animate-spin" />
+                    <span>Request pending</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setIsExtensionModalOpen(true)}
+                    data-testid="hud-request-extension-button"
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border font-mono text-xs font-semibold transition-all cursor-pointer ${
+                      isTimeCritical
+                        ? 'border-brand/60 bg-brand/20 text-brand shadow-sm animate-pulse hover:bg-brand/30'
+                        : 'border-border bg-surface-elevated/80 hover:bg-muted text-foreground hover:border-brand/40'
+                    }`}
+                  >
+                    <Clock className="w-3.5 h-3.5 text-brand" />
+                    <span>Request extra time</span>
+                  </button>
+                )}
+              </div>
+            )}
         </div>
 
         {/* Right: Autosave status & Submit Action */}
@@ -563,6 +604,25 @@ export function StudentExamPage() {
               className="text-xs font-bold underline hover:opacity-80"
             >
               Dismiss
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 5-minute Warning Banner: Request Extra Time */}
+      {secondsLeft !== null && secondsLeft <= 300 && secondsLeft > 0 && maxExtensionMins > 0 && !extensionRequest && (
+        <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 pt-3" data-testid="extension-notice-banner">
+          <div className="bg-amber-500/10 border border-amber-500/30 text-amber-500 text-xs font-mono px-4 py-2.5 rounded-2xl flex items-center justify-between shadow-sm">
+            <span className="flex items-center gap-2">
+              <Clock className="w-4 h-4 shrink-0 animate-pulse" />
+              <span>Need more time? Request extra time from your proctor before your window closes.</span>
+            </span>
+            <button
+              type="button"
+              onClick={() => setIsExtensionModalOpen(true)}
+              className="text-xs font-bold underline hover:opacity-80 cursor-pointer ml-3 shrink-0"
+            >
+              Request extra time &rarr;
             </button>
           </div>
         </div>
@@ -918,6 +978,8 @@ export function StudentExamPage() {
         isOpen={isExtensionModalOpen || (secondsLeft === 0 && maxExtensionMins > 0 && sessionStatus === 'IN_PROGRESS')}
         maxExtensionMins={maxExtensionMins}
         existingRequest={extensionRequest}
+        canClose={secondsLeft !== null && secondsLeft > 0}
+        onClose={() => setIsExtensionModalOpen(false)}
         onSubmitExam={() => submitMutation.mutate()}
         onRequestExtension={handleRequestExtension}
         isSubmittingExam={submitMutation.isPending}

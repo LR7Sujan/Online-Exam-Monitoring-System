@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { Router } from 'express';
-import type { RowDataPacket } from 'mysql2/promise';
+import type { RowDataPacket, ResultSetHeader } from 'mysql2/promise';
 import { z } from 'zod';
 import { executeSql, pool, queryRows } from '../config/db.js';
 import { env } from '../config/env.js';
@@ -155,7 +155,8 @@ async function assertSessionAccess(
 ): Promise<ExamSessionRow> {
   const rows = await queryRows<ExamSessionRow[]>(
     `SELECT es.*, e.title AS exam_title, e.duration_minutes, e.min_trust_score, e.max_extension_mins,
-            GREATEST(0, TIMESTAMPDIFF(SECOND, NOW(), es.server_deadline)) AS seconds_remaining
+            GREATEST(0, TIMESTAMPDIFF(SECOND, NOW(), es.server_deadline)) AS seconds_remaining,
+            TIMESTAMPDIFF(SECOND, es.server_deadline, NOW()) AS seconds_overdue
        FROM Exam_Sessions es
        JOIN Exams e ON e.id = es.exam_id
       WHERE es.id = ?
@@ -170,6 +171,24 @@ async function assertSessionAccess(
 
   if (user!.role === 'STUDENT' && session.student_id !== user!.sub) {
     throw new AppError(403, 'FORBIDDEN', 'You do not have access to this exam session.');
+  }
+
+  const graceSeconds = env.EXTENSION_GRACE_SECONDS ?? 180;
+  const overdueSecs = Number(session.seconds_overdue ?? 0);
+  const inGrace = session.status === 'IN_PROGRESS' &&
+    Number(session.max_extension_mins ?? 0) > 0 &&
+    overdueSecs >= 0 &&
+    overdueSecs <= graceSeconds;
+
+  session.in_grace_window = inGrace;
+
+  // Auto-record time_expired_at if past regular deadline
+  if (overdueSecs >= 0 && !session.time_expired_at && session.status === 'IN_PROGRESS') {
+    session.time_expired_at = session.server_deadline;
+    executeSql(
+      'UPDATE Exam_Sessions SET time_expired_at = COALESCE(time_expired_at, server_deadline, NOW()) WHERE id = ? AND time_expired_at IS NULL',
+      [sessionId]
+    ).catch(() => {});
   }
 
   const extRows = await queryRows<TimeExtensionRequestRow[]>(
@@ -354,17 +373,31 @@ sessionsRouter.get(
       );
 
       const row = rows[0];
+      const graceSeconds = env.EXTENSION_GRACE_SECONDS ?? 180;
+      const overdueSecs = Number(session.seconds_overdue ?? 0);
+      const inGrace = Boolean(session.in_grace_window);
+      const remainingSecs = row.status === 'IN_PROGRESS' ? Number(row.seconds_left) : 0;
+      const maxExt = Number(session.max_extension_mins ?? 30);
+      const isEligible = row.status === 'IN_PROGRESS' &&
+        maxExt > 0 &&
+        (remainingSecs <= 600 || inGrace) &&
+        !session.extension_request;
+
       // QA Fix (Sub-Phase 11.3): Expose both camelCase and snake_case aliases for clock & remaining seconds
       sendSuccess(res, {
         sessionId: session.id,
         status: row.status,
         trustScore: Number(row.trust_score),
-        secondsLeft: row.status === 'IN_PROGRESS' ? Number(row.seconds_left) : 0,
-        secondsRemaining: row.status === 'IN_PROGRESS' ? Number(row.seconds_left) : 0,
+        secondsLeft: remainingSecs,
+        secondsRemaining: remainingSecs,
         serverDeadline: row.server_deadline,
         serverNow: row.server_now,
         serverTime: row.server_now,
-        maxExtensionMins: Number(session.max_extension_mins ?? 30),
+        timeExpiredAt: session.time_expired_at ?? null,
+        inGraceWindow: inGrace,
+        graceSecondsRemaining: inGrace ? Math.max(0, graceSeconds - overdueSecs) : 0,
+        extensionEligible: isEligible,
+        maxExtensionMins: maxExt,
         extraMinutesGranted: Number(row.extra_minutes_granted ?? session.extra_minutes_granted ?? 0),
         extensionRequest: session.extension_request ?? null,
       });
@@ -659,19 +692,22 @@ sessionsRouter.post(
           );
         } else if (maxExt > 0 && !extReq) {
           // No extension request made yet and extensions are permitted:
-          // Give 60-second grace window from deadline for student to interact with modal
+          // Give grace window from deadline for student to interact with modal
+          const graceSecs = env.EXTENSION_GRACE_SECONDS ?? 180;
           const [overdueRows] = await queryRows<RowDataPacket[]>(
             `SELECT TIMESTAMPDIFF(SECOND, server_deadline, NOW()) AS overdue_secs
                FROM Exam_Sessions WHERE id = ? LIMIT 1`,
             [sessionId]
           );
           const overdueSecs = Number(overdueRows[0]?.overdue_secs ?? 0);
-          if (overdueSecs < 60) {
+          if (overdueSecs <= graceSecs) {
             sendSuccess(res, {
               sessionId,
               status: refreshed.status,
               trustScore: refreshed.trust_score,
               secondsRemaining: 0,
+              inGraceWindow: true,
+              graceSecondsRemaining: Math.max(0, graceSecs - overdueSecs),
               extensionEligible: true,
               extensionRequest: null,
             });
@@ -727,21 +763,79 @@ sessionsRouter.post(
   requireRole('STUDENT'),
   validate({ params: sessionIdParamSchema, body: requestExtensionSchema }),
   async (req: AuthenticatedRequest, res, next) => {
+    const connection = await pool.getConnection();
     try {
       const { sessionId } = req.params as unknown as z.infer<typeof sessionIdParamSchema>;
       const body = req.body as z.infer<typeof requestExtensionSchema>;
-      const session = await assertSessionAccess(sessionId, req.user);
+      const graceSeconds = env.EXTENSION_GRACE_SECONDS ?? 180;
 
+      await connection.beginTransaction();
+
+      // Row-lock session to prevent race condition with cron or submit
+      const [sessRows] = await connection.query<ExamSessionRow[]>(
+        `SELECT es.*, e.title AS exam_title, e.duration_minutes, e.min_trust_score, e.max_extension_mins,
+                GREATEST(0, TIMESTAMPDIFF(SECOND, NOW(), es.server_deadline)) AS seconds_remaining,
+                TIMESTAMPDIFF(SECOND, es.server_deadline, NOW()) AS seconds_overdue
+           FROM Exam_Sessions es
+           JOIN Exams e ON e.id = es.exam_id
+          WHERE es.id = ?
+          FOR UPDATE`,
+        [sessionId]
+      );
+
+      const session = sessRows[0];
+      if (!session) {
+        await connection.rollback();
+        throw new AppError(404, 'SESSION_NOT_FOUND', 'Exam session not found.');
+      }
+
+      if (req.user!.role === 'STUDENT' && session.student_id !== req.user!.sub) {
+        await connection.rollback();
+        throw new AppError(403, 'FORBIDDEN', 'You do not have access to this exam session.');
+      }
+
+      // Specific terminal/non-in-progress status error handling
+      if (session.status === 'TIMED_OUT') {
+        await connection.rollback();
+        throw new AppError(
+          400,
+          'SESSION_TIMED_OUT',
+          'Your exam session has already timed out. Time extensions can no longer be requested.'
+        );
+      }
+      if (session.status === 'SUBMITTED') {
+        await connection.rollback();
+        throw new AppError(
+          400,
+          'SESSION_ALREADY_SUBMITTED',
+          'Your exam session has already been submitted.'
+        );
+      }
+      if (session.status === 'TERMINATED_CHEATING') {
+        await connection.rollback();
+        throw new AppError(
+          400,
+          'SESSION_TERMINATED',
+          'Exam session terminated due to proctoring violation. Extensions are prohibited.'
+        );
+      }
       if (session.status !== 'IN_PROGRESS') {
-        throw new AppError(400, 'SESSION_NOT_IN_PROGRESS', 'Cannot request time extension for an exam that is not in progress.');
+        await connection.rollback();
+        throw new AppError(
+          400,
+          'SESSION_NOT_IN_PROGRESS',
+          `Cannot request time extension for an exam that is not in progress (current status: ${session.status}).`
+        );
       }
 
       const maxExt = Number(session.max_extension_mins ?? 30);
       if (maxExt <= 0) {
+        await connection.rollback();
         throw new AppError(400, 'EXTENSIONS_DISABLED', 'Time extensions are not permitted for this examination.');
       }
 
       if (body.requestedMinutes > maxExt) {
+        await connection.rollback();
         throw new AppError(
           400,
           'EXCEEDS_MAX_EXTENSION',
@@ -749,16 +843,28 @@ sessionsRouter.post(
         );
       }
 
+      // Extension window check: remaining <= 10 mins (600s) OR within grace window (overdue <= graceSeconds)
       const remainingSecs = Number(session.seconds_remaining ?? 0);
-      if (remainingSecs > 60) {
+      const overdueSecs = Number(session.seconds_overdue ?? 0);
+      const inGrace = overdueSecs >= 0 && overdueSecs <= graceSeconds;
+      const eligibleByTime = remainingSecs <= 600 || inGrace;
+
+      if (!eligibleByTime) {
+        await connection.rollback();
         throw new AppError(
           400,
-          'TIME_NOT_EXPIRED',
-          'Time extension can only be requested when 60 seconds or less remain, or after time has expired.'
+          'NOT_ELIGIBLE_FOR_EXTENSION',
+          'Time extension can only be requested when 10 minutes or less remain, or during the grace window.'
         );
       }
 
-      if (session.extension_request) {
+      // Check existing extension request row-locked
+      const [extRows] = await connection.query<TimeExtensionRequestRow[]>(
+        `SELECT request_id, status FROM Time_Extension_Requests WHERE session_id = ? FOR UPDATE`,
+        [sessionId]
+      );
+      if (extRows.length > 0) {
+        await connection.rollback();
         throw new AppError(
           409,
           'EXTENSION_ALREADY_REQUESTED',
@@ -767,12 +873,21 @@ sessionsRouter.post(
       }
 
       const reasonText = body.reason?.trim() || null;
-      const insertRes = await executeSql(
+      const [insertRes] = await connection.query<ResultSetHeader>(
         `INSERT INTO Time_Extension_Requests (session_id, requested_minutes, reason, status)
          VALUES (?, ?, ?, 'PENDING')`,
         [sessionId, body.requestedMinutes, reasonText]
       );
       const requestId = insertRes.insertId;
+
+      if (overdueSecs >= 0 && !session.time_expired_at) {
+        await connection.query(
+          `UPDATE Exam_Sessions SET time_expired_at = COALESCE(time_expired_at, server_deadline, NOW()) WHERE id = ?`,
+          [sessionId]
+        );
+      }
+
+      await connection.commit();
 
       const userEmail = req.user!.email;
       const userName = req.user!.fullName;
@@ -789,6 +904,7 @@ sessionsRouter.post(
         requestedMinutes: body.requestedMinutes,
         reason: reasonText,
         createdAt: new Date().toISOString(),
+        inGraceWindow: inGrace,
       });
 
       sendSuccess(
@@ -800,11 +916,15 @@ sessionsRouter.post(
           reason: reasonText,
           status: 'PENDING',
           createdAt: new Date().toISOString(),
+          inGraceWindow: inGrace,
         },
         201
       );
     } catch (err) {
+      await connection.rollback().catch(() => {});
       next(err);
+    } finally {
+      connection.release();
     }
   }
 );

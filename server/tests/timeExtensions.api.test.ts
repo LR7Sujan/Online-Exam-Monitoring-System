@@ -151,10 +151,10 @@ describe('Time Extension Requests: API, Security & SQL Invariant Tests', () => {
     expect(extRes.body.error.code).toBe('EXCEEDS_MAX_EXTENSION');
   });
 
-  it('3. Rejects time extension request when more than 60s remain in the exam', async () => {
-    // Set deadline to 5 minutes in the future (> 60s)
+  it('3. Rejects time extension request when more than 10 minutes remain in the exam', async () => {
+    // Set deadline to 20 minutes in the future (> 10 minutes / 600s)
     await executeSql(
-      'UPDATE Exam_Sessions SET server_deadline = DATE_ADD(NOW(), INTERVAL 300 SECOND) WHERE id = ?',
+      'UPDATE Exam_Sessions SET server_deadline = DATE_ADD(NOW(), INTERVAL 1200 SECOND) WHERE id = ?',
       [sharedSessionId]
     );
 
@@ -164,13 +164,13 @@ describe('Time Extension Requests: API, Security & SQL Invariant Tests', () => {
       .send({ requestedMinutes: 5, reason: 'Too early request' });
 
     expect(extRes.status).toBe(400);
-    expect(extRes.body.error.code).toBe('TIME_NOT_EXPIRED');
+    expect(extRes.body.error.code).toBe('NOT_ELIGIBLE_FOR_EXTENSION');
   });
 
-  it('4. Successfully accepts time extension request when time remaining <= 60s', async () => {
-    // Set deadline to 20 seconds remaining
+  it('4. Successfully accepts time extension request when time remaining <= 10 minutes', async () => {
+    // Set deadline to 5 minutes remaining (<= 600s)
     await executeSql(
-      'UPDATE Exam_Sessions SET server_deadline = DATE_ADD(NOW(), INTERVAL 20 SECOND) WHERE id = ?',
+      'UPDATE Exam_Sessions SET server_deadline = DATE_ADD(NOW(), INTERVAL 300 SECOND) WHERE id = ?',
       [sharedSessionId]
     );
 
@@ -459,5 +459,143 @@ describe('Time Extension Requests: API, Security & SQL Invariant Tests', () => {
 
     // Clean up
     await executeSql('DELETE FROM Exams WHERE id = ?', [timeoutExamId]);
+  });
+
+  it('12. SQL grace window acceptance: an exam with max_extension_mins=15 stays IN_PROGRESS through the grace window', async () => {
+    // Create exam with max_extension_mins=15
+    const examRes = await request(app)
+      .post('/api/exams')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        title: 'Grace Window Verification Exam',
+        description: 'Verify session stays IN_PROGRESS through 180s grace window',
+        durationMinutes: 10,
+        minTrustScore: 60,
+        maxExtensionMins: 15,
+        startWindow: new Date(Date.now() - 3600000).toISOString(),
+        endWindow: new Date(Date.now() + 86400000).toISOString(),
+        isPublished: true,
+        questions: [
+          {
+            questionText: 'Test question?',
+            optionA: '1',
+            optionB: '2',
+            optionC: '3',
+            optionD: '4',
+            correctOption: 'A',
+            marks: 5,
+          },
+        ],
+      });
+    const gwExamId = examRes.body.data.id;
+
+    const startRes = await request(app)
+      .post('/api/sessions/start')
+      .set('Authorization', `Bearer ${studentToken}`)
+      .send({ examId: gwExamId });
+    const gwSessionId = startRes.body.data.id;
+
+    // Fast-forward so deadline passed 30 seconds ago (well inside 180s grace window)
+    await executeSql(
+      `UPDATE Exam_Sessions
+          SET started_at = DATE_SUB(NOW(), INTERVAL 11 MINUTE),
+              server_deadline = DATE_SUB(NOW(), INTERVAL 30 SECOND)
+        WHERE id = ?`,
+      [gwSessionId]
+    );
+
+    // Run timeout sweep with 180s grace
+    await pool.query('CALL sp_AutoTimeoutExpiredSessionsWithGrace(180)');
+
+    // Verify session is still IN_PROGRESS and time_expired_at is recorded
+    const rows = await queryRows<RowDataPacket[]>(
+      'SELECT status, time_expired_at FROM Exam_Sessions WHERE id = ?',
+      [gwSessionId]
+    );
+    expect(rows[0].status).toBe('IN_PROGRESS');
+    expect(rows[0].time_expired_at).not.toBeNull();
+
+    // Verify time-left API returns inGraceWindow = true
+    const timeLeftRes = await request(app)
+      .get(`/api/sessions/${gwSessionId}/time-left`)
+      .set('Authorization', `Bearer ${studentToken}`);
+    expect(timeLeftRes.status).toBe(200);
+    expect(timeLeftRes.body.data.inGraceWindow).toBe(true);
+    expect(timeLeftRes.body.data.secondsLeft).toBe(0);
+
+    // Verify requesting extension inside grace window succeeds!
+    const reqExtRes = await request(app)
+      .post(`/api/sessions/${gwSessionId}/extension`)
+      .set('Authorization', `Bearer ${studentToken}`)
+      .send({ requestedMinutes: 10, reason: 'Requesting inside grace window' });
+    expect(reqExtRes.status).toBe(201);
+    expect(reqExtRes.body.data.status).toBe('PENDING');
+
+    // Clean up
+    await executeSql('DELETE FROM Exams WHERE id = ?', [gwExamId]);
+  });
+
+  it('13. SQL grace window acceptance: session times out at deadline + grace (180s)', async () => {
+    const examRes = await request(app)
+      .post('/api/exams')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        title: 'Grace Window Expiry Exam',
+        description: 'Verify session times out after 180s grace window',
+        durationMinutes: 10,
+        minTrustScore: 60,
+        maxExtensionMins: 15,
+        startWindow: new Date(Date.now() - 3600000).toISOString(),
+        endWindow: new Date(Date.now() + 86400000).toISOString(),
+        isPublished: true,
+        questions: [
+          {
+            questionText: 'Test question 2?',
+            optionA: '1',
+            optionB: '2',
+            optionC: '3',
+            optionD: '4',
+            correctOption: 'A',
+            marks: 5,
+          },
+        ],
+      });
+    const gwExamId = examRes.body.data.id;
+
+    const startRes = await request(app)
+      .post('/api/sessions/start')
+      .set('Authorization', `Bearer ${studentToken}`)
+      .send({ examId: gwExamId });
+    const gwSessionId = startRes.body.data.id;
+
+    // Fast-forward so deadline passed 200 seconds ago (> 180s grace)
+    await executeSql(
+      `UPDATE Exam_Sessions
+          SET started_at = DATE_SUB(NOW(), INTERVAL 14 MINUTE),
+              server_deadline = DATE_SUB(NOW(), INTERVAL 200 SECOND)
+        WHERE id = ?`,
+      [gwSessionId]
+    );
+
+    // Run timeout sweep with 180s grace
+    await pool.query('CALL sp_AutoTimeoutExpiredSessionsWithGrace(180)');
+
+    // Verify session transitioned to TIMED_OUT
+    const rows = await queryRows<RowDataPacket[]>(
+      'SELECT status FROM Exam_Sessions WHERE id = ?',
+      [gwSessionId]
+    );
+    expect(rows[0].status).toBe('TIMED_OUT');
+
+    // 14. Requesting after timeout returns error
+    const postTimeoutRes = await request(app)
+      .post(`/api/sessions/${gwSessionId}/extension`)
+      .set('Authorization', `Bearer ${studentToken}`)
+      .send({ requestedMinutes: 5, reason: 'Requesting after timeout' });
+    expect(postTimeoutRes.status).toBe(400);
+    expect(postTimeoutRes.body.error.code).toBe('SESSION_TIMED_OUT');
+
+    // Clean up
+    await executeSql('DELETE FROM Exams WHERE id = ?', [gwExamId]);
   });
 });

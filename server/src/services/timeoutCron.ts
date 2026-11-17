@@ -1,11 +1,13 @@
 import type { RowDataPacket } from 'mysql2/promise';
 import cron, { type ScheduledTask } from 'node-cron';
 import { pool, queryRows } from '../config/db.js';
+import { env } from '../config/env.js';
 import { emitExamSubmitted } from '../realtime/socket.js';
 
 let task: ScheduledTask | null = null;
 
 export async function runAutoTimeoutSweep(): Promise<number> {
+  const graceSeconds = env.EXTENSION_GRACE_SECONDS ?? 180;
   const beforeRows = await queryRows<RowDataPacket[]>(
     `SELECT es.id, es.student_id, es.exam_id
        FROM Exam_Sessions es
@@ -13,13 +15,21 @@ export async function runAutoTimeoutSweep(): Promise<number> {
        LEFT JOIN Time_Extension_Requests ter
          ON ter.session_id = es.id
         AND ter.status = 'PENDING'
-        AND ter.created_at >= DATE_SUB(NOW(), INTERVAL 3 MINUTE)
+        AND ter.created_at >= DATE_SUB(NOW(), INTERVAL ? SECOND)
       WHERE es.status = 'IN_PROGRESS'
         AND ter.request_id IS NULL
-        AND NOW() > DATE_ADD(es.started_at, INTERVAL (e.duration_minutes + es.extra_minutes_granted) MINUTE)`
+        AND (
+          (COALESCE(e.max_extension_mins, 0) > 0 AND NOW() > DATE_ADD(es.server_deadline, INTERVAL ? SECOND))
+          OR
+          (COALESCE(e.max_extension_mins, 0) <= 0 AND NOW() > es.server_deadline)
+        )`,
+    [graceSeconds, graceSeconds]
   );
 
-  const [resultSets] = await pool.query<RowDataPacket[][]>('CALL sp_AutoTimeoutExpiredSessions()');
+  const [resultSets] = await pool.query<RowDataPacket[][]>(
+    'CALL sp_AutoTimeoutExpiredSessionsWithGrace(?)',
+    [graceSeconds]
+  );
   const lastSet = resultSets[resultSets.length - 1];
   const processed = Number(lastSet?.[0]?.timed_out_sessions_processed ?? 0);
 

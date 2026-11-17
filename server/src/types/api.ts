@@ -78,7 +78,10 @@ export interface ExamSessionRow extends RowDataPacket {
   server_deadline: Date;
   ended_at: Date | null;
   last_heartbeat_at: Date;
+  time_expired_at?: Date | null;
   seconds_remaining?: number;
+  seconds_overdue?: number;
+  in_grace_window?: boolean;
   exam_title?: string;
   duration_minutes?: number;
   min_trust_score?: number;

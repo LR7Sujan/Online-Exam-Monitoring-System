@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Clock, Send, ShieldAlert, XCircle } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { NeonButton } from '../ui/NeonButton';
+import { ApiClientError } from '../../lib/api';
 import type { TimeExtensionRequest } from '../../types/domain';
 
 interface TimeExtensionModalProps {
@@ -11,6 +12,8 @@ interface TimeExtensionModalProps {
   onSubmitExam: () => void;
   onRequestExtension: (minutes: number, reason?: string) => Promise<void>;
   isSubmittingExam?: boolean;
+  onClose?: () => void;
+  canClose?: boolean;
 }
 
 export function TimeExtensionModal({
@@ -20,13 +23,24 @@ export function TimeExtensionModal({
   onSubmitExam,
   onRequestExtension,
   isSubmittingExam = false,
+  onClose,
+  canClose = false,
 }: TimeExtensionModalProps) {
   const [requestedMinutes, setRequestedMinutes] = useState<number>(
     Math.min(10, Math.max(1, maxExtensionMins))
   );
   const [reason, setReason] = useState<string>('');
   const [isSending, setIsSending] = useState<boolean>(false);
+  const [errorCode, setErrorCode] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Clear errors when modal opens or closes
+  useEffect(() => {
+    if (isOpen) {
+      setError(null);
+      setErrorCode(null);
+    }
+  }, [isOpen]);
 
   // 180s auto-expiry countdown for pending state
   const [secondsRemainingInExpiry, setSecondsRemainingInExpiry] = useState<number>(180);
@@ -56,6 +70,7 @@ export function TimeExtensionModal({
 
   const handleSend = async () => {
     setError(null);
+    setErrorCode(null);
     if (requestedMinutes < 1 || requestedMinutes > maxExtensionMins) {
       setError(`Please request between 1 and ${maxExtensionMins} minutes.`);
       return;
@@ -64,8 +79,26 @@ export function TimeExtensionModal({
       setIsSending(true);
       await onRequestExtension(requestedMinutes, reason.trim() || undefined);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Failed to submit extension request.';
-      setError(msg);
+      if (err instanceof ApiClientError) {
+        setErrorCode(err.code);
+        if (err.code === 'SESSION_TIMED_OUT' || err.code === 'SESSION_NOT_IN_PROGRESS') {
+          setError('Your exam session has timed out. Extension requests cannot be accepted. Please submit your assessment now.');
+        } else if (err.code === 'NOT_ELIGIBLE_FOR_EXTENSION') {
+          setError('Time extensions can only be requested when 10 minutes or fewer remain in your exam.');
+        } else if (err.code === 'EXCEEDS_MAX_EXTENSION') {
+          setError(`Requested time exceeds maximum allowed extension (${maxExtensionMins} minutes).`);
+        } else if (err.code === 'EXTENSIONS_DISABLED') {
+          setError('Time extensions are not enabled for this examination.');
+        } else if (err.code === 'EXTENSION_ALREADY_REQUESTED') {
+          setError('You have already submitted an extension request for this examination.');
+        } else {
+          setError(err.message || 'Failed to submit extension request.');
+        }
+      } else if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('Failed to submit extension request.');
+      }
     } finally {
       setIsSending(false);
     }
@@ -77,13 +110,21 @@ export function TimeExtensionModal({
     return `${m}:${String(s).padStart(2, '0')}`;
   };
 
+  const handleModalClose = () => {
+    if (canClose && onClose) {
+      onClose();
+    } else {
+      onSubmitExam();
+    }
+  };
+
   return (
     <Modal
       isOpen={isOpen}
-      onClose={onSubmitExam}
+      onClose={handleModalClose}
       size="md"
-      showCloseButton={false}
-      closeOnBackdropClick={false}
+      showCloseButton={canClose}
+      closeOnBackdropClick={canClose}
     >
       <div className="relative overflow-hidden space-y-5">
         {/* Subtle Ambient Glow */}
@@ -171,7 +212,7 @@ export function TimeExtensionModal({
             </div>
           </div>
         ) : (
-          /* 3. STATE: INITIAL PROMPT ("Time is up. Do you need extra time?") */
+          /* 3. STATE: INITIAL PROMPT ("Time is up. Do you need extra time?" or HUD proactive request) */
           <div className="space-y-5">
             <div className="flex items-start gap-4">
               <div className="rounded-2xl border border-amber-500/40 bg-amber-500/10 p-3 text-amber-500 shrink-0">
@@ -179,19 +220,35 @@ export function TimeExtensionModal({
               </div>
               <div className="space-y-1">
                 <h3 className="text-lg font-bold text-foreground">
-                  Time is up. Do you need extra time?
+                  {canClose ? 'Request Extra Time' : 'Time is up. Do you need extra time?'}
                 </h3>
                 <p className="text-xs text-muted-foreground font-mono leading-relaxed">
-                  Your regular time has expired. You may submit your assessment now, or request up to{' '}
-                  <strong className="text-foreground">{maxExtensionMins} minutes</strong> of additional time from your proctor.
+                  {canClose
+                    ? `You may request up to ${maxExtensionMins} minutes of additional time from your proctor before your window closes.`
+                    : `Your regular time has expired. You may submit your assessment now, or request up to ${maxExtensionMins} minutes of additional time from your proctor.`}
                 </p>
               </div>
             </div>
 
             {error && (
-              <div className="rounded-xl border border-rose-500/40 bg-rose-500/10 p-3 text-xs font-mono text-rose-500 flex items-center gap-2">
-                <ShieldAlert className="w-4 h-4 shrink-0" />
-                <span>{error}</span>
+              <div className="rounded-xl border border-rose-500/40 bg-rose-500/10 p-3 text-xs font-mono text-rose-500 flex flex-col gap-2">
+                <div className="flex items-center gap-2">
+                  <ShieldAlert className="w-4 h-4 shrink-0" />
+                  <span>{error}</span>
+                </div>
+                {(errorCode === 'SESSION_TIMED_OUT' || errorCode === 'SESSION_NOT_IN_PROGRESS') && (
+                  <div className="pt-1">
+                    <NeonButton
+                      variant="primary"
+                      size="sm"
+                      onClick={onSubmitExam}
+                      isLoading={isSubmittingExam}
+                      className="w-full sm:w-auto"
+                    >
+                      Submit Exam Now
+                    </NeonButton>
+                  </div>
+                )}
               </div>
             )}
 
@@ -208,7 +265,7 @@ export function TimeExtensionModal({
                         key={mins}
                         type="button"
                         onClick={() => setRequestedMinutes(mins)}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-mono font-medium transition-colors ${
+                        className={`px-3 py-1.5 rounded-xl text-xs font-mono font-medium transition-colors cursor-pointer ${
                           requestedMinutes === mins
                             ? 'bg-brand text-brand-foreground shadow-sm'
                             : 'bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground'
@@ -248,21 +305,33 @@ export function TimeExtensionModal({
             </div>
 
             <div className="flex flex-col sm:flex-row items-center justify-end gap-3 pt-2 border-t border-border">
-              <NeonButton
-                variant="secondary"
-                size="md"
-                onClick={onSubmitExam}
-                isLoading={isSubmittingExam}
-                className="w-full sm:w-auto"
-              >
-                Submit Now
-              </NeonButton>
+              {canClose ? (
+                <NeonButton
+                  variant="secondary"
+                  size="md"
+                  onClick={handleModalClose}
+                  className="w-full sm:w-auto"
+                >
+                  Cancel
+                </NeonButton>
+              ) : (
+                <NeonButton
+                  variant="secondary"
+                  size="md"
+                  onClick={onSubmitExam}
+                  isLoading={isSubmittingExam}
+                  className="w-full sm:w-auto"
+                >
+                  Submit Now
+                </NeonButton>
+              )}
               <NeonButton
                 variant="primary"
                 size="md"
                 leftIcon={<Send className="w-4 h-4" />}
                 onClick={handleSend}
                 isLoading={isSending}
+                disabled={Boolean(errorCode === 'SESSION_TIMED_OUT' || errorCode === 'SESSION_NOT_IN_PROGRESS')}
                 className="w-full sm:w-auto"
               >
                 Request Extra Time
