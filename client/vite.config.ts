@@ -1,6 +1,11 @@
 import react from '@vitejs/plugin-react';
 import { defineConfig, loadEnv } from 'vite';
 
+declare const process: {
+  cwd: () => string;
+  env: Record<string, string | undefined>;
+};
+
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   const port = Number(env.VITE_PORT || process.env.PORT || 5173);

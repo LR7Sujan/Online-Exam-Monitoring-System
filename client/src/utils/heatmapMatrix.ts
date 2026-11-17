@@ -20,6 +20,8 @@ export const KNOWN_VIOLATION_TYPES: ViolationTypeMeta[] = [
   { code: 'NO_FACE', label: 'No Face Detected', severity: 'HIGH' },
   { code: 'MULTIPLE_FACES', label: 'Multiple Faces', severity: 'HIGH' },
   { code: 'DEVTOOLS_OPEN', label: 'DevTools Opened', severity: 'CRITICAL' },
+  { code: 'PHONE_DETECTED', label: 'Mobile Phone Detected', severity: 'HIGH' },
+  { code: 'VOICE_DETECTED', label: 'Voice / Speech Detected', severity: 'MEDIUM' },
 ];
 
 export interface HeatmapRowData {

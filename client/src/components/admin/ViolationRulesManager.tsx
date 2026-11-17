@@ -1,13 +1,22 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
+  AlertTriangle,
+  Camera,
   CheckCircle2,
+  Copy,
+  Maximize2,
+  Mic,
   Minus,
+  Monitor,
+  Phone,
   Plus,
   RotateCcw,
   Scale,
   Sliders,
   Sparkles,
+  Terminal,
+  Users,
 } from 'lucide-react';
 import { SeverityBadge } from '../ui/SeverityBadge';
 import { TrustRing } from '../ui/TrustRing';
@@ -15,6 +24,29 @@ import { Skeleton } from '../ui/Skeleton';
 import { ErrorState } from '../ui/EmptyState';
 import { api } from '../../lib/api';
 import type { ViolationType } from '../../types/domain';
+
+function getViolationIcon(code: string) {
+  switch (code) {
+    case 'PHONE_DETECTED':
+      return <Phone className="w-3.5 h-3.5 text-rose-400 shrink-0" />;
+    case 'VOICE_DETECTED':
+      return <Mic className="w-3.5 h-3.5 text-amber-400 shrink-0" />;
+    case 'MULTIPLE_FACES':
+      return <Users className="w-3.5 h-3.5 text-purple-400 shrink-0" />;
+    case 'NO_FACE':
+      return <Camera className="w-3.5 h-3.5 text-sky-400 shrink-0" />;
+    case 'TAB_SWITCH':
+      return <Monitor className="w-3.5 h-3.5 text-blue-400 shrink-0" />;
+    case 'FULLSCREEN_EXIT':
+      return <Maximize2 className="w-3.5 h-3.5 text-orange-400 shrink-0" />;
+    case 'COPY_PASTE':
+      return <Copy className="w-3.5 h-3.5 text-teal-400 shrink-0" />;
+    case 'DEVTOOLS_OPEN':
+      return <Terminal className="w-3.5 h-3.5 text-red-400 shrink-0" />;
+    default:
+      return <AlertTriangle className="w-3.5 h-3.5 text-muted-foreground shrink-0" />;
+  }
+}
 
 export function ViolationRulesManager() {
   const queryClient = useQueryClient();
@@ -32,6 +64,8 @@ export function ViolationRulesManager() {
     NO_FACE: 1,
     MULTIPLE_FACES: 0,
     DEVTOOLS_OPEN: 0,
+    PHONE_DETECTED: 0,
+    VOICE_DETECTED: 0,
   });
 
   // Query Violation Types from API
@@ -96,6 +130,8 @@ export function ViolationRulesManager() {
       NO_FACE: 1,
       MULTIPLE_FACES: 0,
       DEVTOOLS_OPEN: 0,
+      PHONE_DETECTED: 0,
+      VOICE_DETECTED: 0,
     });
   };
 
@@ -174,8 +210,13 @@ export function ViolationRulesManager() {
                   return (
                     <tr key={vt.id} className="hover:bg-muted/40 transition-colors">
                       <td className="p-3">
-                        <span className="font-medium text-foreground">{vt.code}</span>
-                        <div className="text-[10px] text-muted-foreground">{vt.label}</div>
+                        <div className="flex items-center gap-2">
+                          {getViolationIcon(vt.code)}
+                          <div>
+                            <span className="font-medium text-foreground">{vt.code}</span>
+                            <div className="text-[10px] text-muted-foreground">{vt.label}</div>
+                          </div>
+                        </div>
                       </td>
 
                       <td className="p-3">
@@ -325,9 +366,10 @@ export function ViolationRulesManager() {
                   key={vt.code}
                   className="flex items-center justify-between rounded-xl border border-border bg-background p-2.5"
                 >
-                  <div className="min-w-0 pr-2 truncate">
-                    <span className="font-medium text-foreground">{vt.code}</span>
-                    <span className="text-[10px] text-rose-500 ml-1.5 font-semibold">(-{penalty} pts)</span>
+                  <div className="flex items-center gap-2 min-w-0 pr-2 truncate">
+                    {getViolationIcon(vt.code)}
+                    <span className="font-medium text-foreground truncate">{vt.code}</span>
+                    <span className="text-[10px] text-rose-500 shrink-0 font-semibold">(-{penalty} pts)</span>
                   </div>
 
                   <div className="flex items-center gap-2 shrink-0">

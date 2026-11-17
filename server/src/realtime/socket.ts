@@ -183,3 +183,24 @@ export function emitExtensionDecided(
   ioInstance.to(`user:${studentId}`).to(`session:${sessionId}`).emit('extension:decided', payload);
   emitToProctors('extension:decided', payload);
 }
+
+export function emitWarningIssued(
+  studentId: number,
+  sessionId: number,
+  payload: Record<string, unknown>
+): void {
+  if (!ioInstance) return;
+  emitToProctors('warning:issued', payload);
+  ioInstance.to(`user:${studentId}`).to(`session:${sessionId}`).emit('warning:issued', payload);
+}
+
+export function emitWarningAcked(
+  studentId: number,
+  sessionId: number,
+  payload: Record<string, unknown>
+): void {
+  if (!ioInstance) return;
+  emitToProctors('warning:acked', payload);
+  ioInstance.to(`user:${studentId}`).to(`session:${sessionId}`).emit('warning:acked', payload);
+}
+

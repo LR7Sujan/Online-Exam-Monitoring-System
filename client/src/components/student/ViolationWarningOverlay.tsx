@@ -156,6 +156,11 @@ export function ViolationWarningOverlay({
                 <h3 className="text-xl font-bold tracking-tight text-foreground font-mono">
                   {warning.violationCode?.replace(/_/g, ' ') ?? 'UNAUTHORIZED ACTION'}
                 </h3>
+                {warning.warning?.message && (
+                  <p className="text-xs font-medium text-foreground bg-rose-500/10 border border-rose-500/20 rounded-xl p-2.5 max-w-sm mx-auto">
+                    {warning.warning.message}
+                  </p>
+                )}
                 <p className="text-xs text-muted-foreground">
                   InnoDB penalty trigger applied:{' '}
                   <span className="font-bold text-rose-500 font-mono">

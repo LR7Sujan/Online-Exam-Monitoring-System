@@ -18,6 +18,20 @@ export interface ViolationReportResponse {
   sessionStatus?: SessionStatus;
   isTerminated?: boolean;
   debounced?: boolean;
+  ignored?: boolean;
+  reason?: string;
+  warning?: {
+    warningId: number;
+    sessionId: number;
+    logId: number;
+    violationCode: string;
+    violationLabel?: string;
+    message: string;
+    penaltyPoints: number;
+    trustScoreAfter: number;
+    warningCount: number;
+    issuedAt: string;
+  };
 }
 
 interface UseProctoringOptions {
@@ -90,7 +104,7 @@ export function useProctoring({
           }
         );
 
-        if (res.debounced) {
+        if (res.debounced || res.ignored) {
           return;
         }
 
@@ -118,9 +132,17 @@ export function useProctoring({
     [enabled, sessionId, onViolationRecorded, onTerminated]
   );
 
-  const clearWarning = useCallback(() => {
+  const clearWarning = useCallback(async () => {
+    const warningId = activeWarning?.warning?.warningId;
     setActiveWarning(null);
-  }, []);
+    if (sessionId && warningId) {
+      try {
+        await api.post(`/sessions/${sessionId}/warnings/${warningId}/ack`);
+      } catch (err) {
+        console.warn('[Proctoring] Failed to acknowledge warning:', err);
+      }
+    }
+  }, [sessionId, activeWarning]);
 
   const requestFullscreen = useCallback(async () => {
     try {

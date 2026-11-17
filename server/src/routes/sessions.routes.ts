@@ -14,17 +14,24 @@ import {
   emitSessionTerminated,
   emitSessionUpdate,
   emitViolationNew,
+  emitWarningAcked,
+  emitWarningIssued,
 } from '../realtime/socket.js';
 import {
   shouldDebounceViolation,
   violationRateLimiter,
 } from '../services/violationGuard.js';
-import type { ExamSessionRow, ResultRow, TimeExtensionRequestRow, ViolationTypeRow } from '../types/api.js';
+import type { ExamSessionRow, ResultRow, SessionWarningRow, TimeExtensionRequestRow, ViolationTypeRow } from '../types/api.js';
 import { AppError } from '../utils/errors.js';
 import { sendSuccess } from '../utils/response.js';
 import { extractClientIp, startOrResumeExamSession } from './exams.routes.js';
 
 export const sessionsRouter = Router();
+
+const warningIdParamSchema = z.object({
+  sessionId: z.coerce.number().int().positive(),
+  warningId: z.coerce.number().int().positive(),
+});
 
 const startSessionSchema = z.object({
   examId: z.coerce.number().int().positive(),
@@ -156,7 +163,8 @@ async function assertSessionAccess(
   const rows = await queryRows<ExamSessionRow[]>(
     `SELECT es.*, e.title AS exam_title, e.duration_minutes, e.min_trust_score, e.max_extension_mins,
             GREATEST(0, TIMESTAMPDIFF(SECOND, NOW(), es.server_deadline)) AS seconds_remaining,
-            TIMESTAMPDIFF(SECOND, es.server_deadline, NOW()) AS seconds_overdue
+            TIMESTAMPDIFF(SECOND, es.server_deadline, NOW()) AS seconds_overdue,
+            TIMESTAMPDIFF(SECOND, es.last_warning_ack_at, NOW()) AS seconds_since_ack
        FROM Exam_Sessions es
        JOIN Exams e ON e.id = es.exam_id
       WHERE es.id = ?
@@ -491,7 +499,7 @@ sessionsRouter.post(
   handleUpsertAnswer
 );
 
-// POST /api/sessions/:sessionId/violation — rate-limited + 3s debounced + trigger-enforced
+// POST /api/sessions/:sessionId/violation — rate-limited + 3s debounced + trigger-enforced + warning gated
 sessionsRouter.post(
   '/:sessionId/violation',
   requireAuth,
@@ -499,6 +507,7 @@ sessionsRouter.post(
   violationRateLimiter,
   validate({ params: sessionIdParamSchema, body: reportViolationSchema }),
   async (req: AuthenticatedRequest, res, next) => {
+    let connection: Awaited<ReturnType<typeof pool.getConnection>> | null = null;
     try {
       const { sessionId } = req.params as unknown as z.infer<typeof sessionIdParamSchema>;
       const body = req.body as z.infer<typeof reportViolationSchema>;
@@ -540,29 +549,137 @@ sessionsRouter.post(
         return;
       }
 
+      // Fast check 1: Warning Gate - unacknowledged warning pending
+      if (session.pending_warning_log_id !== null && session.pending_warning_log_id !== undefined) {
+        sendSuccess(res, {
+          ignored: true,
+          reason: 'WARNING_PENDING',
+          sessionId,
+          code: vType.code,
+          trust_score: session.trust_score,
+          trustScore: session.trust_score,
+          status: session.status,
+          minTrustScore: session.min_trust_score ?? 50,
+          pendingWarningLogId: session.pending_warning_log_id,
+        });
+        return;
+      }
+
+      // Fast check 2: Warning Grace Window - within WARNING_GRACE_SECONDS after ack
+      const graceSeconds = env.WARNING_GRACE_SECONDS ?? 5;
+      const secondsSinceAck =
+        session.seconds_since_ack !== null && session.seconds_since_ack !== undefined
+          ? Number(session.seconds_since_ack)
+          : session.last_warning_ack_at
+            ? (Date.now() - new Date(session.last_warning_ack_at).getTime()) / 1000
+            : null;
+
+      if (secondsSinceAck !== null && secondsSinceAck >= 0 && secondsSinceAck < graceSeconds) {
+        sendSuccess(res, {
+          ignored: true,
+          reason: 'WARNING_GRACE',
+          sessionId,
+          code: vType.code,
+          trust_score: session.trust_score,
+          trustScore: session.trust_score,
+          status: session.status,
+          minTrustScore: session.min_trust_score ?? 50,
+          graceSecondsRemaining: Math.max(0, Math.ceil(graceSeconds - secondsSinceAck)),
+        });
+        return;
+      }
+
       const evidencePayload = JSON.stringify({
         ...(body.evidenceMeta ?? {}),
         ...(savedSnapshotUrl ? { snapshot_url: savedSnapshotUrl, snapshotUrl: savedSnapshotUrl } : {}),
       });
 
-      const insertRes = await executeSql(
+      connection = await pool.getConnection();
+      await connection.beginTransaction();
+
+      // Row-lock session to check status and concurrency
+      const [lockedRows] = await connection.query<ExamSessionRow[]>(
+        `SELECT es.*, e.min_trust_score, e.title AS exam_title,
+                TIMESTAMPDIFF(SECOND, es.last_warning_ack_at, NOW()) AS seconds_since_ack
+           FROM Exam_Sessions es
+           JOIN Exams e ON e.id = es.exam_id
+          WHERE es.id = ?
+          FOR UPDATE`,
+        [sessionId]
+      );
+      const lockedSession = lockedRows[0];
+      if (!lockedSession) {
+        await connection.rollback();
+        throw new AppError(404, 'SESSION_NOT_FOUND', 'Exam session not found.');
+      }
+
+      if (lockedSession.status !== 'IN_PROGRESS') {
+        await connection.rollback();
+        sendSuccess(res, {
+          ignored: true,
+          reason: 'SESSION_NOT_IN_PROGRESS',
+          sessionId,
+          status: lockedSession.status,
+          trust_score: lockedSession.trust_score,
+        });
+        return;
+      }
+
+      // Concurrency check on warning gate
+      if (lockedSession.pending_warning_log_id !== null && lockedSession.pending_warning_log_id !== undefined) {
+        await connection.rollback();
+        sendSuccess(res, {
+          ignored: true,
+          reason: 'WARNING_PENDING',
+          sessionId,
+          code: vType.code,
+          trust_score: lockedSession.trust_score,
+          status: lockedSession.status,
+          pendingWarningLogId: lockedSession.pending_warning_log_id,
+        });
+        return;
+      }
+
+      const lockedSinceAck =
+        lockedSession.seconds_since_ack !== null && lockedSession.seconds_since_ack !== undefined
+          ? Number(lockedSession.seconds_since_ack)
+          : lockedSession.last_warning_ack_at
+            ? (Date.now() - new Date(lockedSession.last_warning_ack_at).getTime()) / 1000
+            : null;
+
+      if (lockedSinceAck !== null && lockedSinceAck >= 0 && lockedSinceAck < graceSeconds) {
+        await connection.rollback();
+        sendSuccess(res, {
+          ignored: true,
+          reason: 'WARNING_GRACE',
+          sessionId,
+          code: vType.code,
+          trust_score: lockedSession.trust_score,
+          status: lockedSession.status,
+          graceSecondsRemaining: Math.max(0, Math.ceil(graceSeconds - lockedSinceAck)),
+        });
+        return;
+      }
+
+      const [insertResult] = await connection.query<ResultSetHeader>(
         `INSERT INTO Proctoring_Logs (session_id, violation_type_id, evidence_meta, snapshot_url)
          VALUES (?, ?, ?, ?)`,
         [sessionId, vType.id, evidencePayload, savedSnapshotUrl]
       );
+      const logId = insertResult.insertId;
 
-      const updatedRows = await queryRows<ExamSessionRow[]>(
+      // Query updated session state after trigger deduction
+      const [updatedRows] = await connection.query<ExamSessionRow[]>(
         `SELECT es.*, e.min_trust_score, e.title AS exam_title
            FROM Exam_Sessions es
            JOIN Exams e ON e.id = es.exam_id
-          WHERE es.id = ?
-          LIMIT 1`,
+          WHERE es.id = ?`,
         [sessionId]
       );
       const updated = updatedRows[0];
 
       const basePayload = {
-        logId: insertRes.insertId,
+        logId,
         sessionId,
         examId: updated.exam_id,
         studentId: updated.student_id,
@@ -581,19 +698,21 @@ sessionsRouter.post(
         occurredAt: new Date().toISOString(),
       };
 
-      emitViolationNew(updated.student_id, sessionId, basePayload, {
-        sessionId,
-        trust_score: updated.trust_score,
-        status: updated.status,
-      });
-
       let gradedResult = null;
       if (updated.status === 'TERMINATED_CHEATING') {
+        await connection.commit();
+
         const [resultSets] = await pool.query<RowDataPacket[][]>(
           'CALL sp_SubmitAndGradeExam(?, ?)',
           [sessionId, 'AUTO_TERMINATED']
         );
         gradedResult = resultSets[0]?.[0] ?? null;
+
+        emitViolationNew(updated.student_id, sessionId, basePayload, {
+          sessionId,
+          trust_score: updated.trust_score,
+          status: updated.status,
+        });
 
         emitSessionTerminated(
           updated.student_id,
@@ -606,12 +725,84 @@ sessionsRouter.post(
             reason: vType.code,
           }
         );
+
+        sendSuccess(
+          res,
+          {
+            logId,
+            code: vType.code,
+            penaltyApplied: vType.penalty_points,
+            trust_score: updated.trust_score,
+            trustScore: updated.trust_score,
+            minTrustScore: updated.min_trust_score,
+            status: updated.status,
+            snapshot_url: savedSnapshotUrl,
+            snapshotUrl: savedSnapshotUrl,
+            debounced: false,
+            result: gradedResult,
+          },
+          201
+        );
+        return;
       }
+
+      // Generate human-friendly warning message
+      const warningMessages: Record<string, string> = {
+        PHONE_DETECTED: 'Mobile phone visible in camera frame. Keep all mobile devices out of view.',
+        VOICE_DETECTED: 'Sustained speech detected on microphone. Maintain a quiet testing environment.',
+        MULTIPLE_FACES: 'Multiple faces detected in camera feed. Ensure you are alone during the assessment.',
+        NO_FACE: 'No face detected in camera view. Ensure your camera is centered and unobstructed.',
+        TAB_SWITCH: 'Tab or window switch detected. Please remain on the exam screen.',
+        FULLSCREEN_EXIT: 'Full-screen mode exited. Return to full-screen mode immediately.',
+        COPY_PASTE: 'Clipboard copy or paste attempt intercepted. External copying is prohibited.',
+        DEVTOOLS_OPEN: 'Developer tools detected. Close inspect and devtools immediately.',
+      };
+      const warningMessage =
+        warningMessages[vType.code] ?? `${vType.label}: Violation detected. Please adhere to proctoring guidelines.`;
+
+      const [warningInsert] = await connection.query<ResultSetHeader>(
+        `INSERT INTO Session_Warnings (session_id, log_id, violation_code, message, penalty_points, trust_score_after, issued_at)
+         VALUES (?, ?, ?, ?, ?, ?, NOW())`,
+        [sessionId, logId, vType.code, warningMessage, vType.penalty_points, updated.trust_score]
+      );
+      const warningId = warningInsert.insertId;
+
+      await connection.query(
+        `UPDATE Exam_Sessions
+            SET pending_warning_log_id = ?,
+                warning_count = warning_count + 1
+          WHERE id = ?`,
+        [logId, sessionId]
+      );
+
+      await connection.commit();
+
+      const newWarningCount = (lockedSession.warning_count ?? 0) + 1;
+      const warningPayload = {
+        warningId,
+        sessionId,
+        logId,
+        violationCode: vType.code,
+        violationLabel: vType.label,
+        message: warningMessage,
+        penaltyPoints: vType.penalty_points,
+        trustScoreAfter: updated.trust_score,
+        warningCount: newWarningCount,
+        issuedAt: new Date().toISOString(),
+      };
+
+      emitViolationNew(updated.student_id, sessionId, basePayload, {
+        sessionId,
+        trust_score: updated.trust_score,
+        status: updated.status,
+      });
+
+      emitWarningIssued(updated.student_id, sessionId, warningPayload);
 
       sendSuccess(
         res,
         {
-          logId: insertRes.insertId,
+          logId,
           code: vType.code,
           penaltyApplied: vType.penalty_points,
           trust_score: updated.trust_score,
@@ -621,10 +812,126 @@ sessionsRouter.post(
           snapshot_url: savedSnapshotUrl,
           snapshotUrl: savedSnapshotUrl,
           debounced: false,
-          result: gradedResult,
+          warning: warningPayload,
         },
         201
       );
+    } catch (err) {
+      if (connection) {
+        await connection.rollback().catch(() => {});
+      }
+      next(err);
+    } finally {
+      if (connection) {
+        connection.release();
+      }
+    }
+  }
+);
+
+// POST /api/sessions/:sessionId/warnings/:warningId/ack — student acknowledgment
+sessionsRouter.post(
+  '/:sessionId/warnings/:warningId/ack',
+  requireAuth,
+  requireRole('STUDENT'),
+  validate({ params: warningIdParamSchema }),
+  async (req: AuthenticatedRequest, res, next) => {
+    let connection: Awaited<ReturnType<typeof pool.getConnection>> | null = null;
+    try {
+      const { sessionId, warningId } = req.params as unknown as z.infer<typeof warningIdParamSchema>;
+      const session = await assertSessionAccess(sessionId, req.user);
+
+      connection = await pool.getConnection();
+      await connection.beginTransaction();
+
+      const [warnings] = await connection.query<SessionWarningRow[]>(
+        'SELECT * FROM Session_Warnings WHERE warning_id = ? AND session_id = ? FOR UPDATE',
+        [warningId, sessionId]
+      );
+      const warning = warnings[0];
+      if (!warning) {
+        await connection.rollback();
+        throw new AppError(404, 'WARNING_NOT_FOUND', 'Warning not found for this exam session.');
+      }
+
+      const graceSeconds = env.WARNING_GRACE_SECONDS ?? 5;
+
+      if (warning.acknowledged_at) {
+        await connection.rollback();
+        sendSuccess(res, {
+          acknowledged: true,
+          alreadyAcknowledged: true,
+          warningId: warning.warning_id,
+          acknowledgedAt: warning.acknowledged_at,
+          graceSeconds,
+        });
+        return;
+      }
+
+      await connection.query(
+        'UPDATE Session_Warnings SET acknowledged_at = NOW() WHERE warning_id = ?',
+        [warningId]
+      );
+
+      await connection.query(
+        `UPDATE Exam_Sessions
+            SET pending_warning_log_id = NULL,
+                last_warning_ack_at = NOW()
+          WHERE id = ?`,
+        [sessionId]
+      );
+
+      await connection.commit();
+
+      const ackedAt = new Date().toISOString();
+      const ackPayload = {
+        warningId,
+        sessionId,
+        acknowledgedAt: ackedAt,
+        graceSeconds,
+      };
+
+      emitWarningAcked(session.student_id, sessionId, ackPayload);
+
+      sendSuccess(res, {
+        acknowledged: true,
+        warningId,
+        acknowledgedAt: ackedAt,
+        graceSeconds,
+      });
+    } catch (err) {
+      if (connection) {
+        await connection.rollback().catch(() => {});
+      }
+      next(err);
+    } finally {
+      if (connection) {
+        connection.release();
+      }
+    }
+  }
+);
+
+// GET /api/sessions/:sessionId/warnings — list session warning history
+sessionsRouter.get(
+  '/:sessionId/warnings',
+  requireAuth,
+  validate({ params: sessionIdParamSchema }),
+  async (req: AuthenticatedRequest, res, next) => {
+    try {
+      const { sessionId } = req.params as unknown as z.infer<typeof sessionIdParamSchema>;
+      await assertSessionAccess(sessionId, req.user);
+
+      const rows = await queryRows<SessionWarningRow[]>(
+        `SELECT warning_id, session_id, log_id, violation_code, message,
+                penalty_points, trust_score_after, issued_at, acknowledged_at
+           FROM Session_Warnings
+          WHERE session_id = ?
+          ORDER BY warning_id ASC`,
+        [sessionId]
+      );
+
+      sendSuccess(res, rows);
     } catch (err) {
       next(err);
     }

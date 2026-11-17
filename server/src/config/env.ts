@@ -51,6 +51,7 @@ const envSchema = z.object({
   DB_SEED_PATH: z.string().default('./db/seed.sql'),
   UPLOADS_DIR: z.string().default('./server/uploads'),
   EXTENSION_GRACE_SECONDS: z.coerce.number().int().min(0).default(180),
+  WARNING_GRACE_SECONDS: z.coerce.number().int().min(0).default(5),
 });
 
 const parsed = envSchema.safeParse(process.env);

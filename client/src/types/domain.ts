@@ -11,7 +11,9 @@ export type ViolationCode =
   | 'COPY_PASTE'
   | 'NO_FACE'
   | 'MULTIPLE_FACES'
-  | 'DEVTOOLS_OPEN';
+  | 'DEVTOOLS_OPEN'
+  | 'PHONE_DETECTED'
+  | 'VOICE_DETECTED';
 
 export interface ApiEnvelope<T> {
   success: boolean;
@@ -85,6 +87,23 @@ export interface ExamSession {
   min_trust_score?: number;
   max_extension_mins?: number;
   extension_request?: TimeExtensionRequest | null;
+  pending_warning_log_id?: number | null;
+  warning_count?: number;
+  last_warning_ack_at?: string | null;
+}
+
+export interface SessionWarning {
+  warningId: number;
+  sessionId: number;
+  logId?: number;
+  violationCode: ViolationCode;
+  violationLabel?: string;
+  message: string;
+  penaltyPoints: number;
+  trustScoreAfter: number;
+  warningCount: number;
+  issuedAt: string;
+  acknowledgedAt?: string | null;
 }
 
 export interface TimeExtensionRequest {

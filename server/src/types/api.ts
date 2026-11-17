@@ -79,8 +79,12 @@ export interface ExamSessionRow extends RowDataPacket {
   ended_at: Date | null;
   last_heartbeat_at: Date;
   time_expired_at?: Date | null;
+  pending_warning_log_id?: number | null;
+  warning_count?: number;
+  last_warning_ack_at?: Date | null;
   seconds_remaining?: number;
   seconds_overdue?: number;
+  seconds_since_ack?: number | null;
   in_grace_window?: boolean;
   exam_title?: string;
   duration_minutes?: number;
@@ -144,4 +148,17 @@ export interface ResultRow extends RowDataPacket {
   integrity_status: IntegrityStatus;
   graded_at: Date;
 }
+
+export interface SessionWarningRow extends RowDataPacket {
+  warning_id: number;
+  session_id: number;
+  log_id: number;
+  violation_code: string;
+  message: string;
+  penalty_points: number;
+  trust_score_after: number;
+  issued_at: Date;
+  acknowledged_at: Date | null;
+}
+
 

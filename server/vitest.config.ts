@@ -13,6 +13,7 @@ export default defineConfig({
       'tests/simulatorReset.api.test.ts',
       'tests/examsLifecycle.api.test.ts',
       'tests/timeExtensions.api.test.ts',
+      'tests/warningGate.api.test.ts',
     ],
     testTimeout: 25000,
     fileParallelism: false,
