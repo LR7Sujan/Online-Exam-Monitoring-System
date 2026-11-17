@@ -181,12 +181,22 @@ export function StudentResultPage() {
               </p>
             </div>
 
-            {/* Integrity Status Badge */}
+            {/* Integrity Status Badge & Paper Code */}
             <div className="flex flex-col items-end gap-1.5">
               <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
                 Official Integrity Rating
               </span>
-              <StatusPill status={integrityStatus} size="md" />
+              <div className="flex items-center gap-2">
+                {(result.paper_code || session?.paper_code) && (
+                  <span
+                    data-testid="result-paper-code"
+                    className="font-mono text-xs font-bold text-brand bg-brand/10 border border-brand/30 px-2.5 py-0.5 rounded-md shadow-sm"
+                  >
+                    {result.paper_code || session?.paper_code}
+                  </span>
+                )}
+                <StatusPill status={integrityStatus} size="md" />
+              </div>
             </div>
           </div>
 

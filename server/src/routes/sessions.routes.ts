@@ -18,10 +18,15 @@ import {
   emitWarningIssued,
 } from '../realtime/socket.js';
 import {
+  mapDisplayedToOriginalAnswer,
+  mapOriginalToDisplayedAnswer,
+  mapQuestionForStudent,
+} from '../services/paperGenerator.js';
+import {
   shouldDebounceViolation,
   violationRateLimiter,
 } from '../services/violationGuard.js';
-import type { ExamSessionRow, ResultRow, SessionWarningRow, TimeExtensionRequestRow, ViolationTypeRow } from '../types/api.js';
+import type { AnswerOption, ExamSessionRow, ResultRow, SessionWarningRow, TimeExtensionRequestRow, ViolationTypeRow } from '../types/api.js';
 import { AppError } from '../utils/errors.js';
 import { sendSuccess } from '../utils/response.js';
 import { extractClientIp, startOrResumeExamSession } from './exams.routes.js';
@@ -334,10 +339,49 @@ sessionsRouter.get(
         }
       }
 
+      // Map questions and options to student's unique paper layout
+      let questionOrder: number[] = [];
+      let optionMaps: Record<string, AnswerOption[]> = {};
+      if (session.question_order) {
+        questionOrder = typeof session.question_order === 'string'
+          ? JSON.parse(session.question_order)
+          : session.question_order;
+      }
+      if (session.option_maps) {
+        optionMaps = typeof session.option_maps === 'string'
+          ? JSON.parse(session.option_maps)
+          : session.option_maps;
+      }
+
+      const qMap = new Map<number, RowDataPacket>(questions.map((q) => [Number(q.id), q]));
+      const orderedQuestions = (questionOrder.length > 0
+        ? questionOrder.map((id) => qMap.get(id)).filter(Boolean)
+        : questions) as RowDataPacket[];
+
+      const mappedQuestions = orderedQuestions.map((q, idx) => {
+        const oMap = optionMaps[String(q.id)];
+        return mapQuestionForStudent(q as any, oMap, idx + 1);
+      });
+
+      const mappedResponses = responses.map((r) => {
+        const oMap = optionMaps[String(r.question_id)];
+        return {
+          ...r,
+          selected_option: r.selected_option ? mapOriginalToDisplayedAnswer(r.selected_option, oMap) : null,
+        };
+      });
+
+      // Strip secret option_maps and paper_hash from student session payload
+      const {
+        option_maps: _stripMaps,
+        paper_hash: _stripHash,
+        ...safeSession
+      } = session;
+
       sendSuccess(res, {
-        session,
-        questions,
-        responses,
+        session: safeSession,
+        questions: mappedQuestions,
+        responses: mappedResponses,
         recentLogs,
         extensionRequest: session.extension_request ?? null,
         pendingWarning,
@@ -403,12 +447,45 @@ sessionsRouter.get(
         }
       }
 
+      // Map questions and options to student's unique paper layout
+      let questionOrder: number[] = [];
+      let optionMaps: Record<string, AnswerOption[]> = {};
+      if (session.question_order) {
+        questionOrder = typeof session.question_order === 'string'
+          ? JSON.parse(session.question_order)
+          : session.question_order;
+      }
+      if (session.option_maps) {
+        optionMaps = typeof session.option_maps === 'string'
+          ? JSON.parse(session.option_maps)
+          : session.option_maps;
+      }
+
+      const qMap = new Map<number, RowDataPacket>(questions.map((q) => [Number(q.id), q]));
+      const orderedQuestions = (questionOrder.length > 0
+        ? questionOrder.map((id) => qMap.get(id)).filter(Boolean)
+        : questions) as RowDataPacket[];
+
+      const mappedQuestions = orderedQuestions.map((q, idx) => {
+        const oMap = optionMaps[String(q.id)];
+        return mapQuestionForStudent(q as any, oMap, idx + 1);
+      });
+
+      const mappedResponses = responses.map((r) => {
+        const oMap = optionMaps[String(r.question_id)];
+        return {
+          ...r,
+          selected_option: r.selected_option ? mapOriginalToDisplayedAnswer(r.selected_option, oMap) : null,
+        };
+      });
+
       sendSuccess(res, {
         sessionId: session.id,
         examId: session.exam_id,
         status: session.status,
-        questions,
-        responses,
+        paperCode: session.paper_code,
+        questions: mappedQuestions,
+        responses: mappedResponses,
         pendingWarning,
       });
     } catch (err) {
@@ -497,13 +574,23 @@ async function handleUpsertAnswer(
       );
     }
 
+    // Map displayed option choice to canonical database option letter
+    let optionMaps: Record<string, AnswerOption[]> = {};
+    if (session.option_maps) {
+      optionMaps = typeof session.option_maps === 'string'
+        ? JSON.parse(session.option_maps)
+        : session.option_maps;
+    }
+    const oMap = optionMaps[String(questionId)];
+    const originalLetter = mapDisplayedToOriginalAnswer(selectedOption, oMap);
+
     await executeSql(
       `INSERT INTO Student_Responses (session_id, question_id, selected_option)
        VALUES (?, ?, ?)
        ON DUPLICATE KEY UPDATE
          selected_option = VALUES(selected_option),
          answered_at = CURRENT_TIMESTAMP`,
-      [sessionId, questionId, selectedOption]
+      [sessionId, questionId, originalLetter]
     );
 
     sendSuccess(res, {

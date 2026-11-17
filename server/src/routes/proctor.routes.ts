@@ -5,7 +5,7 @@ import { executeSql, pool, queryRows } from '../config/db.js';
 import { requireAuth, requireRole, type AuthenticatedRequest } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 import { emitSessionTerminated, emitSessionUpdate, emitToProctors, emitToStudent } from '../realtime/socket.js';
-import type { ExamSessionRow } from '../types/api.js';
+import type { AnswerOption, ExamSessionRow, QuestionRow } from '../types/api.js';
 import { AppError } from '../utils/errors.js';
 import { sendSuccess } from '../utils/response.js';
 
@@ -600,6 +600,138 @@ proctorRouter.post(
         status: 'TERMINATED_CHEATING',
         reason,
         result: graded,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// GET /api/proctor/sessions/:sessionId/paper — proctor inspection of student's unique paper layout
+proctorRouter.get(
+  '/sessions/:sessionId/paper',
+  validate({ params: sessionIdParamSchema }),
+  async (req: AuthenticatedRequest, res, next) => {
+    try {
+      const { sessionId } = req.params as unknown as z.infer<typeof sessionIdParamSchema>;
+      const sessions = await queryRows<RowDataPacket[]>(
+        `SELECT es.id, es.exam_id, es.student_id, es.paper_code, es.paper_hash,
+                es.question_order, es.option_maps,
+                u.full_name AS student_name, e.title AS exam_title
+           FROM Exam_Sessions es
+           JOIN Users u ON u.id = es.student_id
+           JOIN Exams e ON e.id = es.exam_id
+          WHERE es.id = ?
+          LIMIT 1`,
+        [sessionId]
+      );
+      const session = sessions[0];
+      if (!session) {
+        throw new AppError(404, 'SESSION_NOT_FOUND', 'Session not found.');
+      }
+
+      const questions = await queryRows<QuestionRow[]>(
+        `SELECT id, exam_id, question_text, option_a, option_b, option_c, option_d,
+                correct_option, marks, order_index
+           FROM Questions
+          WHERE exam_id = ?
+          ORDER BY order_index ASC, id ASC`,
+        [session.exam_id]
+      );
+
+      const responses = await queryRows<RowDataPacket[]>(
+        `SELECT question_id, selected_option
+           FROM Student_Responses
+          WHERE session_id = ?`,
+        [sessionId]
+      );
+      const responseMap = new Map<number, string>(
+        responses.map((r) => [Number(r.question_id), String(r.selected_option)])
+      );
+
+      let questionOrder: number[] = [];
+      let optionMaps: Record<string, AnswerOption[]> = {};
+      if (session.question_order) {
+        questionOrder = typeof session.question_order === 'string'
+          ? JSON.parse(session.question_order)
+          : session.question_order;
+      }
+      if (session.option_maps) {
+        optionMaps = typeof session.option_maps === 'string'
+          ? JSON.parse(session.option_maps)
+          : session.option_maps;
+      }
+
+      const qMap = new Map<number, QuestionRow>(questions.map((q) => [Number(q.id), q]));
+      const orderedQuestions = (questionOrder.length > 0
+        ? questionOrder.map((id) => qMap.get(id)).filter(Boolean)
+        : questions) as QuestionRow[];
+
+      const items = orderedQuestions.map((q, displayIdx) => {
+        const oMap = (optionMaps[String(q.id)] && optionMaps[String(q.id)].length === 4)
+          ? optionMaps[String(q.id)]
+          : (['A', 'B', 'C', 'D'] as AnswerOption[]);
+
+        const origTextMap: Record<AnswerOption, string> = {
+          A: q.option_a,
+          B: q.option_b,
+          C: q.option_c,
+          D: q.option_d,
+        };
+
+        const displayedOptions = {
+          A: origTextMap[oMap[0]],
+          B: origTextMap[oMap[1]],
+          C: origTextMap[oMap[2]],
+          D: origTextMap[oMap[3]],
+        };
+
+        const originalOptions = {
+          A: q.option_a,
+          B: q.option_b,
+          C: q.option_c,
+          D: q.option_d,
+        };
+
+        const originalAnswer = responseMap.get(Number(q.id)) ?? null;
+        let displayedAnswer: AnswerOption | null = null;
+        if (originalAnswer) {
+          const idx = oMap.indexOf(originalAnswer.toUpperCase() as AnswerOption);
+          if (idx !== -1) {
+            displayedAnswer = (['A', 'B', 'C', 'D'] as const)[idx];
+          }
+        }
+
+        return {
+          questionId: q.id,
+          displayNumber: displayIdx + 1,
+          originalOrderIndex: q.order_index,
+          questionText: q.question_text,
+          marks: q.marks,
+          displayedOptions,
+          originalOptions,
+          optionMapping: {
+            A: oMap[0],
+            B: oMap[1],
+            C: oMap[2],
+            D: oMap[3],
+          },
+          correctOptionOriginal: q.correct_option,
+          studentAnswerOriginal: originalAnswer,
+          studentAnswerDisplayed: displayedAnswer,
+          isCorrect: originalAnswer ? originalAnswer.toUpperCase() === String(q.correct_option).toUpperCase() : false,
+        };
+      });
+
+      sendSuccess(res, {
+        session: {
+          id: session.id,
+          studentName: session.student_name,
+          examTitle: session.exam_title,
+          paperCode: session.paper_code,
+          paperHash: session.paper_hash,
+        },
+        questions: items,
       });
     } catch (err) {
       next(err);

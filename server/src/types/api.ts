@@ -43,6 +43,8 @@ export interface ExamRow extends RowDataPacket {
   duration_minutes: number;
   min_trust_score: number;
   max_extension_mins: number;
+  shuffle_questions?: number | boolean;
+  shuffle_options?: number | boolean;
   start_window: Date;
   end_window: Date;
   is_published: number | boolean;
@@ -82,6 +84,10 @@ export interface ExamSessionRow extends RowDataPacket {
   pending_warning_log_id?: number | null;
   warning_count?: number;
   last_warning_ack_at?: Date | null;
+  paper_code?: string;
+  question_order?: number[] | string;
+  option_maps?: Record<string, AnswerOption[]> | string;
+  paper_hash?: string;
   seconds_remaining?: number;
   seconds_overdue?: number;
   seconds_since_ack?: number | null;

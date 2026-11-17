@@ -46,8 +46,8 @@ describe('Scoring Logic & Integrity Status Engine', () => {
   it('correctly calculates raw score, total marks, and percentage via stored procedure', async () => {
     // Start session
     const sessRes = await executeSql(
-      `INSERT INTO Exam_Sessions (exam_id, student_id, trust_score, status, server_deadline)
-       VALUES (?, ?, 100, 'IN_PROGRESS', DATE_ADD(NOW(), INTERVAL 1 HOUR))`,
+      `INSERT INTO Exam_Sessions (exam_id, student_id, trust_score, status, server_deadline, paper_code, paper_hash)
+       VALUES (?, ?, 100, 'IN_PROGRESS', DATE_ADD(NOW(), INTERVAL 1 HOUR), 'Paper SC01', SHA2(UUID(), 256))`,
       [examId, studentId]
     );
     sessionId = sessRes.insertId;
@@ -102,8 +102,8 @@ describe('Scoring Logic & Integrity Status Engine', () => {
     const flaggedStudentId = uRes.insertId;
 
     const sRes = await executeSql(
-      `INSERT INTO Exam_Sessions (exam_id, student_id, trust_score, status, server_deadline)
-       VALUES (?, ?, 80, 'IN_PROGRESS', DATE_ADD(NOW(), INTERVAL 1 HOUR))`,
+      `INSERT INTO Exam_Sessions (exam_id, student_id, trust_score, status, server_deadline, paper_code, paper_hash)
+       VALUES (?, ?, 80, 'IN_PROGRESS', DATE_ADD(NOW(), INTERVAL 1 HOUR), 'Paper SC02', SHA2(UUID(), 256))`,
       [examId, flaggedStudentId]
     );
     const fSessionId = sRes.insertId;
@@ -128,8 +128,8 @@ describe('Scoring Logic & Integrity Status Engine', () => {
     const cheaterStudentId = uRes.insertId;
 
     const sRes = await executeSql(
-      `INSERT INTO Exam_Sessions (exam_id, student_id, trust_score, status, server_deadline)
-       VALUES (?, ?, 40, 'TERMINATED_CHEATING', DATE_ADD(NOW(), INTERVAL 1 HOUR))`,
+      `INSERT INTO Exam_Sessions (exam_id, student_id, trust_score, status, server_deadline, paper_code, paper_hash)
+       VALUES (?, ?, 40, 'TERMINATED_CHEATING', DATE_ADD(NOW(), INTERVAL 1 HOUR), 'Paper SC03', SHA2(UUID(), 256))`,
       [examId, cheaterStudentId]
     );
     const cSessionId = sRes.insertId;

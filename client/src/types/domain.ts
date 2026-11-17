@@ -39,6 +39,9 @@ export interface ExamItem {
   duration_minutes: number;
   min_trust_score: number;
   max_extension_mins?: number;
+  shuffle_questions?: boolean | number;
+  shuffle_options?: boolean | number;
+  unique_permutations?: number;
   start_window: string;
   end_window: string;
   is_published: boolean | number;
@@ -90,6 +93,10 @@ export interface ExamSession {
   pending_warning_log_id?: number | null;
   warning_count?: number;
   last_warning_ack_at?: string | null;
+  paper_code?: string;
+  question_order?: number[];
+  option_maps?: Record<string, AnswerOption[]>;
+  paper_hash?: string;
 }
 
 export interface SessionWarning {
@@ -170,6 +177,8 @@ export interface ResultRecord {
   final_trust_score: number;
   integrity_status: IntegrityStatus;
   graded_at: string;
+  paper_code?: string;
+  paper_hash?: string;
   session_status?: SessionStatus;
   exam_title?: string;
   min_trust_score?: number;
@@ -216,6 +225,8 @@ export interface ProctorLiveMonitorRow {
   warning_count?: number;
   pending_warning_log_id?: number | null;
   last_warning_ack_at?: string | null;
+  paper_code?: string;
+  paper_hash?: string;
   granted_extension_minutes?: number | null;
   extension_reason?: string | null;
   extension_created_at?: string | null;

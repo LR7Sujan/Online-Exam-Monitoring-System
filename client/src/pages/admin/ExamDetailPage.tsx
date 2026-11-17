@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   AlertCircle,
+  AlertTriangle,
   ArrowDown,
   ArrowLeft,
   ArrowUp,
@@ -58,6 +59,16 @@ interface ExamDetailResponse {
     duration_minutes: number;
     min_trust_score: number;
     max_extension_mins?: number;
+    shuffle_questions?: boolean | number;
+    shuffle_options?: boolean | number;
+    permutationNotice?: {
+      questionCount: number;
+      shuffleQuestions: boolean;
+      shuffleOptions: boolean;
+      maxUniquePapers: number;
+      isSmallExam: boolean;
+      notice: string | null;
+    };
     start_window: string;
     end_window: string;
     is_published: boolean | number;
@@ -107,6 +118,8 @@ export function ExamDetailPage() {
   const [durationMinutes, setDurationMinutes] = useState(60);
   const [minTrustScore, setMinTrustScore] = useState(50);
   const [maxExtensionMins, setMaxExtensionMins] = useState(30);
+  const [shuffleQuestions, setShuffleQuestions] = useState(true);
+  const [shuffleOptions, setShuffleOptions] = useState(true);
   const [startWindow, setStartWindow] = useState('');
   const [endWindow, setEndWindow] = useState('');
   const [isEditingParams, setIsEditingParams] = useState(false);
@@ -158,6 +171,8 @@ export function ExamDetailPage() {
       setDurationMinutes(exam.duration_minutes);
       setMinTrustScore(exam.min_trust_score);
       setMaxExtensionMins(Number(exam.max_extension_mins ?? 30));
+      setShuffleQuestions(exam.shuffle_questions !== undefined ? Boolean(exam.shuffle_questions) : true);
+      setShuffleOptions(exam.shuffle_options !== undefined ? Boolean(exam.shuffle_options) : true);
 
       // Format ISO string to datetime-local input format (YYYY-MM-DDTHH:mm)
       const toLocalDt = (isoStr: string) => {
@@ -615,6 +630,8 @@ export function ExamDetailPage() {
       durationMinutes,
       minTrustScore,
       maxExtensionMins,
+      shuffleQuestions,
+      shuffleOptions,
       startWindow: startWindow ? new Date(startWindow).toISOString() : undefined,
       endWindow: endWindow ? new Date(endWindow).toISOString() : undefined,
     });
@@ -627,6 +644,8 @@ export function ExamDetailPage() {
       setDurationMinutes(exam.duration_minutes);
       setMinTrustScore(exam.min_trust_score);
       setMaxExtensionMins(Number(exam.max_extension_mins ?? 30));
+      setShuffleQuestions(exam.shuffle_questions !== undefined ? Boolean(exam.shuffle_questions) : true);
+      setShuffleOptions(exam.shuffle_options !== undefined ? Boolean(exam.shuffle_options) : true);
       setIsEditingParams(false);
       setErrors({});
     }
@@ -1000,6 +1019,63 @@ export function ExamDetailPage() {
                     <p className="text-foreground">{new Date(exam.end_window).toLocaleString()}</p>
                   )}
                 </div>
+              </div>
+
+              {/* Anti-Cheat Paper Shuffling Controls */}
+              <div className="pt-3 border-t border-border space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <label className="block text-foreground text-xs font-mono font-bold">
+                      Anti-Cheat Paper Randomization
+                    </label>
+                    <p className="text-[11px] text-muted-foreground font-mono">
+                      Generate unique paper configurations per candidate with Fisher-Yates server shuffle
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                  <label className="flex items-center gap-2 p-3 rounded-xl border border-border bg-surface-elevated cursor-pointer hover:border-brand/40 transition-colors">
+                    <input
+                      type="checkbox"
+                      data-testid="toggle-shuffle-questions"
+                      checked={shuffleQuestions}
+                      disabled={!isEditingParams || isPublished}
+                      onChange={(e) => setShuffleQuestions(e.target.checked)}
+                      className="w-4 h-4 rounded text-brand focus:ring-brand accent-brand cursor-pointer"
+                    />
+                    <div className="text-xs font-mono">
+                      <span className="font-bold text-foreground block">Shuffle Question Sequence</span>
+                      <span className="text-[10px] text-muted-foreground">Each candidate gets a distinct question sequence</span>
+                    </div>
+                  </label>
+
+                  <label className="flex items-center gap-2 p-3 rounded-xl border border-border bg-surface-elevated cursor-pointer hover:border-brand/40 transition-colors">
+                    <input
+                      type="checkbox"
+                      data-testid="toggle-shuffle-options"
+                      checked={shuffleOptions}
+                      disabled={!isEditingParams || isPublished}
+                      onChange={(e) => setShuffleOptions(e.target.checked)}
+                      className="w-4 h-4 rounded text-brand focus:ring-brand accent-brand cursor-pointer"
+                    />
+                    <div className="text-xs font-mono">
+                      <span className="font-bold text-foreground block">Shuffle Option Choices</span>
+                      <span className="text-[10px] text-muted-foreground">Randomize A, B, C, D choices per question</span>
+                    </div>
+                  </label>
+                </div>
+
+                {/* Small Exam Permutations Notice Banner */}
+                {(exam.permutationNotice?.notice || (exam as any).notice) && (
+                  <div
+                    data-testid="small-exam-notice"
+                    className="mt-2 rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-xs font-mono text-amber-500 flex items-center gap-2.5 shadow-sm"
+                  >
+                    <AlertTriangle className="w-4 h-4 shrink-0 text-amber-500" />
+                    <span>{exam.permutationNotice?.notice || (exam as any).notice}</span>
+                  </div>
+                )}
               </div>
             </div>
           </div>

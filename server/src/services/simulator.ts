@@ -13,7 +13,8 @@ import {
   emitWarningIssued,
   emitWarningAcked,
 } from '../realtime/socket.js';
-import type { ExamSessionRow, ViolationTypeRow } from '../types/api.js';
+import { mapDisplayedToOriginalAnswer } from './paperGenerator.js';
+import type { AnswerOption, ExamSessionRow, ViolationTypeRow } from '../types/api.js';
 import { AppError } from '../utils/errors.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -37,6 +38,8 @@ export interface SimCandidate {
   lastActionAt: string;
   violationsCount: number;
   answersCount: number;
+  paperCode?: string;
+  optionMaps?: Record<string, AnswerOption[]>;
 }
 
 export interface SimActivityLog {
@@ -178,6 +181,13 @@ class SimulatorEngine {
         sessionToken,
       });
 
+      let oMaps: Record<string, AnswerOption[]> = {};
+      if (session.option_maps) {
+        oMaps = typeof session.option_maps === 'string'
+          ? JSON.parse(session.option_maps)
+          : session.option_maps;
+      }
+
       candidates.push({
         studentId,
         fullName,
@@ -189,6 +199,8 @@ class SimulatorEngine {
         lastActionAt: new Date().toISOString(),
         violationsCount: 0,
         answersCount: 0,
+        paperCode: session.paper_code,
+        optionMaps: oMaps,
       });
 
       // Emit session update to live proctor monitor
@@ -457,23 +469,25 @@ class SimulatorEngine {
     if (this.questionCache.length === 0) return;
 
     const q = this.questionCache[Math.floor(Math.random() * this.questionCache.length)];
-    const options: Array<'A' | 'B' | 'C' | 'D'> = ['A', 'B', 'C', 'D'];
-    const chosen = options[Math.floor(Math.random() * options.length)];
+    const options: AnswerOption[] = ['A', 'B', 'C', 'D'];
+    const displayedChosen = options[Math.floor(Math.random() * options.length)];
+    const oMap = candidate.optionMaps?.[String(q.id)];
+    const originalLetter = mapDisplayedToOriginalAnswer(displayedChosen, oMap);
 
     try {
       await executeSql(
         `INSERT INTO Student_Responses (session_id, question_id, selected_option, answered_at)
          VALUES (?, ?, ?, NOW())
          ON DUPLICATE KEY UPDATE selected_option = VALUES(selected_option), answered_at = NOW()`,
-        [candidate.sessionId, q.id, chosen]
+        [candidate.sessionId, q.id, originalLetter]
       );
 
       candidate.answersCount += 1;
-      candidate.lastAction = `Answered Question #${q.id} (${chosen})`;
+      candidate.lastAction = `Answered Question #${q.id} (${displayedChosen})`;
       candidate.lastActionAt = new Date().toISOString();
       this.state.stats.answersCount += 1;
 
-      this.addLog(candidate.fullName, 'answer', `Submitted option ${chosen} for Question #${q.id}`);
+      this.addLog(candidate.fullName, 'answer', `Submitted option ${displayedChosen} for Question #${q.id}`);
     } catch (err) {
       console.warn('[SimulatorEngine] Failed to submit simulated answer:', err);
     }

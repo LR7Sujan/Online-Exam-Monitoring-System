@@ -300,6 +300,8 @@ export function ExamWizardModal({
   );
   const [minTrustScore, setMinTrustScore] = useState(editingExam?.min_trust_score ?? 50);
   const [maxExtensionMins, setMaxExtensionMins] = useState(editingExam?.max_extension_mins ?? 30);
+  const [shuffleQuestions, setShuffleQuestions] = useState(editingExam?.shuffle_questions !== undefined ? Boolean(editingExam.shuffle_questions) : true);
+  const [shuffleOptions, setShuffleOptions] = useState(editingExam?.shuffle_options !== undefined ? Boolean(editingExam.shuffle_options) : true);
 
   // Step 3: Questions
   const [questions, setQuestions] = useState<QuestionDraft[]>([]);
@@ -455,6 +457,8 @@ export function ExamWizardModal({
         durationMinutes: Number(durationMinutes) || 60,
         minTrustScore: Number(minTrustScore) || 50,
         maxExtensionMins: Number.isFinite(Number(maxExtensionMins)) ? Number(maxExtensionMins) : 30,
+        shuffleQuestions,
+        shuffleOptions,
         startWindow: startWindow ? new Date(startWindow).toISOString() : undefined,
         endWindow: endWindow ? new Date(endWindow).toISOString() : undefined,
         isPublished,
@@ -1205,6 +1209,48 @@ export function ExamWizardModal({
                     <span>{step2Errors.maxExtensionMins}</span>
                   </p>
                 )}
+              </div>
+
+              {/* Anti-Cheat Paper Randomization Toggles */}
+              <div className="pt-4 border-t border-border space-y-3">
+                <div>
+                  <label className="block text-xs font-mono font-bold text-foreground">
+                    Anti-Cheat Paper Randomization
+                  </label>
+                  <p className="text-[11px] font-mono text-muted-foreground">
+                    Every candidate receives a cryptographically unique paper permutation.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <label className="flex items-center gap-2 p-3 rounded-xl border border-border bg-surface-elevated cursor-pointer hover:border-brand/40 transition-colors">
+                    <input
+                      type="checkbox"
+                      data-testid="wizard-shuffle-questions"
+                      checked={shuffleQuestions}
+                      onChange={(e) => setShuffleQuestions(e.target.checked)}
+                      className="w-4 h-4 rounded text-brand focus:ring-brand accent-brand cursor-pointer"
+                    />
+                    <div className="text-xs font-mono">
+                      <span className="font-bold text-foreground block">Shuffle Questions</span>
+                      <span className="text-[10px] text-muted-foreground">Randomize question order per student</span>
+                    </div>
+                  </label>
+
+                  <label className="flex items-center gap-2 p-3 rounded-xl border border-border bg-surface-elevated cursor-pointer hover:border-brand/40 transition-colors">
+                    <input
+                      type="checkbox"
+                      data-testid="wizard-shuffle-options"
+                      checked={shuffleOptions}
+                      onChange={(e) => setShuffleOptions(e.target.checked)}
+                      className="w-4 h-4 rounded text-brand focus:ring-brand accent-brand cursor-pointer"
+                    />
+                    <div className="text-xs font-mono">
+                      <span className="font-bold text-foreground block">Shuffle Options</span>
+                      <span className="text-[10px] text-muted-foreground">Randomize options A, B, C, D per question</span>
+                    </div>
+                  </label>
+                </div>
               </div>
             </motion.div>
           )}

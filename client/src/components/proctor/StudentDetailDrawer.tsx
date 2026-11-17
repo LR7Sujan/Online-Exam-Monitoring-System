@@ -8,6 +8,8 @@ import {
   Camera,
   CheckCircle2,
   Clock,
+  Eye,
+  FileText,
   Laptop,
   Maximize2,
   RotateCcw,
@@ -51,6 +53,32 @@ interface InspectResponse {
   logs: ViolationAuditRow[];
 }
 
+interface StudentPaperQuestion {
+  questionId: number;
+  displayNumber: number;
+  originalOrderIndex: number;
+  questionText: string;
+  marks: number;
+  displayedOptions: { A: string; B: string; C: string; D: string };
+  originalOptions: { A: string; B: string; C: string; D: string };
+  optionMapping: { A: string; B: string; C: string; D: string };
+  correctOptionOriginal: string;
+  studentAnswerOriginal: string | null;
+  studentAnswerDisplayed: string | null;
+  isCorrect: boolean;
+}
+
+interface StudentPaperResponse {
+  session: {
+    id: number;
+    studentName: string;
+    examTitle: string;
+    paperCode: string;
+    paperHash: string;
+  };
+  questions: StudentPaperQuestion[];
+}
+
 export function StudentDetailDrawer({ sessionId, onClose }: StudentDetailDrawerProps) {
   const queryClient = useQueryClient();
 
@@ -69,6 +97,8 @@ export function StudentDetailDrawer({ sessionId, onClose }: StudentDetailDrawerP
 
   const [terminateModalOpen, setTerminateModalOpen] = useState<boolean>(false);
   const [terminateReason, setTerminateReason] = useState<string>('Proctor detected non-compliant examination behavior.');
+
+  const [paperModalOpen, setPaperModalOpen] = useState<boolean>(false);
 
   useEffect(() => {
     if (!sessionId) return;
@@ -94,6 +124,12 @@ export function StudentDetailDrawer({ sessionId, onClose }: StudentDetailDrawerP
     refetchInterval: 10000,
   });
   const warnings = warningsQuery.data ?? [];
+
+  const paperQuery = useQuery<StudentPaperResponse>({
+    queryKey: ['proctor-session-paper', sessionId],
+    queryFn: () => api.get<StudentPaperResponse>(`/proctor/sessions/${sessionId}/paper`),
+    enabled: paperModalOpen && sessionId !== null && sessionId > 0,
+  });
 
   // Review single log mutation
   const reviewMutation = useMutation({
@@ -461,6 +497,25 @@ export function StudentDetailDrawer({ sessionId, onClose }: StudentDetailDrawerP
                   <div className="text-foreground">
                     {session?.server_deadline ? new Date(session.server_deadline).toLocaleTimeString() : 'N/A'}
                   </div>
+                </div>
+
+                <div className="rounded-xl border border-brand/30 bg-brand/5 p-3 space-y-1 sm:col-span-2 flex items-center justify-between">
+                  <div>
+                    <div className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">PAPER CODE VERSION</div>
+                    <div className="text-brand font-bold flex items-center gap-2">
+                      <FileText className="w-4 h-4 text-brand" />
+                      <span data-testid="drawer-paper-code" className="text-sm">{session?.paper_code || 'Standard Paper'}</span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    data-testid="view-student-paper-button"
+                    onClick={() => setPaperModalOpen(true)}
+                    className="px-3 py-1.5 rounded-xl border border-brand/40 bg-brand/10 hover:bg-brand/20 text-brand text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-colors shadow-sm"
+                  >
+                    <Eye className="w-3.5 h-3.5" />
+                    <span>View Student's Paper</span>
+                  </button>
                 </div>
               </div>
             </div>
@@ -857,6 +912,132 @@ export function StudentDetailDrawer({ sessionId, onClose }: StudentDetailDrawerP
             placeholder="Reason for termination..."
             className="w-full rounded-xl border border-rose-500/30 bg-surface-elevated p-3 text-xs text-foreground focus:border-rose-500 focus:outline-none font-mono"
           />
+        </div>
+      </Modal>
+
+      {/* STUDENT PAPER VERSION INSPECTION MODAL */}
+      <Modal
+        isOpen={paperModalOpen}
+        onClose={() => setPaperModalOpen(false)}
+        size="xl"
+        title={
+          <div className="flex items-center gap-2 text-brand">
+            <FileText className="w-5 h-5 text-brand" />
+            <span>Candidate Paper Layout ({paperQuery.data?.session.paperCode ?? session?.paper_code ?? 'Unique Paper'})</span>
+          </div>
+        }
+        footer={
+          <div className="flex items-center justify-between w-full text-xs font-mono text-muted-foreground">
+            <span>Deterministic SHA-256 Paper Hash: {paperQuery.data?.session.paperHash?.slice(0, 16)}...</span>
+            <button
+              type="button"
+              onClick={() => setPaperModalOpen(false)}
+              className="py-1.5 px-4 rounded-xl text-xs font-semibold bg-surface-elevated hover:bg-muted text-foreground border border-border cursor-pointer transition-colors"
+            >
+              Close
+            </button>
+          </div>
+        }
+      >
+        <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1 scrollbar-thin">
+          <div className="p-3 rounded-xl border border-border bg-surface-elevated/70 text-xs font-mono flex items-center justify-between">
+            <div>
+              <span className="text-muted-foreground">Candidate:</span>{' '}
+              <span className="font-bold text-foreground">{session?.student_name}</span>
+            </div>
+            <div>
+              <span className="text-muted-foreground">Paper Code:</span>{' '}
+              <span className="font-bold text-brand bg-brand/10 border border-brand/30 px-2 py-0.5 rounded">
+                {paperQuery.data?.session.paperCode ?? session?.paper_code}
+              </span>
+            </div>
+          </div>
+
+          {paperQuery.isLoading && (
+            <div className="py-12 text-center text-xs font-mono text-muted-foreground animate-pulse">
+              Retrieving candidate paper permutation and response mapping...
+            </div>
+          )}
+
+          {paperQuery.data?.questions.map((q) => (
+            <div
+              key={q.questionId}
+              className="rounded-2xl border border-border bg-surface p-4 space-y-3 text-xs"
+            >
+              <div className="flex items-center justify-between pb-2 border-b border-border/70">
+                <div className="flex items-center gap-2 font-mono">
+                  <span className="font-bold text-brand text-sm">
+                    Q{q.displayNumber}
+                  </span>
+                  <span className="text-[11px] text-muted-foreground border border-border px-1.5 py-0.5 rounded bg-surface-elevated">
+                    Orig #{q.originalOrderIndex ?? q.questionId}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 font-mono text-[11px]">
+                  <span>{q.marks} {q.marks === 1 ? 'Mark' : 'Marks'}</span>
+                  {q.studentAnswerOriginal && (
+                    <span
+                      className={`px-2 py-0.5 rounded font-bold ${
+                        q.isCorrect
+                          ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/30'
+                          : 'bg-rose-500/10 text-rose-500 border border-rose-500/30'
+                      }`}
+                    >
+                      {q.isCorrect ? 'Correct' : 'Incorrect'}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <p className="font-medium text-foreground text-sm leading-relaxed">
+                {q.questionText}
+              </p>
+
+              {/* Options Mapping Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 font-mono text-xs">
+                {(['A', 'B', 'C', 'D'] as const).map((dispLetter) => {
+                  const origLetter = q.optionMapping[dispLetter];
+                  const text = q.displayedOptions[dispLetter];
+                  const isSelected = q.studentAnswerDisplayed === dispLetter;
+                  const isCorrectAnswer = origLetter === q.correctOptionOriginal;
+
+                  return (
+                    <div
+                      key={dispLetter}
+                      className={`p-2.5 rounded-xl border transition-all ${
+                        isSelected
+                          ? isCorrectAnswer
+                            ? 'border-emerald-500 bg-emerald-500/10'
+                            : 'border-rose-500 bg-rose-500/10'
+                          : isCorrectAnswer
+                          ? 'border-emerald-500/40 bg-emerald-500/5'
+                          : 'border-border bg-surface-elevated/60'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="font-bold flex items-center gap-1.5">
+                          <span className="w-5 h-5 rounded flex items-center justify-center bg-brand/10 text-brand text-[11px]">
+                            {dispLetter}
+                          </span>
+                          <span className="text-[10px] text-muted-foreground">
+                            (Orig {origLetter})
+                          </span>
+                        </span>
+                        {isSelected && (
+                          <span className="text-[10px] uppercase font-bold text-brand">
+                            Candidate Choice
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-foreground font-sans line-clamp-2">
+                        {text}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </div>
       </Modal>
     </AnimatePresence>,

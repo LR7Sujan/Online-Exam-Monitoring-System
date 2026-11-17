@@ -14,6 +14,7 @@ export default defineConfig({
       'tests/examsLifecycle.api.test.ts',
       'tests/timeExtensions.api.test.ts',
       'tests/warningGate.api.test.ts',
+      'tests/uniquePaperVersions.api.test.ts',
     ],
     testTimeout: 25000,
     fileParallelism: false,

@@ -593,6 +593,14 @@ export function StudentExamPage() {
               <span className="hidden sm:inline font-mono text-[10px] text-muted-foreground border border-border px-1.5 py-0.5 rounded bg-surface-elevated">
                 SESSION #{numericSessionId}
               </span>
+              {(metaQuery.data?.session?.paper_code || (metaQuery.data as any)?.paperCode) && (
+                <span
+                  data-testid="hud-paper-code"
+                  className="font-mono text-[11px] font-bold text-brand bg-brand/10 border border-brand/30 px-2 py-0.5 rounded-md shadow-sm"
+                >
+                  {metaQuery.data?.session?.paper_code || (metaQuery.data as any)?.paperCode}
+                </span>
+              )}
             </div>
             <div className="text-[11px] font-mono text-muted-foreground">
               Progress: <span className="text-brand font-semibold">{answeredCount}</span> /{' '}

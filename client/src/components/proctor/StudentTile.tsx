@@ -124,7 +124,17 @@ export function StudentTile({
           </div>
         </div>
 
-        <StatusPill status={session.status} size="sm" />
+        <div className="flex flex-col items-end gap-1 shrink-0">
+          <StatusPill status={session.status} size="sm" />
+          {session.paper_code && (
+            <span
+              data-testid="tile-paper-code"
+              className="px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold bg-brand/10 border border-brand/30 text-brand shadow-sm"
+            >
+              {session.paper_code}
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Middle Row: Mini TrustRing + Violations Badge */}

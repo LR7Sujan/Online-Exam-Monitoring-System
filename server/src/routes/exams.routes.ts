@@ -6,6 +6,10 @@ import { executeSql, queryRows, withConnection } from '../config/db.js';
 import { requireAuth, requireRole, type AuthenticatedRequest } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 import { emitSessionUpdate } from '../realtime/socket.js';
+import {
+  calculateExamPermutations,
+  generateUniquePaperForExam,
+} from '../services/paperGenerator.js';
 import type { ExamRow, ExamSessionRow, QuestionRow } from '../types/api.js';
 import { AppError } from '../utils/errors.js';
 import { sendError, sendSuccess } from '../utils/response.js';
@@ -92,6 +96,8 @@ const createExamSchema = z
     startWindow: z.string().optional(),
     endWindow: z.string().optional(),
     isPublished: z.boolean().default(false),
+    shuffleQuestions: z.boolean().default(true),
+    shuffleOptions: z.boolean().default(true),
     questions: z.array(questionInputSchema).optional(),
   })
   .superRefine((data, ctx) => {
@@ -173,6 +179,8 @@ const updateExamSchema = z
     startWindow: z.string().optional(),
     endWindow: z.string().optional(),
     isPublished: z.boolean().optional(),
+    shuffleQuestions: z.boolean().optional(),
+    shuffleOptions: z.boolean().optional(),
     questions: z.array(questionInputSchema).optional(),
   });
 
@@ -212,7 +220,9 @@ export async function startOrResumeExamSession(params: {
     await conn.beginTransaction();
     try {
       const [examRows] = await conn.execute<ExamRow[]>(
-        `SELECT id, title, duration_minutes, min_trust_score, start_window, end_window,
+        `SELECT id, title, duration_minutes, min_trust_score, max_extension_mins,
+                shuffle_questions, shuffle_options,
+                start_window, end_window,
                 is_published, (NOW() BETWEEN start_window AND end_window) AS window_open
            FROM Exams
           WHERE id = ?
@@ -287,16 +297,26 @@ export async function startOrResumeExamSession(params: {
         );
       }
 
+      // Generate cryptographically unique paper permutation for this candidate
+      const generatedPaper = await generateUniquePaperForExam(
+        conn,
+        params.examId,
+        Boolean(exam.shuffle_questions !== undefined ? exam.shuffle_questions : true),
+        Boolean(exam.shuffle_options !== undefined ? exam.shuffle_options : true)
+      );
+
       // QA Fix (Sub-Phase 11.3): Retain client-provided session token if supplied, else generate random token
       const newToken = params.sessionToken || randomBytes(32).toString('hex');
       const [insertRes] = await conn.execute<ResultSetHeader>(
         `INSERT INTO Exam_Sessions
            (exam_id, student_id, trust_score, status, started_at, server_deadline, last_heartbeat_at,
-            ip_address, device_fingerprint, session_token)
+            ip_address, device_fingerprint, session_token,
+            paper_code, question_order, option_maps, paper_hash)
          VALUES
            (?, ?, 100, 'IN_PROGRESS', NOW(),
             LEAST(?, DATE_ADD(NOW(), INTERVAL ? MINUTE)),
-            NOW(), ?, ?, ?)`,
+            NOW(), ?, ?, ?,
+            ?, ?, ?, ?)`,
         [
           params.examId,
           params.studentId,
@@ -305,6 +325,10 @@ export async function startOrResumeExamSession(params: {
           params.ipAddress,
           params.deviceFingerprint,
           newToken,
+          generatedPaper.paper_code,
+          JSON.stringify(generatedPaper.question_order),
+          JSON.stringify(generatedPaper.option_maps),
+          generatedPaper.paper_hash,
         ]
       );
 
@@ -416,6 +440,7 @@ examsRouter.get(
       const { examId } = req.params as unknown as z.infer<typeof examIdParamSchema>;
       const exams = await queryRows<ExamRow[]>(
         `SELECT id, title, description, duration_minutes, min_trust_score, max_extension_mins,
+                shuffle_questions, shuffle_options,
                 start_window, end_window, is_published, created_by, created_at
            FROM Exams
           WHERE id = ?
@@ -476,7 +501,22 @@ examsRouter.get(
         totalMarks: questions.reduce((sum, q) => sum + Number(q.marks || 0), 0),
       };
 
-      sendSuccess(res, { exam, creator, stats, questions });
+      const permutationNotice = calculateExamPermutations(
+        questions.length,
+        Boolean(exam.shuffle_questions !== undefined ? exam.shuffle_questions : true),
+        Boolean(exam.shuffle_options !== undefined ? exam.shuffle_options : true)
+      );
+
+      sendSuccess(res, {
+        exam: {
+          ...exam,
+          permutationNotice,
+          unique_permutations: permutationNotice.maxUniquePapers,
+        },
+        creator,
+        stats,
+        questions,
+      });
     } catch (err) {
       next(err);
     }
@@ -504,14 +544,16 @@ examsRouter.post(
         try {
           const [result] = await conn.execute<ResultSetHeader>(
             `INSERT INTO Exams
-              (title, description, duration_minutes, min_trust_score, max_extension_mins, start_window, end_window, is_published, created_by)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+              (title, description, duration_minutes, min_trust_score, max_extension_mins, shuffle_questions, shuffle_options, start_window, end_window, is_published, created_by)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
               body.title,
               body.description ?? null,
               body.durationMinutes ?? 60,
               body.minTrustScore ?? 50,
               body.maxExtensionMins ?? 30,
+              body.shuffleQuestions !== false,
+              body.shuffleOptions !== false,
               startWin,
               endWin,
               Boolean(body.isPublished),
@@ -602,6 +644,8 @@ async function handleUpdateExam(req: AuthenticatedRequest, res: Parameters<typeo
           (body.maxExtensionMins !== undefined && body.maxExtensionMins !== existing.max_extension_mins) ||
           (body.startWindow !== undefined && new Date(body.startWindow).getTime() !== new Date(existing.start_window).getTime()) ||
           (body.endWindow !== undefined && new Date(body.endWindow).getTime() !== new Date(existing.end_window).getTime()) ||
+          (body.shuffleQuestions !== undefined && Boolean(body.shuffleQuestions) !== Boolean(existing.shuffle_questions)) ||
+          (body.shuffleOptions !== undefined && Boolean(body.shuffleOptions) !== Boolean(existing.shuffle_options)) ||
           (body.questions && body.questions.length > 0);
 
         if (isEditingContent) {
@@ -671,6 +715,8 @@ async function handleUpdateExam(req: AuthenticatedRequest, res: Parameters<typeo
                   duration_minutes = ?,
                   min_trust_score = ?,
                   max_extension_mins = ?,
+                  shuffle_questions = ?,
+                  shuffle_options = ?,
                   start_window = ?,
                   end_window = ?,
                   is_published = ?
@@ -681,6 +727,8 @@ async function handleUpdateExam(req: AuthenticatedRequest, res: Parameters<typeo
             body.durationMinutes ?? existing.duration_minutes,
             body.minTrustScore ?? existing.min_trust_score,
             body.maxExtensionMins !== undefined ? body.maxExtensionMins : existing.max_extension_mins,
+            body.shuffleQuestions !== undefined ? Boolean(body.shuffleQuestions) : Boolean(existing.shuffle_questions ?? true),
+            body.shuffleOptions !== undefined ? Boolean(body.shuffleOptions) : Boolean(existing.shuffle_options ?? true),
             startWin,
             endWin,
             targetPublished,
