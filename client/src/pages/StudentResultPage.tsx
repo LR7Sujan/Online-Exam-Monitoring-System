@@ -28,6 +28,7 @@ import type {
   IntegrityStatus,
   ResultRecord,
   ViolationAuditRow,
+  SessionWarning,
 } from '../types/domain';
 
 interface ResultResponse {
@@ -50,6 +51,13 @@ export function StudentResultPage() {
     queryFn: () => api.get<ResultResponse>(`/sessions/${numericSessionId}/result`),
     enabled: Number.isInteger(numericSessionId) && numericSessionId > 0,
   });
+
+  const warningsQuery = useQuery<SessionWarning[]>({
+    queryKey: ['session-warnings', numericSessionId],
+    queryFn: () => api.get<SessionWarning[]>(`/sessions/${numericSessionId}/warnings`),
+    enabled: Number.isInteger(numericSessionId) && numericSessionId > 0,
+  });
+  const warnings = warningsQuery.data ?? [];
 
   const percentage = Number(query.data?.result?.percentage ?? 0);
 
@@ -350,6 +358,78 @@ export function StudentResultPage() {
           </div>
         </div>
       </div>
+
+      {/* Warning History Section */}
+      {warnings.length > 0 && (
+        <div className="space-y-4" data-testid="student-result-warnings-section">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <ShieldAlert className="w-4 h-4 text-amber-500" />
+              <h2 className="text-lg font-bold text-foreground tracking-tight">
+                Session Warnings & Acknowledgments
+              </h2>
+            </div>
+            <span className="font-mono text-xs text-amber-500 font-bold">
+              {warnings.length} {warnings.length === 1 ? 'warning' : 'warnings'} issued
+            </span>
+          </div>
+
+          <div className="space-y-3">
+            {warnings.map((w, idx) => {
+              const penalty = w.penalty_points ?? w.penaltyPoints ?? 15;
+              const trustAfter = w.trust_score_after ?? w.trustScoreAfter ?? 100;
+              const code = (w.violation_code ?? w.violationCode ?? '') as string;
+              const issued = w.issued_at ?? w.issuedAt;
+              const acked = w.acknowledged_at ?? w.acknowledgedAt;
+              const isAcked = Boolean(acked);
+
+              return (
+                <div
+                  key={w.warning_id ?? w.warningId ?? idx}
+                  data-testid="student-result-warning-item"
+                  className="p-4 rounded-2xl border border-border bg-surface/80 flex flex-wrap items-center justify-between gap-4"
+                >
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2.5">
+                      <span className="font-mono text-xs font-bold text-amber-500 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-lg">
+                        Warning #{idx + 1}
+                      </span>
+                      <span className="font-mono text-sm font-bold text-foreground">
+                        {code.replace(/_/g, ' ')}
+                      </span>
+                      <span className="font-mono text-xs text-rose-500 font-semibold">
+                        -{penalty} PTS
+                      </span>
+                    </div>
+                    {w.message && (
+                      <p className="text-xs text-muted-foreground font-mono">
+                        {w.message}
+                      </p>
+                    )}
+                    <p className="text-[11px] text-muted-foreground font-mono">
+                      Issued: {issued ? new Date(issued).toLocaleTimeString() : 'N/A'} • Trust remaining: {trustAfter}%
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2 text-xs font-mono">
+                    {isAcked ? (
+                      <span className="flex items-center gap-1.5 text-emerald-500 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-lg">
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        <span>Acknowledged at {new Date(acked!).toLocaleTimeString()}</span>
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1.5 text-amber-500 bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 rounded-lg">
+                        <AlertTriangle className="w-3.5 h-3.5" />
+                        <span>Pending Acknowledgment</span>
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Violation Audit History Section */}
       <div className="space-y-4">

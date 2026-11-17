@@ -46,6 +46,7 @@ test.describe('End-to-End Time Extension Flow (Multi-Context)', () => {
       await page.waitForTimeout(500);
       const launchBtn = page.locator('button:has-text("Initialize Assessment Session")');
       await expect(launchBtn).toBeVisible({ timeout: 10000 });
+      await expect(launchBtn).toBeEnabled({ timeout: 10000 });
       await launchBtn.click();
     }
 

@@ -227,6 +227,58 @@ export function ProctorDashboardPage({ initialTab = 'monitor' }: { initialTab?: 
       queryClient.invalidateQueries({ queryKey: ['proctor-live-monitor'] });
     };
 
+    const onWarningIssued = (payload: {
+      warningId: number;
+      sessionId: number;
+      studentName?: string;
+      violationCode?: string;
+      penaltyPoints?: number;
+      trustScoreAfter?: number;
+      warningCount?: number;
+      issuedAt?: string;
+    }) => {
+      playPingSound('violation');
+      triggerTileShake(payload.sessionId);
+      const newItem: LiveViolationItem = {
+        id: `warning-issued-${payload.warningId}-${Date.now()}`,
+        sessionId: payload.sessionId,
+        studentName: payload.studentName ?? `Session #${payload.sessionId}`,
+        violationCode: 'WARNING_ISSUED',
+        violationLabel: `Warning ${payload.warningCount ?? ''} Issued`,
+        severity: 'HIGH',
+        penaltyApplied: payload.penaltyPoints,
+        trustScore: payload.trustScoreAfter,
+        occurredAt: payload.issuedAt ?? new Date().toISOString(),
+      };
+      setLiveFeed((prev) => [newItem, ...prev.slice(0, 39)]);
+      queryClient.invalidateQueries({ queryKey: ['proctor-live-monitor'] });
+      if (inspectedSessionId === payload.sessionId) {
+        queryClient.invalidateQueries({ queryKey: ['proctor-session-inspect', inspectedSessionId] });
+      }
+    };
+
+    const onWarningAcked = (payload: {
+      warningId: number;
+      sessionId: number;
+      studentName?: string;
+      acknowledgedAt?: string;
+    }) => {
+      const newItem: LiveViolationItem = {
+        id: `warning-acked-${payload.warningId}-${Date.now()}`,
+        sessionId: payload.sessionId,
+        studentName: payload.studentName ?? `Session #${payload.sessionId}`,
+        violationCode: 'WARNING_ACKED',
+        violationLabel: 'Warning Acknowledged',
+        severity: 'LOW',
+        occurredAt: payload.acknowledgedAt ?? new Date().toISOString(),
+      };
+      setLiveFeed((prev) => [newItem, ...prev.slice(0, 39)]);
+      queryClient.invalidateQueries({ queryKey: ['proctor-live-monitor'] });
+      if (inspectedSessionId === payload.sessionId) {
+        queryClient.invalidateQueries({ queryKey: ['proctor-session-inspect', inspectedSessionId] });
+      }
+    };
+
     socket.on('connect', onConnect);
     socket.on('disconnect', onDisconnect);
     socket.on('violation:new', onViolation);
@@ -238,6 +290,8 @@ export function ProctorDashboardPage({ initialTab = 'monitor' }: { initialTab?: 
     socket.on('simulator:reset', onSimulatorReset);
     socket.on('extension:requested', onExtensionRequested);
     socket.on('extension:decided', onExtensionDecided);
+    socket.on('warning:issued', onWarningIssued);
+    socket.on('warning:acked', onWarningAcked);
 
     return () => {
       socket.off('connect', onConnect);
@@ -251,6 +305,8 @@ export function ProctorDashboardPage({ initialTab = 'monitor' }: { initialTab?: 
       socket.off('simulator:reset', onSimulatorReset);
       socket.off('extension:requested', onExtensionRequested);
       socket.off('extension:decided', onExtensionDecided);
+      socket.off('warning:issued', onWarningIssued);
+      socket.off('warning:acked', onWarningAcked);
     };
   }, [inspectedSessionId, queryClient, token, triggerTileShake]);
 

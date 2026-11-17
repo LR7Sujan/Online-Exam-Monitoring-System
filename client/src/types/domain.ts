@@ -93,17 +93,29 @@ export interface ExamSession {
 }
 
 export interface SessionWarning {
-  warningId: number;
-  sessionId: number;
+  warning_id?: number;
+  warningId?: number;
+  session_id?: number;
+  sessionId?: number;
+  log_id?: number;
   logId?: number;
-  violationCode: ViolationCode;
+  violation_code?: ViolationCode | string;
+  violationCode?: ViolationCode | string;
+  violation_label?: string;
   violationLabel?: string;
   message: string;
-  penaltyPoints: number;
-  trustScoreAfter: number;
-  warningCount: number;
-  issuedAt: string;
+  penalty_points?: number;
+  penaltyPoints?: number;
+  trust_score_after?: number;
+  trustScoreAfter?: number;
+  warning_count?: number;
+  warningCount?: number;
+  issued_at?: string;
+  issuedAt?: string;
+  acknowledged_at?: string | null;
   acknowledgedAt?: string | null;
+  snapshot_url?: string | null;
+  snapshotUrl?: string | null;
 }
 
 export interface TimeExtensionRequest {
@@ -201,6 +213,9 @@ export interface ProctorLiveMonitorRow {
   extension_granted_minutes?: number | null;
   extension_request_status?: ExtensionRequestStatus | null;
   requested_extension_minutes?: number | null;
+  warning_count?: number;
+  pending_warning_log_id?: number | null;
+  last_warning_ack_at?: string | null;
   granted_extension_minutes?: number | null;
   extension_reason?: string | null;
   extension_created_at?: string | null;

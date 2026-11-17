@@ -133,7 +133,7 @@ export function LiveFeedSidebar({
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <SeverityBadge severity={item.severity as 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'} size="sm" />
                       <span className="font-mono text-xs font-bold text-foreground">
-                        {item.violationCode}
+                        {item.violationLabel ?? item.violationCode}
                       </span>
                       {item.penaltyApplied ? (
                         <span className="font-mono text-[11px] font-bold text-rose-500">

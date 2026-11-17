@@ -8,8 +8,11 @@ import {
   Clock,
   Send,
   Shield,
+  ShieldAlert,
   Video,
   WifiOff,
+  Mic,
+  Smartphone,
 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -18,7 +21,10 @@ import { LiveDot, Skeleton, ErrorState } from '../components/ui';
 import { Modal } from '../components/ui/Modal';
 import { useProctoring, type ViolationReportResponse } from '../hooks/useProctoring';
 import { useFaceDetection } from '../hooks/useFaceDetection';
+import { usePhoneDetection } from '../hooks/usePhoneDetection';
+import { useVoiceDetection } from '../hooks/useVoiceDetection';
 import { ViolationWarningOverlay } from '../components/student/ViolationWarningOverlay';
+import { WarningHistoryDrawer } from '../components/student/WarningHistoryDrawer';
 import { FullscreenExitOverlay } from '../components/student/FullscreenExitOverlay';
 import { CameraDeniedBlocker } from '../components/student/CameraDeniedBlocker';
 import { TimeExtensionModal } from '../components/student/TimeExtensionModal';
@@ -86,6 +92,7 @@ export function StudentExamPage() {
   const [sessionStatus, setSessionStatus] = useState<SessionStatus>('IN_PROGRESS');
   const [extensionRequest, setExtensionRequest] = useState<TimeExtensionRequest | null>(null);
   const [isExtensionModalOpen, setIsExtensionModalOpen] = useState<boolean>(false);
+  const [isWarningHistoryOpen, setIsWarningHistoryOpen] = useState<boolean>(false);
   const [inGraceWindow, setInGraceWindow] = useState<boolean>(false);
   const [grantedToast, setGrantedToast] = useState<number | null>(null);
 
@@ -108,7 +115,11 @@ export function StudentExamPage() {
   // Fetch Session Meta (for min trust score)
   const metaQuery = useQuery({
     queryKey: ['session-meta', numericSessionId],
-    queryFn: () => api.get<{ session: ExamSession }>(`/sessions/${numericSessionId}`),
+    queryFn: () =>
+      api.get<{
+        session: ExamSession;
+        pendingWarning?: Record<string, unknown> | null;
+      }>(`/sessions/${numericSessionId}`),
     enabled: Number.isInteger(numericSessionId) && numericSessionId > 0,
     staleTime: 60000,
   });
@@ -179,7 +190,7 @@ export function StudentExamPage() {
 
   // 3. Answer Selection with Instant Optimistic Update + Autosave
   const handleSelectOption = async (questionId: number, option: AnswerOption) => {
-    if (sessionStatus !== 'IN_PROGRESS') return;
+    if (sessionStatus !== 'IN_PROGRESS' || activeWarning !== null) return;
     if (extensionRequest?.status === 'PENDING') return;
 
     // Optimistic local state update
@@ -223,7 +234,9 @@ export function StudentExamPage() {
   const {
     isFullscreen,
     activeWarning,
+    setActiveWarning,
     clearWarning,
+    isDetectionPaused,
     reportViolation,
     requestFullscreen,
   } = useProctoring({
@@ -244,17 +257,75 @@ export function StudentExamPage() {
     },
   });
 
+  // Restore pending warning on page reload
+  useEffect(() => {
+    const pw =
+      metaQuery.data?.pendingWarning ||
+      (sessionQuery.data as unknown as { pendingWarning?: unknown })?.pendingWarning;
+    if (pw && typeof pw === 'object') {
+      const p = pw as Record<string, unknown>;
+      const s = metaQuery.data?.session;
+      setActiveWarning({
+        sessionId: numericSessionId,
+        trustScore: (p.trustScoreAfter as number) ?? 100,
+        minTrustScore: (s?.min_trust_score as number) ?? 50,
+        status: (s?.status as SessionStatus) ?? 'IN_PROGRESS',
+        isTerminated: false,
+        violationCode: (p.violationCode as any) ?? 'UNAUTHORIZED_ACTION',
+        violationLabel: p.violationLabel as string | undefined,
+        penaltyApplied: p.penaltyPoints as number | undefined,
+        snapshotUrl: p.snapshotUrl as string | null | undefined,
+        warning: {
+          warningId: p.warningId as number,
+          sessionId: numericSessionId,
+          logId: p.logId as number,
+          violationCode: p.violationCode as string,
+          violationLabel: p.violationLabel as string | undefined,
+          message: p.message as string,
+          penaltyPoints: p.penaltyPoints as number,
+          trustScoreAfter: p.trustScoreAfter as number,
+          warningCount: (p.warningCount as number) ?? 1,
+          issuedAt: p.issuedAt as string,
+        },
+      });
+    }
+  }, [metaQuery.data, sessionQuery.data, numericSessionId, setActiveWarning]);
+
   // 6. Client-Side Face Detection Hook (~1 frame/sec, 0 faces for 5s -> NO_FACE, 2+ faces -> MULTIPLE_FACES)
   const {
     videoRef,
     canvasRef,
     cameraActive,
     cameraDenied,
+    deniedDevice,
+    stream,
     faceOk,
     statusText,
     retryCamera,
   } = useFaceDetection({
     enabled: sessionStatus === 'IN_PROGRESS',
+    isPaused: isDetectionPaused,
+    onViolation: (code, snapshot, meta) => {
+      reportViolation(code, meta, snapshot);
+    },
+  });
+
+  // 7. Client-Side Phone Detection Hook (~1 check/sec, 3 of last 5 -> PHONE_DETECTED with box)
+  const { phoneOk: _phoneOk, phoneStatusText } = usePhoneDetection({
+    videoRef,
+    enabled: sessionStatus === 'IN_PROGRESS',
+    isPaused: isDetectionPaused,
+    onViolation: (code, snapshot, meta) => {
+      reportViolation(code, meta, snapshot);
+    },
+  });
+
+  // 8. Client-Side Voice Detection Hook (Web Audio API, 4s speech in 6s window -> VOICE_DETECTED)
+  const { micOk, micLevel: _micLevel } = useVoiceDetection({
+    stream,
+    videoRef,
+    enabled: sessionStatus === 'IN_PROGRESS',
+    isPaused: isDetectionPaused,
     onViolation: (code, snapshot, meta) => {
       reportViolation(code, meta, snapshot);
     },
@@ -317,16 +388,48 @@ export function StudentExamPage() {
       }
     };
 
+    const onWarningIssued = (payload: {
+      warningId: number;
+      sessionId: number;
+      logId: number;
+      violationCode: string;
+      violationLabel?: string;
+      message: string;
+      penaltyPoints: number;
+      trustScoreAfter: number;
+      warningCount: number;
+      issuedAt: string;
+      snapshotUrl?: string | null;
+    }) => {
+      if (payload.sessionId !== numericSessionId) return;
+      setTrustScore(payload.trustScoreAfter);
+      metaQuery.refetch();
+      setActiveWarning({
+        sessionId: numericSessionId,
+        trustScore: payload.trustScoreAfter,
+        minTrustScore,
+        status: sessionStatus,
+        isTerminated: false,
+        violationCode: payload.violationCode as any,
+        violationLabel: payload.violationLabel,
+        penaltyApplied: payload.penaltyPoints,
+        snapshotUrl: payload.snapshotUrl,
+        warning: payload,
+      });
+    };
+
     socket.on('violation:new', onViolation);
     socket.on('session:update', onViolation);
     socket.on('session:terminated', onTerminated);
     socket.on('extension:decided', onExtensionDecided);
+    socket.on('warning:issued', onWarningIssued);
 
     return () => {
       socket.off('violation:new', onViolation);
       socket.off('session:update', onViolation);
       socket.off('session:terminated', onTerminated);
       socket.off('extension:decided', onExtensionDecided);
+      socket.off('warning:issued', onWarningIssued);
     };
   }, [numericSessionId, token, submitMutation]);
 
@@ -550,6 +653,33 @@ export function StudentExamPage() {
                 )}
               </div>
             )}
+
+          {/* Warnings (N) History Button */}
+          <button
+            type="button"
+            onClick={() => setIsWarningHistoryOpen(true)}
+            data-testid="hud-warnings-button"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border bg-surface-elevated/80 hover:bg-muted text-foreground font-mono text-xs font-semibold transition-all cursor-pointer hover:border-amber-500/40"
+          >
+            <ShieldAlert
+              className={`w-3.5 h-3.5 ${
+                (metaQuery.data?.session?.warning_count ?? 0) > 0
+                  ? 'text-amber-500 animate-pulse'
+                  : 'text-muted-foreground'
+              }`}
+            />
+            <span>Warnings ({metaQuery.data?.session?.warning_count ?? 0})</span>
+          </button>
+
+          {/* Mic Telemetry Status */}
+          <div
+            className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-border bg-surface-elevated/80 font-mono text-xs text-muted-foreground"
+            data-testid="hud-mic-status"
+            title="Microphone Analysis: Active & Monitored"
+          >
+            <Mic className={`w-3.5 h-3.5 ${micOk ? 'text-emerald-500' : 'text-rose-500'}`} />
+            <span className="text-[11px] font-semibold">{micOk ? 'Mic OK' : 'Mic Off'}</span>
+          </div>
         </div>
 
         {/* Right: Autosave status & Submit Action */}
@@ -697,13 +827,19 @@ export function StudentExamPage() {
                       <motion.button
                         key={optKey}
                         type="button"
-                        whileHover={{ scale: 1.006 }}
-                        whileTap={{ scale: 0.994 }}
-                        onClick={() => handleSelectOption(currentQuestion.id, optKey)}
-                        className={`w-full text-left p-4 sm:p-5 rounded-2xl border transition-all flex items-center justify-between gap-4 select-none cursor-pointer ${
-                          isSelected
-                            ? 'border-brand bg-brand/10 shadow-sm text-foreground font-medium'
-                            : 'border-border bg-surface/70 hover:border-brand/40 hover:bg-surface text-foreground'
+                        disabled={activeWarning !== null}
+                        whileHover={activeWarning === null ? { scale: 1.006 } : {}}
+                        whileTap={activeWarning === null ? { scale: 0.994 } : {}}
+                        onClick={() => {
+                          if (activeWarning !== null) return;
+                          handleSelectOption(currentQuestion.id, optKey);
+                        }}
+                        className={`w-full text-left p-4 sm:p-5 rounded-2xl border transition-all flex items-center justify-between gap-4 select-none ${
+                          activeWarning !== null
+                            ? 'opacity-60 cursor-not-allowed border-border bg-surface/50 text-muted-foreground'
+                            : isSelected
+                            ? 'border-brand bg-brand/10 shadow-sm text-foreground font-medium cursor-pointer'
+                            : 'border-border bg-surface/70 hover:border-brand/40 hover:bg-surface text-foreground cursor-pointer'
                         }`}
                       >
                         <div className="flex items-center gap-3.5">
@@ -810,6 +946,18 @@ export function StudentExamPage() {
                   </span>
                 </div>
               )}
+            </div>
+
+            {/* Phone & Microphone Status Indicators */}
+            <div className="flex items-center justify-between pt-2 border-t border-border/70 text-[10px] font-mono text-muted-foreground">
+              <span className="flex items-center gap-1">
+                <Smartphone className="w-3 h-3 text-brand" />
+                <span data-testid="hud-phone-check-status">{phoneStatusText || 'Phone check: OK'}</span>
+              </span>
+              <span className="flex items-center gap-1">
+                <Mic className="w-3 h-3 text-brand" />
+                <span>{micOk ? 'Mic: Monitored' : 'Mic: Offline'}</span>
+              </span>
             </div>
           </div>
 
@@ -971,7 +1119,14 @@ export function StudentExamPage() {
       </Modal>
 
       {/* Camera Denied Blocker Overlay */}
-      {cameraDenied && <CameraDeniedBlocker onRetry={retryCamera} />}
+      {cameraDenied && <CameraDeniedBlocker deviceType={deniedDevice} onRetry={retryCamera} />}
+
+      {/* Warning History Side Panel */}
+      <WarningHistoryDrawer
+        isOpen={isWarningHistoryOpen}
+        onClose={() => setIsWarningHistoryOpen(false)}
+        sessionId={numericSessionId}
+      />
 
       {/* Time Extension Modal */}
       <TimeExtensionModal

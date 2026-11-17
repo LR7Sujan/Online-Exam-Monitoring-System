@@ -10,6 +10,8 @@ import {
   emitSessionUpdate,
   emitSimulatorReset,
   emitViolationNew,
+  emitWarningIssued,
+  emitWarningAcked,
 } from '../realtime/socket.js';
 import type { ExamSessionRow, ViolationTypeRow } from '../types/api.js';
 import { AppError } from '../utils/errors.js';
@@ -478,14 +480,23 @@ class SimulatorEngine {
   }
 
   private async triggerCandidateViolation(candidate: SimCandidate): Promise<void> {
+    // 0. Check Warning Gate: if candidate already has an unacknowledged warning, skip
+    const sessRows = await queryRows<ExamSessionRow[]>(
+      'SELECT pending_warning_log_id, warning_count FROM Exam_Sessions WHERE id = ?',
+      [candidate.sessionId]
+    );
+    if (sessRows[0]?.pending_warning_log_id) {
+      return;
+    }
+
     // Select violation code based on chaos level
     let codes: string[];
     if (this.state.chaos === 'low') {
       codes = ['TAB_SWITCH', 'COPY_PASTE', 'TAB_SWITCH'];
     } else if (this.state.chaos === 'medium') {
-      codes = ['TAB_SWITCH', 'FULLSCREEN_EXIT', 'NO_FACE', 'COPY_PASTE'];
+      codes = ['TAB_SWITCH', 'FULLSCREEN_EXIT', 'NO_FACE', 'PHONE_DETECTED', 'VOICE_DETECTED', 'COPY_PASTE'];
     } else {
-      codes = ['NO_FACE', 'MULTIPLE_FACES', 'DEVTOOLS_OPEN', 'TAB_SWITCH', 'FULLSCREEN_EXIT'];
+      codes = ['NO_FACE', 'MULTIPLE_FACES', 'PHONE_DETECTED', 'VOICE_DETECTED', 'DEVTOOLS_OPEN', 'TAB_SWITCH', 'FULLSCREEN_EXIT'];
     }
 
     const chosenCode = codes[Math.floor(Math.random() * codes.length)];
@@ -573,6 +584,63 @@ class SimulatorEngine {
         trust_score: updated.trust_score,
         status: updated.status,
       });
+
+      if (updated.status !== 'TERMINATED_CHEATING') {
+        const warningMessage = `${vType.label}: Violation detected. Please adhere to proctoring guidelines.`;
+        const [warningInsert] = await pool.query<any>(
+          `INSERT INTO Session_Warnings (session_id, log_id, violation_code, message, penalty_points, trust_score_after, issued_at)
+           VALUES (?, ?, ?, ?, ?, ?, NOW())`,
+          [candidate.sessionId, insertRes.insertId, vType.code, warningMessage, vType.penalty_points, updated.trust_score]
+        );
+        const warningId = (warningInsert as { insertId: number }).insertId;
+        const newWarningCount = (sessRows[0]?.warning_count ?? 0) + 1;
+
+        await pool.query(
+          `UPDATE Exam_Sessions
+              SET pending_warning_log_id = ?,
+                  warning_count = warning_count + 1
+            WHERE id = ?`,
+          [insertRes.insertId, candidate.sessionId]
+        );
+
+        const warningPayload = {
+          warningId,
+          sessionId: candidate.sessionId,
+          logId: insertRes.insertId,
+          violationCode: vType.code,
+          violationLabel: vType.label,
+          message: warningMessage,
+          penaltyPoints: vType.penalty_points,
+          trustScoreAfter: updated.trust_score,
+          warningCount: newWarningCount,
+          issuedAt: new Date().toISOString(),
+        };
+        emitWarningIssued(candidate.studentId, candidate.sessionId, warningPayload);
+
+        setTimeout(async () => {
+          try {
+            await pool.query(
+              'UPDATE Session_Warnings SET acknowledged_at = NOW() WHERE warning_id = ?',
+              [warningId]
+            );
+            await pool.query(
+              `UPDATE Exam_Sessions
+                  SET pending_warning_log_id = NULL,
+                      last_warning_ack_at = NOW()
+                WHERE id = ?`,
+              [candidate.sessionId]
+            );
+            emitWarningAcked(candidate.studentId, candidate.sessionId, {
+              warningId,
+              sessionId: candidate.sessionId,
+              acknowledgedAt: new Date().toISOString(),
+              graceSeconds: 5,
+            });
+          } catch {
+            // ignore
+          }
+        }, 1500);
+      }
 
       this.addLog(
         candidate.fullName,

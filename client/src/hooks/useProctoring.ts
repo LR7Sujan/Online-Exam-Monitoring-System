@@ -20,6 +20,8 @@ export interface ViolationReportResponse {
   debounced?: boolean;
   ignored?: boolean;
   reason?: string;
+  snapshotUrl?: string | null;
+  snapshot_url?: string | null;
   warning?: {
     warningId: number;
     sessionId: number;
@@ -53,9 +55,35 @@ export function useProctoring({
     Boolean(typeof document !== 'undefined' && document.fullscreenElement)
   );
   const [activeWarning, setActiveWarning] = useState<ViolationReportResponse | null>(null);
+  const [isDetectionPaused, setIsDetectionPaused] = useState<boolean>(false);
 
   const lastReportedRef = useRef<Record<string, number>>({});
   const isTerminatedRef = useRef<boolean>(sessionStatus === 'TERMINATED_CHEATING');
+  const activeWarningRef = useRef<ViolationReportResponse | null>(null);
+  const isDetectionPausedRef = useRef<boolean>(false);
+  const graceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    activeWarningRef.current = activeWarning;
+    if (activeWarning && !activeWarning.isTerminated) {
+      setIsDetectionPaused(true);
+      isDetectionPausedRef.current = true;
+      if (graceTimerRef.current) {
+        clearTimeout(graceTimerRef.current);
+        graceTimerRef.current = null;
+      }
+    }
+  }, [activeWarning]);
+
+  useEffect(() => {
+    isDetectionPausedRef.current = isDetectionPaused;
+  }, [isDetectionPaused]);
+
+  useEffect(() => {
+    return () => {
+      if (graceTimerRef.current) clearTimeout(graceTimerRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     isTerminatedRef.current = sessionStatus === 'TERMINATED_CHEATING';
@@ -80,7 +108,15 @@ export function useProctoring({
       evidenceMeta?: Record<string, unknown>,
       snapshot?: string | null
     ) => {
-      if (!enabled || !sessionId || isTerminatedRef.current) return;
+      if (
+        !enabled ||
+        !sessionId ||
+        isTerminatedRef.current ||
+        activeWarningRef.current !== null ||
+        isDetectionPausedRef.current
+      ) {
+        return;
+      }
 
       const now = Date.now();
       const lastTs = lastReportedRef.current[code] ?? 0;
@@ -135,13 +171,29 @@ export function useProctoring({
   const clearWarning = useCallback(async () => {
     const warningId = activeWarning?.warning?.warningId;
     setActiveWarning(null);
+    let graceSeconds = 5;
     if (sessionId && warningId) {
       try {
-        await api.post(`/sessions/${sessionId}/warnings/${warningId}/ack`);
+        const res = await api.post<{ graceSeconds?: number }>(
+          `/sessions/${sessionId}/warnings/${warningId}/ack`
+        );
+        if (res?.graceSeconds) {
+          graceSeconds = res.graceSeconds;
+        }
       } catch (err) {
         console.warn('[Proctoring] Failed to acknowledge warning:', err);
       }
     }
+
+    // Keep detectors paused during grace window
+    setIsDetectionPaused(true);
+    isDetectionPausedRef.current = true;
+    if (graceTimerRef.current) clearTimeout(graceTimerRef.current);
+    graceTimerRef.current = setTimeout(() => {
+      setIsDetectionPaused(false);
+      isDetectionPausedRef.current = false;
+      graceTimerRef.current = null;
+    }, graceSeconds * 1000);
   }, [sessionId, activeWarning]);
 
   const requestFullscreen = useCallback(async () => {
@@ -162,12 +214,14 @@ export function useProctoring({
 
     // 1. Visibility Change & Window Blur -> TAB_SWITCH
     const handleVisibilityChange = () => {
+      if (activeWarningRef.current !== null || isDetectionPausedRef.current) return;
       if (document.hidden) {
         reportViolation('TAB_SWITCH', { trigger: 'visibilitychange_hidden' });
       }
     };
 
     const handleWindowBlur = () => {
+      if (activeWarningRef.current !== null || isDetectionPausedRef.current) return;
       reportViolation('TAB_SWITCH', { trigger: 'window_blur' });
     };
 
@@ -176,33 +230,39 @@ export function useProctoring({
       const active = Boolean(document.fullscreenElement);
       setIsFullscreen(active);
       if (!active) {
+        if (activeWarningRef.current !== null || isDetectionPausedRef.current) return;
         reportViolation('FULLSCREEN_EXIT', { trigger: 'fullscreen_exit' });
       }
     };
 
     // 3. Clipboard & Context Menu -> COPY_PASTE
     const handleCopy = (e: ClipboardEvent) => {
+      if (activeWarningRef.current !== null || isDetectionPausedRef.current) return;
       e.preventDefault();
       reportViolation('COPY_PASTE', { action: 'copy' });
     };
 
     const handleCut = (e: ClipboardEvent) => {
+      if (activeWarningRef.current !== null || isDetectionPausedRef.current) return;
       e.preventDefault();
       reportViolation('COPY_PASTE', { action: 'cut' });
     };
 
     const handlePaste = (e: ClipboardEvent) => {
+      if (activeWarningRef.current !== null || isDetectionPausedRef.current) return;
       e.preventDefault();
       reportViolation('COPY_PASTE', { action: 'paste' });
     };
 
     const handleContextMenu = (e: MouseEvent) => {
+      if (activeWarningRef.current !== null || isDetectionPausedRef.current) return;
       e.preventDefault();
       reportViolation('COPY_PASTE', { action: 'contextmenu' });
     };
 
     // 4. Keyboard Shortcuts for Inspection (F12, Ctrl+Shift+I/J/C, Ctrl+U) -> DEVTOOLS_OPEN
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (activeWarningRef.current !== null || isDetectionPausedRef.current) return;
       const isDevToolsKey =
         e.key === 'F12' ||
         (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'J' || e.key === 'C')) ||
@@ -217,6 +277,7 @@ export function useProctoring({
 
     // 5. DevTools Dimension Delta Heuristic & Timing
     const devToolsInterval = setInterval(() => {
+      if (activeWarningRef.current !== null || isDetectionPausedRef.current) return;
       const threshold = 160;
       const widthDelta = window.outerWidth - window.innerWidth;
       const heightDelta = window.outerHeight - window.innerHeight;
@@ -255,7 +316,9 @@ export function useProctoring({
   return {
     isFullscreen,
     activeWarning,
+    setActiveWarning,
     clearWarning,
+    isDetectionPaused,
     reportViolation,
     requestFullscreen,
   };

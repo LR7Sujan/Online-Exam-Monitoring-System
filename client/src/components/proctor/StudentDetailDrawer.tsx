@@ -38,6 +38,7 @@ import type {
   ProctorLiveMonitorRow,
   ReviewStatus,
   ViolationAuditRow,
+  SessionWarning,
 } from '../../types/domain';
 
 interface StudentDetailDrawerProps {
@@ -85,6 +86,14 @@ export function StudentDetailDrawer({ sessionId, onClose }: StudentDetailDrawerP
     enabled: sessionId !== null && sessionId > 0,
     refetchInterval: 10000,
   });
+
+  const warningsQuery = useQuery<SessionWarning[]>({
+    queryKey: ['session-warnings', sessionId],
+    queryFn: () => api.get<SessionWarning[]>(`/sessions/${sessionId}/warnings`),
+    enabled: sessionId !== null && sessionId > 0,
+    refetchInterval: 10000,
+  });
+  const warnings = warningsQuery.data ?? [];
 
   // Review single log mutation
   const reviewMutation = useMutation({
@@ -631,6 +640,35 @@ export function StudentDetailDrawer({ sessionId, onClose }: StudentDetailDrawerP
                             )}
                           </div>
                         </div>
+
+                        {(() => {
+                          const matchingWarning = warnings.find(
+                            (w) => Number(w.log_id ?? w.logId) === Number(log.log_id)
+                          );
+                          if (!matchingWarning) return null;
+                          const ackedAt = matchingWarning.acknowledged_at ?? matchingWarning.acknowledgedAt;
+                          const warningIdx = warnings.indexOf(matchingWarning) + 1;
+                          return (
+                            <div className="mt-2.5 pt-2 border-t border-border/60 flex items-center justify-between text-[11px] font-mono">
+                              <span className="text-amber-500 font-bold">
+                                Warning #{warningIdx}
+                              </span>
+                              {ackedAt ? (
+                                <span className="text-emerald-500 flex items-center gap-1 font-semibold">
+                                  <CheckCircle2 className="w-3.5 h-3.5" />
+                                  <span>
+                                    Warning acknowledged at {new Date(ackedAt).toLocaleTimeString()}
+                                  </span>
+                                </span>
+                              ) : (
+                                <span className="text-amber-500 flex items-center gap-1 font-semibold">
+                                  <AlertTriangle className="w-3.5 h-3.5" />
+                                  <span>Warning issued (Pending acknowledgment)</span>
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </div>
                     );
                   })}

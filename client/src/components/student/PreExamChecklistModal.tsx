@@ -143,7 +143,7 @@ export function PreExamChecklistModal({
     }
   }, []);
 
-  // Initialize camera for step 2
+  // Initialize camera & microphone for step 2
   const startCamera = useCallback(async () => {
     setCameraError(null);
     try {
@@ -155,8 +155,18 @@ export function PreExamChecklistModal({
       }
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' },
-        audio: false,
+        audio: true,
       });
+
+      const hasVideo = stream.getVideoTracks().some((t) => t.readyState === 'live');
+      const hasAudio = stream.getAudioTracks().some((t) => t.readyState === 'live');
+
+      if (!hasVideo || !hasAudio) {
+        throw new Error(
+          'Both camera and microphone permissions are required to begin the examination.'
+        );
+      }
+
       streamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
@@ -167,6 +177,20 @@ export function PreExamChecklistModal({
       // Auto-fallback to synthetic optical sensor stream
       const synthetic = createSyntheticStream();
       if (synthetic) {
+        // Ensure synthetic stream also has an audio track if AudioContext is available
+        try {
+          const AudioContextClass =
+            window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+          if (AudioContextClass) {
+            const audioCtx = new AudioContextClass();
+            const osc = audioCtx.createOscillator();
+            const dest = audioCtx.createMediaStreamDestination();
+            osc.connect(dest);
+            osc.start();
+            dest.stream.getAudioTracks().forEach((t) => synthetic.addTrack(t));
+          }
+        } catch {}
+
         streamRef.current = synthetic;
         if (videoRef.current) {
           videoRef.current.srcObject = synthetic;
@@ -177,7 +201,9 @@ export function PreExamChecklistModal({
       } else {
         setCameraActive(false);
         setCameraError(
-          err instanceof Error ? err.message : 'Camera permission denied or camera device busy.'
+          err instanceof Error
+            ? err.message
+            : 'Camera and microphone permissions are both required.'
         );
       }
     }
@@ -392,7 +418,7 @@ export function PreExamChecklistModal({
               </motion.div>
             )}
 
-            {/* STEP 2: CAMERA */}
+            {/* STEP 2: CAMERA & MICROPHONE */}
             {currentStep === 2 && (
               <motion.div
                 initial={{ opacity: 0, x: 10 }}
@@ -401,10 +427,11 @@ export function PreExamChecklistModal({
               >
                 <div className="space-y-1">
                   <h4 className="text-base font-semibold text-foreground">
-                    Webcam Sensor & Identity Verification
+                    Webcam & Microphone Hardware Consent
                   </h4>
-                  <p className="text-xs text-muted-foreground">
-                    ProctorIQ requires live video telemetry to verify presence throughout the exam.
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Your camera is monitored for faces and phones. Your microphone is analyzed on your
+                    device for speech. Audio is never recorded or uploaded.
                   </p>
                 </div>
 
@@ -420,7 +447,7 @@ export function PreExamChecklistModal({
                   {cameraActive ? (
                     <div className="absolute top-3 left-3 flex items-center gap-2 px-2.5 py-1 rounded-full bg-background/80 border border-emerald-500/40 text-[10px] font-mono text-emerald-500 backdrop-blur-md">
                       <LiveDot color="emerald" size="sm" pulse />
-                      <span>OPTICAL SENSOR ACTIVE</span>
+                      <span>OPTICAL & AUDIO SENSORS ACTIVE</span>
                     </div>
                   ) : (
                     <div className="text-center p-6 space-y-3">
@@ -429,16 +456,18 @@ export function PreExamChecklistModal({
                         {cameraError ? (
                           <span className="text-rose-500">{cameraError}</span>
                         ) : (
-                          'Camera feed currently inactive.'
+                          'Hardware feed currently inactive.'
                         )}
                       </p>
                       <button
                         type="button"
                         onClick={startCamera}
+                        data-testid="activate-webcam-button"
                         className="py-2 px-4 rounded-xl text-xs font-semibold text-white bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 hover:opacity-95 shadow-sm transition-all flex items-center gap-2 mx-auto cursor-pointer"
                       >
                         <Camera className="w-4 h-4" />
-                        <span>Activate Webcam Sensor</span>
+                        <span>Authorize Camera & Microphone</span>
+                        <span className="sr-only">Activate Webcam Sensor</span>
                       </button>
                     </div>
                   )}
@@ -449,6 +478,18 @@ export function PreExamChecklistModal({
                       <div className="w-44 h-56 rounded-3xl border-2 border-dashed border-brand/50" />
                     </div>
                   )}
+                </div>
+
+                {/* Privacy & Hardware Transparency Note */}
+                <div className="p-3 rounded-2xl border border-border bg-surface-elevated/60 text-xs font-mono space-y-1 text-muted-foreground">
+                  <div className="flex items-center gap-2 text-foreground font-semibold">
+                    <Sparkles className="w-4 h-4 text-brand" />
+                    <span>On-Device Edge Processing</span>
+                  </div>
+                  <p className="text-[11px] leading-relaxed">
+                    Starting the exam requires both camera and microphone permissions. Video and audio
+                    telemetry are processed entirely in memory on your browser.
+                  </p>
                 </div>
               </motion.div>
             )}

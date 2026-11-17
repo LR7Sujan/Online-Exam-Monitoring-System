@@ -305,12 +305,42 @@ sessionsRouter.get(
         [sessionId]
       );
 
+      let pendingWarning = null;
+      if (session.pending_warning_log_id) {
+        const pwRows = await queryRows<SessionWarningRow[]>(
+          `SELECT sw.*, pl.snapshot_url, pl.evidence_meta, vt.label AS violation_label
+             FROM Session_Warnings sw
+             LEFT JOIN Proctoring_Logs pl ON pl.id = sw.log_id
+             LEFT JOIN Violation_Types vt ON vt.code = sw.violation_code
+            WHERE sw.session_id = ? AND sw.acknowledged_at IS NULL
+            ORDER BY sw.warning_id DESC LIMIT 1`,
+          [sessionId]
+        );
+        if (pwRows[0]) {
+          pendingWarning = {
+            warningId: pwRows[0].warning_id,
+            sessionId: pwRows[0].session_id,
+            logId: pwRows[0].log_id,
+            violationCode: pwRows[0].violation_code,
+            violationLabel: (pwRows[0] as unknown as { violation_label?: string }).violation_label,
+            message: pwRows[0].message,
+            penaltyPoints: pwRows[0].penalty_points,
+            trustScoreAfter: pwRows[0].trust_score_after,
+            warningCount: session.warning_count,
+            issuedAt: pwRows[0].issued_at,
+            snapshotUrl: (pwRows[0] as unknown as { snapshot_url?: string | null }).snapshot_url ?? null,
+            evidenceMeta: (pwRows[0] as unknown as { evidence_meta?: unknown }).evidence_meta ?? null,
+          };
+        }
+      }
+
       sendSuccess(res, {
         session,
         questions,
         responses,
         recentLogs,
         extensionRequest: session.extension_request ?? null,
+        pendingWarning,
       });
     } catch (err) {
       next(err);
@@ -344,12 +374,42 @@ sessionsRouter.get(
         [sessionId]
       );
 
+      let pendingWarning = null;
+      if (session.pending_warning_log_id) {
+        const pwRows = await queryRows<SessionWarningRow[]>(
+          `SELECT sw.*, pl.snapshot_url, pl.evidence_meta, vt.label AS violation_label
+             FROM Session_Warnings sw
+             LEFT JOIN Proctoring_Logs pl ON pl.id = sw.log_id
+             LEFT JOIN Violation_Types vt ON vt.code = sw.violation_code
+            WHERE sw.session_id = ? AND sw.acknowledged_at IS NULL
+            ORDER BY sw.warning_id DESC LIMIT 1`,
+          [sessionId]
+        );
+        if (pwRows[0]) {
+          pendingWarning = {
+            warningId: pwRows[0].warning_id,
+            sessionId: pwRows[0].session_id,
+            logId: pwRows[0].log_id,
+            violationCode: pwRows[0].violation_code,
+            violationLabel: (pwRows[0] as unknown as { violation_label?: string }).violation_label,
+            message: pwRows[0].message,
+            penaltyPoints: pwRows[0].penalty_points,
+            trustScoreAfter: pwRows[0].trust_score_after,
+            warningCount: session.warning_count,
+            issuedAt: pwRows[0].issued_at,
+            snapshotUrl: (pwRows[0] as unknown as { snapshot_url?: string | null }).snapshot_url ?? null,
+            evidenceMeta: (pwRows[0] as unknown as { evidence_meta?: unknown }).evidence_meta ?? null,
+          };
+        }
+      }
+
       sendSuccess(res, {
         sessionId: session.id,
         examId: session.exam_id,
         status: session.status,
         questions,
         responses,
+        pendingWarning,
       });
     } catch (err) {
       next(err);

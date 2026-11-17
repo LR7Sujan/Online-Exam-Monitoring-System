@@ -1,12 +1,31 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { CameraOff, ShieldAlert, RefreshCw, Lock } from 'lucide-react';
+import { CameraOff, MicOff, ShieldAlert, RefreshCw, Lock } from 'lucide-react';
 
 interface CameraDeniedBlockerProps {
+  deviceType?: 'camera' | 'microphone' | 'both';
   onRetry: () => void;
 }
 
-export const CameraDeniedBlocker: React.FC<CameraDeniedBlockerProps> = ({ onRetry }) => {
+export const CameraDeniedBlocker: React.FC<CameraDeniedBlockerProps> = ({
+  deviceType = 'camera',
+  onRetry,
+}) => {
+  const isMic = deviceType === 'microphone';
+  const isBoth = deviceType === 'both';
+
+  const title = isBoth
+    ? 'Camera & Microphone Access Denied'
+    : isMic
+    ? 'Microphone Access Denied'
+    : 'Camera Access Denied';
+
+  const description = isBoth
+    ? 'ProctorIQ requires continuous webcam video and microphone telemetry to verify candidate presence and room environment throughout your assessment. Audio is analyzed on-device only and is never stored.'
+    : isMic
+    ? 'ProctorIQ requires continuous microphone audio telemetry to analyze on-device for talking or speech. Audio is never recorded or uploaded to our servers.'
+    : 'ProctorIQ requires continuous optical webcam verification to detect face presence and maintain the integrity of your examination.';
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/90 backdrop-blur-xl">
       <motion.div
@@ -20,7 +39,11 @@ export const CameraDeniedBlocker: React.FC<CameraDeniedBlockerProps> = ({ onRetr
 
         {/* Pulsing Icon */}
         <div className="relative mx-auto w-16 h-16 rounded-2xl bg-rose-500/10 border border-rose-500/40 flex items-center justify-center">
-          <CameraOff className="w-8 h-8 text-rose-500 animate-pulse" />
+          {isMic ? (
+            <MicOff className="w-8 h-8 text-rose-500 animate-pulse" />
+          ) : (
+            <CameraOff className="w-8 h-8 text-rose-500 animate-pulse" />
+          )}
           <span className="absolute -top-1 -right-1 flex h-4 w-4">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-500/75 opacity-75"></span>
             <span className="relative inline-flex rounded-full h-4 w-4 bg-rose-500"></span>
@@ -31,7 +54,7 @@ export const CameraDeniedBlocker: React.FC<CameraDeniedBlockerProps> = ({ onRetr
         <div className="space-y-1">
           <h2 className="text-xl font-bold tracking-tight text-foreground flex items-center justify-center gap-2">
             <ShieldAlert className="w-5 h-5 text-rose-500" />
-            <span>Camera Access Denied</span>
+            <span>{title}</span>
           </h2>
           <p className="text-xs font-mono text-muted-foreground">
             PROCTORING INTEGRITY LOCKOUT // HARDWARE TELEMETRY REQUIRED
@@ -39,21 +62,21 @@ export const CameraDeniedBlocker: React.FC<CameraDeniedBlockerProps> = ({ onRetr
         </div>
 
         {/* Message */}
-        <p className="text-sm text-muted-foreground leading-relaxed">
-          ProctorIQ requires continuous optical webcam verification to detect face presence and maintain
-          the integrity of your examination. The browser has blocked or denied camera access.
-        </p>
+        <p className="text-sm text-muted-foreground leading-relaxed">{description}</p>
 
         {/* Instructions */}
         <div className="rounded-2xl border border-border bg-surface-elevated/70 p-4 text-left space-y-2 text-xs text-foreground">
           <div className="font-semibold text-brand flex items-center gap-1.5">
             <Lock className="w-3.5 h-3.5" />
-            <span>How to unblock your camera:</span>
+            <span>How to unblock permissions:</span>
           </div>
           <ol className="list-decimal list-inside space-y-1 font-sans text-muted-foreground pl-1">
-            <li>Click the lock or camera icon in your browser address bar.</li>
-            <li>Change Camera permission to <strong className="text-emerald-500 font-semibold">"Allow"</strong>.</li>
-            <li>Click the button below to resume optical monitoring.</li>
+            <li>Click the lock or media icon in your browser address bar.</li>
+            <li>
+              Change Camera & Microphone permission to{' '}
+              <strong className="text-emerald-500 font-semibold">"Allow"</strong>.
+            </li>
+            <li>Click the button below to resume hardware monitoring.</li>
           </ol>
         </div>
 
@@ -65,7 +88,7 @@ export const CameraDeniedBlocker: React.FC<CameraDeniedBlockerProps> = ({ onRetr
             className="py-2.5 px-5 rounded-xl font-semibold text-xs text-white bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 hover:opacity-95 shadow-md shadow-brand/20 active:scale-[0.99] transition-all flex items-center gap-2 cursor-pointer"
           >
             <RefreshCw className="w-4 h-4" />
-            <span>Retry Camera Verification</span>
+            <span>Retry Hardware Verification</span>
           </button>
         </div>
       </motion.div>

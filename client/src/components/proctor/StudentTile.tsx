@@ -5,6 +5,7 @@ import {
   RotateCcw,
   Shield,
   ShieldAlert,
+  AlertTriangle,
 } from 'lucide-react';
 import { TrustRing } from '../ui/TrustRing';
 import { StatusPill } from '../ui/StatusPill';
@@ -97,13 +98,12 @@ export function StudentTile({
           {/* Avatar with Risk Ring */}
           <motion.div
             layoutId={`student-avatar-${session.session_id}`}
-            className={`relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl font-mono text-sm font-bold shadow-sm ${
-              riskColor === 'rose'
-                ? 'border-2 border-rose-500 bg-rose-500/15 text-rose-500'
-                : riskColor === 'amber'
+            className={`relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl font-mono text-sm font-bold shadow-sm ${riskColor === 'rose'
+              ? 'border-2 border-rose-500 bg-rose-500/15 text-rose-500'
+              : riskColor === 'amber'
                 ? 'border-2 border-amber-500 bg-amber-500/15 text-amber-500'
                 : 'border-2 border-brand/50 bg-brand/10 text-brand'
-            }`}
+              }`}
           >
             {getInitials(session.student_name)}
             {session.status === 'IN_PROGRESS' && (
@@ -168,6 +168,18 @@ export function StudentTile({
             <span className="inline-block rounded-md bg-amber-500/15 border border-amber-500/30 px-1.5 py-0.5 font-mono text-[9px] font-bold text-amber-500 mt-0.5 whitespace-nowrap">
               {session.pending_violations} Pending Review
             </span>
+          )}
+
+          {Boolean(session.warning_count && session.warning_count > 0) && (
+            <div className="flex justify-end mt-1">
+              <span
+                data-testid="tile-warning-badge"
+                className="inline-flex items-center gap-1 rounded-md bg-amber-500/15 border border-amber-500/35 px-1.5 py-0.5 font-mono text-[9px] font-bold text-amber-500 whitespace-nowrap"
+              >
+                <AlertTriangle className="w-2.5 h-2.5 text-amber-500" />
+                <span>Warning {session.warning_count}</span>
+              </span>
+            </div>
           )}
         </div>
       </div>

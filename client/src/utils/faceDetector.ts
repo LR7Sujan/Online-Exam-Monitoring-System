@@ -4,12 +4,87 @@
  * with Optical Luminance & Skin-Chroma heuristic fallback.
  */
 
+/**
+ * Bounding box interface
+ */
 export interface BoundingBox {
   x: number;
   y: number;
   width: number;
   height: number;
   score?: number;
+}
+
+/**
+ * Multiple faces continuous observation tracker (5 continuous seconds requirement)
+ */
+export class MultiFaceTracker {
+  private consecutiveSeconds = 0;
+  private readonly requiredSeconds: number;
+  private reported = false;
+
+  constructor(requiredSeconds = 5) {
+    this.requiredSeconds = requiredSeconds;
+  }
+
+  public recordFrame(faceCount: number): {
+    shouldReport: boolean;
+    consecutiveSeconds: number;
+    isObserving: boolean;
+    statusText?: string;
+  } {
+    if (faceCount >= 2) {
+      this.consecutiveSeconds += 1;
+      const current = this.consecutiveSeconds;
+
+      if (current >= this.requiredSeconds) {
+        if (!this.reported) {
+          this.reported = true;
+          return {
+            shouldReport: true,
+            consecutiveSeconds: current,
+            isObserving: false,
+            statusText: `MULTIPLE FACES (${faceCount} Faces Detected)`,
+          };
+        }
+        return {
+          shouldReport: false,
+          consecutiveSeconds: current,
+          isObserving: false,
+          statusText: `MULTIPLE FACES (${faceCount} Faces Detected)`,
+        };
+      }
+
+      return {
+        shouldReport: false,
+        consecutiveSeconds: current,
+        isObserving: true,
+        statusText: `Checking... ${current}s`,
+      };
+    } else {
+      // If at any moment count drops below 2, cancel and reset immediately
+      this.consecutiveSeconds = 0;
+      this.reported = false;
+      return {
+        shouldReport: false,
+        consecutiveSeconds: 0,
+        isObserving: false,
+      };
+    }
+  }
+
+  public reset(): void {
+    this.consecutiveSeconds = 0;
+    this.reported = false;
+  }
+
+  public getConsecutiveSeconds(): number {
+    return this.consecutiveSeconds;
+  }
+
+  public isObservationActive(): boolean {
+    return this.consecutiveSeconds > 0 && this.consecutiveSeconds < this.requiredSeconds;
+  }
 }
 
 export interface DetectionResult {
@@ -159,6 +234,52 @@ export function captureWebcamSnapshot(video: HTMLVideoElement, quality = 0.72): 
     return canvas.toDataURL('image/jpeg', quality);
   } catch (err) {
     console.warn('[FaceDetector] Snapshot capture failed:', err);
+    return null;
+  }
+}
+
+/**
+ * Captures snapshot and burns an optional evidence bounding box into the exported image
+ */
+export function captureWebcamSnapshotWithBox(
+  video: HTMLVideoElement,
+  box?: { x: number; y: number; width: number; height: number; label?: string; score?: number },
+  quality = 0.72
+): string | null {
+  try {
+    if (!video || !video.videoWidth || !video.videoHeight) return null;
+    const canvas = document.createElement('canvas');
+    const maxWidth = 640;
+    const scale = Math.min(1, maxWidth / video.videoWidth);
+    canvas.width = Math.round(video.videoWidth * scale);
+    canvas.height = Math.round(video.videoHeight * scale);
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    if (box) {
+      const bx = box.x * scale;
+      const by = box.y * scale;
+      const bw = box.width * scale;
+      const bh = box.height * scale;
+
+      ctx.strokeStyle = '#F43F5E';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(bx, by, bw, bh);
+
+      const label = box.label ?? (box.score ? `PHONE: ${Math.round(box.score * 100)}%` : 'PHONE DETECTED');
+      ctx.fillStyle = '#F43F5E';
+      const labelW = Math.max(130, label.length * 8 + 12);
+      ctx.fillRect(bx, Math.max(0, by - 20), labelW, 20);
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = 'bold 11px monospace';
+      ctx.fillText(label, bx + 5, Math.max(14, by - 6));
+    }
+
+    return canvas.toDataURL('image/jpeg', quality);
+  } catch (err) {
+    console.warn('[FaceDetector] Snapshot capture with box failed:', err);
     return null;
   }
 }

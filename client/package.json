@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@mediapipe/face_detection": "^0.4.1646425229",
+    "@mediapipe/tasks-vision": "^1.2.3",
     "@tanstack/react-query": "^5.62.16",
     "axios": "^1.21.1",
     "cmdk": "^1.1.1",
