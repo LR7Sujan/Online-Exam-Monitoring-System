@@ -38,6 +38,7 @@ import { CommandPalette } from './CommandPalette';
 import { OverlayPanel } from '../ui/OverlayPanel';
 import { RouteErrorBoundary } from '../ui/RouteErrorBoundary';
 import { PageSkeleton } from '../ui/Skeleton';
+import { SidebarStatusCard } from './SidebarStatusCard';
 import { isAudioMuted, setAudioMuted, playPingSound } from '../../utils/audioAlert';
 
 interface NavSubItem {
@@ -102,7 +103,7 @@ export function AppShell() {
     return () => clearTimeout(timer);
   }, [location.pathname]);
 
-  const { isConnected, violationCount, recentAlerts, clearAlerts, markAlertRead } =
+  const { violationCount, recentAlerts, clearAlerts, markAlertRead } =
     useSocketContext();
 
   // Collapsed state persisted in localStorage (default to false if not set)
@@ -713,66 +714,7 @@ export function AppShell() {
 
         {/* Footer Pinned to Bottom (mt-auto) */}
         <div className="mt-auto p-3 border-t border-border bg-surface dark:bg-[#0c0d14] shrink-0">
-          {!isCollapsed ? (
-            <div className="flex items-center justify-between rounded-xl p-2.5 border border-border bg-surface-elevated/80 dark:bg-[#12131d]">
-              <div className="flex items-center gap-2.5">
-                <LiveDot
-                  color={isConnected ? 'emerald' : 'rose'}
-                  size="sm"
-                  pulse={isConnected}
-                />
-                <div className="flex flex-col">
-                  <span className="text-[11px] font-mono text-foreground font-semibold">
-                    {isConnected ? 'NODE ONLINE' : 'DISCONNECTED'}
-                  </span>
-                  <span className="text-[9px] font-mono text-muted-foreground">
-                    MYSQL 8.0 • WSS
-                  </span>
-                </div>
-              </div>
-              <span className="text-[10px] font-mono text-brand font-semibold">
-                v2.0
-              </span>
-            </div>
-          ) : (
-            // Collapsed Footer: Clean circular status indicator with role initial
-            <div
-              className="w-10 h-10 mx-auto rounded-full border border-border bg-surface-elevated/80 dark:bg-[#12131d] flex items-center justify-center relative group/status cursor-pointer shadow-sm"
-              title={`Node ${isConnected ? 'Online' : 'Disconnected'} | Role: ${user?.role}`}
-            >
-              <LiveDot
-                color={isConnected ? 'emerald' : 'rose'}
-                size="sm"
-                pulse={isConnected}
-              />
-              {user && (
-                <span
-                  className={`absolute -top-1 -right-1 w-4 h-4 rounded-full text-[9px] font-mono font-bold flex items-center justify-center border border-border text-white ${
-                    user.role === 'ADMIN'
-                      ? 'bg-indigo-600'
-                      : user.role === 'PROCTOR'
-                      ? 'bg-sky-600'
-                      : 'bg-emerald-600'
-                  }`}
-                >
-                  {user.role[0]}
-                </span>
-              )}
-
-              {/* Collapsed Status Tooltip */}
-              <div className="opacity-0 group-hover/status:opacity-100 transition-opacity absolute left-full ml-3.5 bottom-0 z-[80] px-3 py-2 rounded-xl border border-border bg-surface dark:bg-[#12131d] text-foreground shadow-2xl pointer-events-none whitespace-nowrap text-xs space-y-0.5">
-                <p className="font-semibold text-foreground">
-                  {isConnected ? 'Node Online' : 'Disconnected'}
-                </p>
-                <p className="text-[10px] text-muted-foreground font-mono">
-                  MySQL 8.0 • WSS (v2.0)
-                </p>
-                <p className="text-[10px] font-mono text-brand font-medium">
-                  Role: {user?.role}
-                </p>
-              </div>
-            </div>
-          )}
+          <SidebarStatusCard isCollapsed={isCollapsed} />
         </div>
       </motion.aside>
 

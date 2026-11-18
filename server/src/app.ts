@@ -6,7 +6,7 @@ import helmet from 'helmet';
 import jwt from 'jsonwebtoken';
 import type { RowDataPacket } from 'mysql2/promise';
 import swaggerUi from 'swagger-ui-express';
-import { queryRows, testDbConnection } from './config/db.js';
+import { queryRows, getDbHealth } from './config/db.js';
 import { env } from './config/env.js';
 import { openApiSpec } from './docs/openapi.js';
 import { corsMiddleware } from './middleware/cors.js';
@@ -115,11 +115,14 @@ export function createApp() {
   );
 
   app.get('/api/health', async (_req, res) => {
-    const dbConnected = await testDbConnection();
+    const dbHealth = await getDbHealth();
     sendSuccess(res, {
       service: 'proctoriq-api',
-      status: dbConnected ? 'ok' : 'degraded',
-      db: dbConnected ? 'connected' : 'disconnected',
+      api: 'up',
+      db: dbHealth.connected ? 'up' : 'down',
+      status: dbHealth.connected ? 'ok' : 'degraded',
+      mysqlVersion: dbHealth.version ?? '8.0',
+      uptime: process.uptime(),
       timestamp: new Date().toISOString(),
     });
   });

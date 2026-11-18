@@ -44,11 +44,27 @@ export async function withConnection<T>(
   }
 }
 
+export interface DbHealthResult {
+  connected: boolean;
+  version?: string;
+}
+
 export async function testDbConnection(): Promise<boolean> {
   try {
     await pool.query('SELECT 1');
     return true;
   } catch {
     return false;
+  }
+}
+
+export async function getDbHealth(): Promise<DbHealthResult> {
+  try {
+    const rows = await queryRows<RowDataPacket[]>('SELECT VERSION() as version');
+    const versionRow = rows[0] as { version?: string } | undefined;
+    const version = versionRow?.version ? String(versionRow.version).split('-')[0] : '8.0';
+    return { connected: true, version };
+  } catch {
+    return { connected: false };
   }
 }

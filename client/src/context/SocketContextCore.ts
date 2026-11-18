@@ -26,9 +26,19 @@ export interface LiveSessionEvent {
   timestamp: string;
 }
 
+export type ConnectionState = 'connected' | 'reconnecting' | 'disconnected';
+
 export interface SocketContextValue {
   socket: Socket | null;
+  connectionState: ConnectionState;
   isConnected: boolean;
+  latencyMs: number | null;
+  transport: string;
+  lastConnectedAt: Date | null;
+  apiStatus: 'up' | 'down';
+  dbStatus: 'up' | 'down';
+  mysqlVersion: string;
+  reconnectNow: () => void;
   violationCount: number;
   recentAlerts: LiveViolationEvent[];
   lastSessionEvent: LiveSessionEvent | null;
@@ -38,11 +48,18 @@ export interface SocketContextValue {
 
 export const SocketContext = createContext<SocketContextValue>({
   socket: null,
+  connectionState: 'disconnected',
   isConnected: false,
+  latencyMs: null,
+  transport: 'websocket',
+  lastConnectedAt: null,
+  apiStatus: 'down',
+  dbStatus: 'down',
+  mysqlVersion: '8.0',
+  reconnectNow: () => {},
   violationCount: 0,
   recentAlerts: [],
   lastSessionEvent: null,
   clearAlerts: () => {},
   markAlertRead: () => {},
 });
-

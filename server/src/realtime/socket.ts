@@ -79,6 +79,12 @@ export function initSocketServer(httpServer: HttpServer): Server {
         socket.leave(`session:${sessionId}`);
       }
     });
+
+    socket.on('ping:latency', (clientTimestamp: unknown, callback: unknown) => {
+      if (typeof callback === 'function') {
+        callback(clientTimestamp);
+      }
+    });
   });
 
   return ioInstance;
