@@ -38,6 +38,7 @@ import type {
   QuestionItem,
   SessionStatus,
   TimeExtensionRequest,
+  ViolationCode,
 } from '../types/domain';
 
 interface SessionQuestionsResponse {
@@ -271,7 +272,7 @@ export function StudentExamPage() {
         minTrustScore: (s?.min_trust_score as number) ?? 50,
         status: (s?.status as SessionStatus) ?? 'IN_PROGRESS',
         isTerminated: false,
-        violationCode: (p.violationCode as any) ?? 'UNAUTHORIZED_ACTION',
+        violationCode: (p.violationCode as ViolationCode) ?? 'UNAUTHORIZED_ACTION',
         violationLabel: p.violationLabel as string | undefined,
         penaltyApplied: p.penaltyPoints as number | undefined,
         snapshotUrl: p.snapshotUrl as string | null | undefined,
@@ -311,7 +312,7 @@ export function StudentExamPage() {
   });
 
   // 7. Client-Side Phone Detection Hook (~1 check/sec, 3 of last 5 -> PHONE_DETECTED with box)
-  const { phoneOk: _phoneOk, phoneStatusText } = usePhoneDetection({
+  const { phoneStatusText } = usePhoneDetection({
     videoRef,
     enabled: sessionStatus === 'IN_PROGRESS',
     isPaused: isDetectionPaused,
@@ -321,7 +322,7 @@ export function StudentExamPage() {
   });
 
   // 8. Client-Side Voice Detection Hook (Web Audio API, 4s speech in 6s window -> VOICE_DETECTED)
-  const { micOk, micLevel: _micLevel } = useVoiceDetection({
+  const { micOk } = useVoiceDetection({
     stream,
     videoRef,
     enabled: sessionStatus === 'IN_PROGRESS',
@@ -410,7 +411,7 @@ export function StudentExamPage() {
         minTrustScore,
         status: sessionStatus,
         isTerminated: false,
-        violationCode: payload.violationCode as any,
+        violationCode: (payload.violationCode as ViolationCode) ?? 'UNAUTHORIZED_ACTION',
         violationLabel: payload.violationLabel,
         penaltyApplied: payload.penaltyPoints,
         snapshotUrl: payload.snapshotUrl,
@@ -431,7 +432,7 @@ export function StudentExamPage() {
       socket.off('extension:decided', onExtensionDecided);
       socket.off('warning:issued', onWarningIssued);
     };
-  }, [numericSessionId, token, submitMutation]);
+  }, [numericSessionId, token, submitMutation, metaQuery, minTrustScore, sessionStatus, setActiveWarning]);
 
   // 8. Server-Authoritative Timer Sync & Countdown
   useEffect(() => {
@@ -593,12 +594,12 @@ export function StudentExamPage() {
               <span className="hidden sm:inline font-mono text-[10px] text-muted-foreground border border-border px-1.5 py-0.5 rounded bg-surface-elevated">
                 SESSION #{numericSessionId}
               </span>
-              {(metaQuery.data?.session?.paper_code || (metaQuery.data as any)?.paperCode) && (
+              {Boolean(metaQuery.data?.session?.paper_code) && (
                 <span
                   data-testid="hud-paper-code"
                   className="font-mono text-[11px] font-bold text-brand bg-brand/10 border border-brand/30 px-2 py-0.5 rounded-md shadow-sm"
                 >
-                  {metaQuery.data?.session?.paper_code || (metaQuery.data as any)?.paperCode}
+                  {metaQuery.data?.session?.paper_code}
                 </span>
               )}
             </div>

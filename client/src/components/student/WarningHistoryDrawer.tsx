@@ -9,6 +9,7 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import { api } from '../../lib/api';
+import { EvidenceImage } from '../ui/EvidenceImage';
 import type { SessionWarning } from '../../types/domain';
 
 interface WarningHistoryDrawerProps {
@@ -163,6 +164,19 @@ export function WarningHistoryDrawer({
                             </div>
                           )}
                         </div>
+
+                        {/* Evidence Snapshot (if present) */}
+                        {(w.snapshot_url || w.snapshotUrl) && (
+                          <div className="pt-1">
+                            <EvidenceImage
+                              src={w.snapshot_url || w.snapshotUrl}
+                              violationCode={code}
+                              alt={`Warning #${idx + 1} evidence snapshot`}
+                              containerClassName="max-h-32"
+                              aspectRatio="video"
+                            />
+                          </div>
+                        )}
 
                         <div className="pt-2 border-t border-border/70 flex items-center justify-between text-[11px] font-mono">
                           <div className="flex items-center gap-1.5 text-muted-foreground">

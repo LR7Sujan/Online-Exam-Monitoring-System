@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   captureWebcamSnapshot,
+  captureWebcamSnapshotAsync,
   detectFacesInVideo,
   drawBoundingBoxesOnCanvas,
   initMediaPipeDetector,
@@ -84,20 +85,24 @@ export function useFaceDetection({
 
       // Handle optical track ending mid-exam (unplugged, disabled, hardware disconnect)
       mediaStream.getVideoTracks().forEach((track) => {
-        track.onended = () => {
+        const handleEnded = () => {
           setCameraActive(false);
           setCameraDenied(true);
           setDeniedDevice('camera');
         };
+        track.onended = handleEnded;
+        track.addEventListener('ended', handleEnded);
       });
 
       // Handle microphone track ending mid-exam
       mediaStream.getAudioTracks().forEach((track) => {
-        track.onended = () => {
+        const handleEnded = () => {
           setCameraActive(false);
           setCameraDenied(true);
           setDeniedDevice('microphone');
         };
+        track.onended = handleEnded;
+        track.addEventListener('ended', handleEnded);
       });
 
       if (videoRef.current) {
@@ -159,7 +164,9 @@ export function useFaceDetection({
               osc.start();
               dest.stream.getAudioTracks().forEach((t) => capture.addTrack(t));
             }
-          } catch {}
+          } catch {
+            // Synthetic audio track fallback ignored in mock tests
+          }
 
           streamRef.current = capture;
           setStream(capture);
@@ -236,7 +243,9 @@ export function useFaceDetection({
           );
 
           if (currentCount >= 5) {
-            const snapshot = captureWebcamSnapshot(video);
+            const snapshot =
+              (await captureWebcamSnapshotAsync(video, { violationCode: 'NO_FACE' })) ||
+              captureWebcamSnapshot(video);
             if (snapshot && onViolationRef.current) {
               onViolationRef.current('NO_FACE', snapshot, {
                 consecutiveSeconds: currentCount,
@@ -264,7 +273,11 @@ export function useFaceDetection({
           }
 
           if (observation.shouldReport) {
-            const snapshot = captureWebcamSnapshot(video);
+            const snapshot =
+              (await captureWebcamSnapshotAsync(video, {
+                violationCode: 'MULTIPLE_FACES',
+                boxes: result.faces,
+              })) || captureWebcamSnapshot(video);
             if (snapshot && onViolationRef.current) {
               onViolationRef.current('MULTIPLE_FACES', snapshot, {
                 faceCount: count,

@@ -32,7 +32,7 @@ INSERT INTO Users (id, full_name, email, password_hash, role, is_active) VALUES
 INSERT INTO Exams (id, title, description, duration_minutes, min_trust_score, max_extension_mins, start_window, end_window, is_published, created_by) VALUES
 (1, 'CS-401: Distributed Database Systems & ACID Internals',
  'Comprehensive assessment covering distributed database transactions, 2PC, Raft consensus, and snapshot isolation guarantees.',
- 60, 50, 30, DATE_SUB(NOW(), INTERVAL 1 DAY), DATE_ADD(NOW(), INTERVAL 7 DAY), TRUE, 1),
+ 60, 30, 30, DATE_SUB(NOW(), INTERVAL 1 DAY), DATE_ADD(NOW(), INTERVAL 7 DAY), TRUE, 1),
 (2, 'SEC-305: Applied Cryptography & Zero-Knowledge Proofs',
  'Foundations of zero-knowledge SNARKs, lattice-based post-quantum cryptography, and elliptic curve signature schemes.',
  45, 60, 20, DATE_ADD(NOW(), INTERVAL 1 DAY), DATE_ADD(NOW(), INTERVAL 14 DAY), FALSE, 1);

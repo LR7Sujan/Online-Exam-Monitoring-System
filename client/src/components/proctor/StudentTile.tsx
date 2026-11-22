@@ -63,6 +63,7 @@ export function StudentTile({
     <motion.div
       layout
       layoutId={`student-tile-${session.session_id}`}
+      data-testid={`student-tile-${session.session_id}`}
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{
         opacity: 1,

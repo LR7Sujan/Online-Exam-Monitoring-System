@@ -8,6 +8,7 @@ import { emitSessionTerminated, emitSessionUpdate, emitToProctors, emitToStudent
 import type { AnswerOption, ExamSessionRow, QuestionRow } from '../types/api.js';
 import { AppError } from '../utils/errors.js';
 import { sendSuccess } from '../utils/response.js';
+import { generateSignedSnapshotUrl } from '../services/snapshotSigner.js';
 
 export const proctorRouter = Router();
 
@@ -291,7 +292,17 @@ proctorRouter.get(
         params
       );
 
-      sendSuccess(res, rows);
+      const mapped = rows.map((r) => {
+        const rawSnap = r.snapshot_url as string | null | undefined;
+        const signedSnap = generateSignedSnapshotUrl(rawSnap, r.log_id as number);
+        return {
+          ...r,
+          snapshot_url: signedSnap ?? rawSnap ?? null,
+          snapshotUrl: signedSnap ?? rawSnap ?? null,
+        };
+      });
+
+      sendSuccess(res, mapped);
     } catch (err) {
       next(err);
     }
@@ -375,7 +386,17 @@ proctorRouter.get(
         params
       );
 
-      sendSuccess(res, rows);
+      const mapped = rows.map((r) => {
+        const rawSnap = r.snapshot_url as string | null | undefined;
+        const signedSnap = generateSignedSnapshotUrl(rawSnap, r.log_id as number);
+        return {
+          ...r,
+          snapshot_url: signedSnap ?? rawSnap ?? null,
+          snapshotUrl: signedSnap ?? rawSnap ?? null,
+        };
+      });
+
+      sendSuccess(res, mapped);
     } catch (err) {
       next(err);
     }
@@ -421,7 +442,17 @@ proctorRouter.get(
         params
       );
 
-      sendSuccess(res, { logs: rows });
+      const mapped = rows.map((r) => {
+        const rawSnap = r.snapshot_url as string | null | undefined;
+        const signedSnap = generateSignedSnapshotUrl(rawSnap, r.log_id as number);
+        return {
+          ...r,
+          snapshot_url: signedSnap ?? rawSnap ?? null,
+          snapshotUrl: signedSnap ?? rawSnap ?? null,
+        };
+      });
+
+      sendSuccess(res, { logs: mapped });
     } catch (err) {
       next(err);
     }
@@ -464,9 +495,19 @@ proctorRouter.get(
         [sessionId]
       );
 
+      const mappedLogs = logs.map((l) => {
+        const rawSnap = l.snapshot_url as string | null | undefined;
+        const signedSnap = generateSignedSnapshotUrl(rawSnap, l.log_id as number);
+        return {
+          ...l,
+          snapshot_url: signedSnap ?? rawSnap ?? null,
+          snapshotUrl: signedSnap ?? rawSnap ?? null,
+        };
+      });
+
       sendSuccess(res, {
         session: monitors[0],
-        logs,
+        logs: mappedLogs,
       });
     } catch (err) {
       next(err);

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { AudioVoiceDetector } from '../utils/voiceDetector';
-import { captureWebcamSnapshot } from '../utils/faceDetector';
+import { captureWebcamSnapshot, captureWebcamSnapshotAsync } from '../utils/faceDetector';
 
 interface UseVoiceDetectionOptions {
   stream: MediaStream | null;
@@ -53,9 +53,12 @@ export function useVoiceDetection({
         setIsSpeaking(speaking);
         setMicOk(!speaking);
       },
-      onViolation: (meta) => {
+      onViolation: async (meta) => {
         const video = videoRef.current;
-        const snapshot = video ? captureWebcamSnapshot(video) : null;
+        const snapshot = video
+          ? (await captureWebcamSnapshotAsync(video, { violationCode: 'VOICE_DETECTED' })) ||
+            captureWebcamSnapshot(video)
+          : null;
         if (snapshot && onViolationRef.current) {
           onViolationRef.current('VOICE_DETECTED', snapshot, {
             ...meta,

@@ -8,8 +8,11 @@ declare const process: {
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
-  const port = Number(env.VITE_PORT || process.env.PORT || 5173);
-  const backendTarget = env.VITE_BACKEND_ORIGIN || process.env.BACKEND_ORIGIN || 'http://localhost:4000';
+  const port = Number(env.VITE_PORT || process.env.PORT || (mode === 'test' ? 5174 : 5173));
+  const isTest = mode === 'test' || port === 5174;
+  const backendTarget = isTest
+    ? (env.VITE_BACKEND_ORIGIN || 'http://localhost:4001')
+    : (env.VITE_BACKEND_ORIGIN || process.env.BACKEND_ORIGIN || 'http://localhost:4000');
 
   return {
     plugins: [react()],

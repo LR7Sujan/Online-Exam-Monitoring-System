@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { SeverityBadge } from '../ui/SeverityBadge';
 import { StatusPill } from '../ui/StatusPill';
+import { EvidenceImage } from '../ui/EvidenceImage';
 import { NeonButton } from '../ui/NeonButton';
 import { Skeleton } from '../ui/Skeleton';
 import { EmptyState, ErrorState } from '../ui/EmptyState';
@@ -434,11 +435,26 @@ export function ReviewQueueTable({ onInspectStudent }: ReviewQueueTableProps) {
                         {log.exam_title}
                       </td>
 
-                      {/* Violation Code & Label */}
+                      {/* Violation Code & Label with Snapshot Preview */}
                       <td className="p-3.5">
-                        <span className="font-medium text-foreground">{log.violation_code}</span>
-                        <div className="text-[10px] text-muted-foreground truncate max-w-xs">
-                          {log.violation_label}
+                        <div className="flex items-center gap-2.5">
+                          {log.snapshot_url && (
+                            <EvidenceImage
+                              src={log.snapshot_url}
+                              violationCode={log.violation_code}
+                              timestamp={log.occurred_at}
+                              containerClassName="h-9 w-14 shrink-0 rounded-lg"
+                              aspectRatio="video"
+                            />
+                          )}
+                          <div className="min-w-0">
+                            <span className="font-medium text-foreground block truncate">
+                              {log.violation_code}
+                            </span>
+                            <div className="text-[10px] text-muted-foreground truncate max-w-[180px]">
+                              {log.violation_label}
+                            </div>
+                          </div>
                         </div>
                       </td>
 

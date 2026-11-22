@@ -18,6 +18,7 @@ import {
 import { StatusPill } from '../components/ui/StatusPill';
 import { SeverityBadge } from '../components/ui/SeverityBadge';
 import { TrustRing } from '../components/ui/TrustRing';
+import { EvidenceImage } from '../components/ui/EvidenceImage';
 import { SkeletonCard } from '../components/ui/Skeleton';
 import { ErrorState } from '../components/ui/EmptyState';
 import { ChartTooltip, useChartTheme } from '../components/charts/shared';
@@ -466,36 +467,52 @@ export function StudentResultPage() {
           </div>
         ) : (
           <div className="space-y-3">
-            {violations.map((v) => (
-              <div
-                key={v.log_id}
-                className="p-4 rounded-2xl border border-border bg-surface/80 hover:bg-surface transition-colors flex flex-wrap items-center justify-between gap-4"
-              >
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2.5">
-                    <SeverityBadge severity={v.severity} size="sm" />
-                    <span className="font-mono text-sm font-bold text-foreground">
-                      {v.violation_code}
-                    </span>
-                    <span className="font-mono text-xs text-rose-500 font-semibold">
-                      -{v.penalty_applied} PTS
-                    </span>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    {v.violation_label} • Timestamp: {new Date(v.occurred_at).toLocaleTimeString()}
-                  </p>
-                </div>
+            {violations.map((v) => {
+              const snap = (v as unknown as { snapshot_url?: string; snapshotUrl?: string }).snapshot_url ||
+                (v as unknown as { snapshot_url?: string; snapshotUrl?: string }).snapshotUrl;
 
-                <div className="flex items-center gap-3">
-                  <div className="text-right">
-                    <span className="text-[10px] font-mono text-muted-foreground block uppercase">
-                      Proctor Review
-                    </span>
-                    <StatusPill status={v.proctor_review_status} size="sm" />
+              return (
+                <div
+                  key={v.log_id}
+                  className="p-4 rounded-2xl border border-border bg-surface/80 hover:bg-surface transition-colors flex flex-wrap items-center justify-between gap-4"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    {snap && (
+                      <EvidenceImage
+                        src={snap}
+                        violationCode={v.violation_code}
+                        timestamp={v.occurred_at}
+                        containerClassName="h-14 w-20 shrink-0"
+                        aspectRatio="video"
+                      />
+                    )}
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2.5">
+                        <SeverityBadge severity={v.severity} size="sm" />
+                        <span className="font-mono text-sm font-bold text-foreground">
+                          {v.violation_code}
+                        </span>
+                        <span className="font-mono text-xs text-rose-500 font-semibold">
+                          -{v.penalty_applied} PTS
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {v.violation_label} • Timestamp: {new Date(v.occurred_at).toLocaleTimeString()}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <div className="text-right">
+                      <span className="text-[10px] font-mono text-muted-foreground block uppercase">
+                        Proctor Review
+                      </span>
+                      <StatusPill status={v.proctor_review_status} size="sm" />
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

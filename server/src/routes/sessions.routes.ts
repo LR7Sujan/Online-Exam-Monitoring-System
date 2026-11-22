@@ -26,6 +26,7 @@ import {
   shouldDebounceViolation,
   violationRateLimiter,
 } from '../services/violationGuard.js';
+import { generateSignedSnapshotUrl } from '../services/snapshotSigner.js';
 import type { AnswerOption, ExamSessionRow, ResultRow, SessionWarningRow, TimeExtensionRequestRow, ViolationTypeRow } from '../types/api.js';
 import { AppError } from '../utils/errors.js';
 import { sendSuccess } from '../utils/response.js';
@@ -201,7 +202,7 @@ async function assertSessionAccess(
     executeSql(
       'UPDATE Exam_Sessions SET time_expired_at = COALESCE(time_expired_at, server_deadline, NOW()) WHERE id = ? AND time_expired_at IS NULL',
       [sessionId]
-    ).catch(() => {});
+    ).catch(() => { });
   }
 
   const extRows = await queryRows<TimeExtensionRequestRow[]>(
@@ -333,7 +334,10 @@ sessionsRouter.get(
             trustScoreAfter: pwRows[0].trust_score_after,
             warningCount: session.warning_count,
             issuedAt: pwRows[0].issued_at,
-            snapshotUrl: (pwRows[0] as unknown as { snapshot_url?: string | null }).snapshot_url ?? null,
+            snapshotUrl: generateSignedSnapshotUrl(
+              (pwRows[0] as unknown as { snapshot_url?: string | null }).snapshot_url ?? null,
+              pwRows[0].log_id
+            ),
             evidenceMeta: (pwRows[0] as unknown as { evidence_meta?: unknown }).evidence_meta ?? null,
           };
         }
@@ -360,7 +364,7 @@ sessionsRouter.get(
 
       const mappedQuestions = orderedQuestions.map((q, idx) => {
         const oMap = optionMaps[String(q.id)];
-        return mapQuestionForStudent(q as any, oMap, idx + 1);
+        return mapQuestionForStudent(q as unknown as Parameters<typeof mapQuestionForStudent>[0], oMap, idx + 1);
       });
 
       const mappedResponses = responses.map((r) => {
@@ -377,6 +381,8 @@ sessionsRouter.get(
         paper_hash: _stripHash,
         ...safeSession
       } = session;
+      void _stripMaps;
+      void _stripHash;
 
       sendSuccess(res, {
         session: safeSession,
@@ -441,7 +447,10 @@ sessionsRouter.get(
             trustScoreAfter: pwRows[0].trust_score_after,
             warningCount: session.warning_count,
             issuedAt: pwRows[0].issued_at,
-            snapshotUrl: (pwRows[0] as unknown as { snapshot_url?: string | null }).snapshot_url ?? null,
+            snapshotUrl: generateSignedSnapshotUrl(
+              (pwRows[0] as unknown as { snapshot_url?: string | null }).snapshot_url ?? null,
+              pwRows[0].log_id
+            ),
             evidenceMeta: (pwRows[0] as unknown as { evidence_meta?: unknown }).evidence_meta ?? null,
           };
         }
@@ -468,7 +477,7 @@ sessionsRouter.get(
 
       const mappedQuestions = orderedQuestions.map((q, idx) => {
         const oMap = optionMaps[String(q.id)];
-        return mapQuestionForStudent(q as any, oMap, idx + 1);
+        return mapQuestionForStudent(q as unknown as Parameters<typeof mapQuestionForStudent>[0], oMap, idx + 1);
       });
 
       const mappedResponses = responses.map((r) => {
@@ -825,6 +834,8 @@ sessionsRouter.post(
       );
       const updated = updatedRows[0];
 
+      const signedSnapshotUrl = generateSignedSnapshotUrl(savedSnapshotUrl, logId);
+
       const basePayload = {
         logId,
         sessionId,
@@ -840,8 +851,8 @@ sessionsRouter.post(
         minTrustScore: updated.min_trust_score,
         status: updated.status,
         sessionStatus: updated.status,
-        snapshot_url: savedSnapshotUrl,
-        snapshotUrl: savedSnapshotUrl,
+        snapshot_url: signedSnapshotUrl ?? savedSnapshotUrl,
+        snapshotUrl: signedSnapshotUrl ?? savedSnapshotUrl,
         occurredAt: new Date().toISOString(),
       };
 
@@ -936,6 +947,8 @@ sessionsRouter.post(
         trustScoreAfter: updated.trust_score,
         warningCount: newWarningCount,
         issuedAt: new Date().toISOString(),
+        snapshot_url: signedSnapshotUrl ?? savedSnapshotUrl,
+        snapshotUrl: signedSnapshotUrl ?? savedSnapshotUrl,
       };
 
       emitViolationNew(updated.student_id, sessionId, basePayload, {
@@ -956,8 +969,8 @@ sessionsRouter.post(
           trustScore: updated.trust_score,
           minTrustScore: updated.min_trust_score,
           status: updated.status,
-          snapshot_url: savedSnapshotUrl,
-          snapshotUrl: savedSnapshotUrl,
+          snapshot_url: signedSnapshotUrl ?? savedSnapshotUrl,
+          snapshotUrl: signedSnapshotUrl ?? savedSnapshotUrl,
           debounced: false,
           warning: warningPayload,
         },
@@ -965,7 +978,7 @@ sessionsRouter.post(
       );
     } catch (err) {
       if (connection) {
-        await connection.rollback().catch(() => {});
+        await connection.rollback().catch(() => { });
       }
       next(err);
     } finally {
@@ -1048,7 +1061,7 @@ sessionsRouter.post(
       });
     } catch (err) {
       if (connection) {
-        await connection.rollback().catch(() => {});
+        await connection.rollback().catch(() => { });
       }
       next(err);
     } finally {
@@ -1070,15 +1083,27 @@ sessionsRouter.get(
       await assertSessionAccess(sessionId, req.user);
 
       const rows = await queryRows<SessionWarningRow[]>(
-        `SELECT warning_id, session_id, log_id, violation_code, message,
-                penalty_points, trust_score_after, issued_at, acknowledged_at
-           FROM Session_Warnings
-          WHERE session_id = ?
-          ORDER BY warning_id ASC`,
+        `SELECT sw.warning_id, sw.session_id, sw.log_id, sw.violation_code, sw.message,
+                sw.penalty_points, sw.trust_score_after, sw.issued_at, sw.acknowledged_at,
+                pl.snapshot_url
+           FROM Session_Warnings sw
+           LEFT JOIN Proctoring_Logs pl ON pl.id = sw.log_id
+          WHERE sw.session_id = ?
+          ORDER BY sw.warning_id ASC`,
         [sessionId]
       );
 
-      sendSuccess(res, rows);
+      const mapped = rows.map((w) => {
+        const rawSnap = (w as unknown as { snapshot_url?: string | null }).snapshot_url;
+        const signedSnap = generateSignedSnapshotUrl(rawSnap, w.log_id);
+        return {
+          ...w,
+          snapshot_url: signedSnap ?? rawSnap ?? null,
+          snapshotUrl: signedSnap ?? rawSnap ?? null,
+        };
+      });
+
+      sendSuccess(res, mapped);
     } catch (err) {
       next(err);
     }
@@ -1375,7 +1400,7 @@ sessionsRouter.post(
         201
       );
     } catch (err) {
-      await connection.rollback().catch(() => {});
+      await connection.rollback().catch(() => { });
       next(err);
     } finally {
       connection.release();
@@ -1462,17 +1487,27 @@ sessionsRouter.get(
 
       const violations = await queryRows<RowDataPacket[]>(
         `SELECT log_id, violation_code, violation_label, severity, penalty_applied,
-                occurred_at, proctor_review_status, review_notes
+                occurred_at, proctor_review_status, review_notes, snapshot_url
            FROM vw_ViolationAuditReport
           WHERE session_id = ?
           ORDER BY occurred_at DESC`,
         [sessionId]
       );
 
+      const mappedViolations = violations.map((v) => {
+        const rawSnap = v.snapshot_url as string | null | undefined;
+        const signedSnap = generateSignedSnapshotUrl(rawSnap, v.log_id as number);
+        return {
+          ...v,
+          snapshot_url: signedSnap ?? rawSnap ?? null,
+          snapshotUrl: signedSnap ?? rawSnap ?? null,
+        };
+      });
+
       sendSuccess(res, {
         session,
         result: results[0],
-        violations,
+        violations: mappedViolations,
       });
     } catch (err) {
       next(err);

@@ -216,22 +216,205 @@ export function analyzeLensObscuration(
 }
 
 /**
- * Capture a lightweight, compressed JPEG base64 data URL from a video element
+ * Evidence capture options for burning forensic annotations and stamps
  */
-export function captureWebcamSnapshot(video: HTMLVideoElement, quality = 0.72): string | null {
-  try {
-    if (!video || !video.videoWidth || !video.videoHeight) return null;
-    const canvas = document.createElement('canvas');
-    // Scale down to max 640 width for ultra-fast transfer (~35KB-60KB compressed JPEG)
-    const maxWidth = 640;
-    const scale = Math.min(1, maxWidth / video.videoWidth);
-    canvas.width = Math.round(video.videoWidth * scale);
-    canvas.height = Math.round(video.videoHeight * scale);
+export interface EvidenceCaptureOptions {
+  violationCode?: string;
+  box?: { x: number; y: number; width: number; height: number; label?: string; score?: number };
+  boxes?: Array<{ x: number; y: number; width: number; height: number; label?: string; score?: number }>;
+  quality?: number;
+  maxWidth?: number;
+}
 
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return null;
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+/**
+ * Checks whether the captured canvas is completely black, white, or devoid of visual variance
+ */
+export function isCanvasBlankOrSolid(ctx: CanvasRenderingContext2D, width: number, height: number): boolean {
+  try {
+    const sampleStepX = Math.max(1, Math.floor(width / 24));
+    const sampleStepY = Math.max(1, Math.floor(height / 24));
+    const imgData = ctx.getImageData(0, 0, width, height);
+    const data = imgData.data;
+
+    let totalLuma = 0;
+    let count = 0;
+    const lumas: number[] = [];
+
+    for (let y = 0; y < height; y += sampleStepY) {
+      for (let x = 0; x < width; x += sampleStepX) {
+        const idx = (y * width + x) * 4;
+        const r = data[idx];
+        const g = data[idx + 1];
+        const b = data[idx + 2];
+        const a = data[idx + 3];
+
+        if (a < 50) return true; // Transparent canvas
+        const luma = 0.299 * r + 0.587 * g + 0.114 * b;
+        totalLuma += luma;
+        lumas.push(luma);
+        count++;
+      }
+    }
+
+    if (count === 0) return true;
+    const mean = totalLuma / count;
+    let varianceSum = 0;
+    for (const l of lumas) {
+      varianceSum += (l - mean) ** 2;
+    }
+    const variance = varianceSum / count;
+
+    // Flat monochrome frame (solid black or blank) has variance near 0
+    return variance < 4;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Renders video frame to canvas with bounding boxes and forensic timestamp strip
+ */
+export function renderEvidenceToCanvas(
+  video: HTMLVideoElement,
+  options?: EvidenceCaptureOptions
+): HTMLCanvasElement | null {
+  if (!video || video.readyState < 2 || !video.videoWidth || !video.videoHeight) {
+    return null;
+  }
+
+  const maxWidth = options?.maxWidth ?? 640;
+  const scale = Math.min(1, maxWidth / video.videoWidth);
+  const width = Math.round(video.videoWidth * scale);
+  const height = Math.round(video.videoHeight * scale);
+
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return null;
+
+  ctx.drawImage(video, 0, 0, width, height);
+
+  // 1. Draw Bounding Boxes with labels
+  const allBoxes: Array<{
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    label?: string;
+    score?: number;
+    color?: string;
+  }> = [];
+
+  if (options?.box) {
+    allBoxes.push({
+      ...options.box,
+      color: '#F43F5E',
+      label:
+        options.box.label ??
+        (options.box.score ? `PHONE: ${Math.round(options.box.score * 100)}%` : 'PHONE DETECTED'),
+    });
+  }
+
+  if (options?.boxes && options.boxes.length > 0) {
+    options.boxes.forEach((b, idx) => {
+      allBoxes.push({
+        ...b,
+        color: '#F59E0B',
+        label: b.label ?? `FACE ${idx + 1}${b.score ? ` (${Math.round(b.score * 100)}%)` : ''}`,
+      });
+    });
+  }
+
+  for (const b of allBoxes) {
+    const bx = b.x * scale;
+    const by = b.y * scale;
+    const bw = b.width * scale;
+    const bh = b.height * scale;
+    const color = b.color ?? '#F43F5E';
+
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 3;
+    ctx.strokeRect(bx, by, bw, bh);
+
+    const label = b.label ?? 'VIOLATION TARGET';
+    ctx.fillStyle = color;
+    const labelW = Math.max(90, label.length * 7.5 + 12);
+    ctx.fillRect(bx, Math.max(0, by - 20), labelW, 20);
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = 'bold 11px monospace';
+    ctx.fillText(label, bx + 5, Math.max(14, by - 6));
+  }
+
+  // 2. Forensic Timestamp & Violation Code Strip
+  const vCode = options?.violationCode ?? 'VIOLATION_DETECTED';
+  const timestampStr = new Date().toISOString().replace('T', ' ').substring(0, 19) + ' UTC';
+  const stripHeight = 22;
+  const stripY = height - stripHeight;
+
+  ctx.fillStyle = 'rgba(15, 17, 23, 0.85)';
+  ctx.fillRect(0, stripY, width, stripHeight);
+
+  ctx.fillStyle = '#F43F5E';
+  ctx.font = 'bold 11px monospace';
+  ctx.fillText(`[${vCode}]`, 8, stripY + 15);
+
+  const codeWidth = ctx.measureText(`[${vCode}] `).width;
+  ctx.fillStyle = '#E2E8F0';
+  ctx.font = '10px monospace';
+  ctx.fillText(`${timestampStr} • ProctorIQ Forensic Frame`, 8 + codeWidth, stripY + 15);
+
+  return canvas;
+}
+
+/**
+ * Capture a lightweight, compressed JPEG base64 data URL from a video element (with blank retry)
+ */
+export async function captureWebcamSnapshotAsync(
+  video: HTMLVideoElement,
+  options?: EvidenceCaptureOptions
+): Promise<string | null> {
+  const quality = options?.quality ?? 0.7;
+
+  let canvas = renderEvidenceToCanvas(video, options);
+  let ctx = canvas?.getContext('2d');
+
+  if (!canvas || !ctx || isCanvasBlankOrSolid(ctx, canvas.width, canvas.height)) {
+    // Retry once after 300ms if video frame was blank or not yet decoded
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    canvas = renderEvidenceToCanvas(video, options);
+    ctx = canvas?.getContext('2d');
+  }
+
+  if (!canvas) {
+    return null;
+  }
+
+  try {
     return canvas.toDataURL('image/jpeg', quality);
+  } catch (err) {
+    console.warn('[FaceDetector] Snapshot capture failed:', err);
+    return null;
+  }
+}
+
+/**
+ * Synchronous capture wrapper for backwards compatibility
+ */
+export function captureWebcamSnapshot(
+  video: HTMLVideoElement,
+  qualityOrOptions: number | EvidenceCaptureOptions = 0.7
+): string | null {
+  try {
+    const options: EvidenceCaptureOptions =
+      typeof qualityOrOptions === 'number'
+        ? { quality: qualityOrOptions }
+        : qualityOrOptions;
+
+    const canvas = renderEvidenceToCanvas(video, options);
+    if (!canvas) return null;
+    return canvas.toDataURL('image/jpeg', options.quality ?? 0.7);
   } catch (err) {
     console.warn('[FaceDetector] Snapshot capture failed:', err);
     return null;
@@ -244,44 +427,13 @@ export function captureWebcamSnapshot(video: HTMLVideoElement, quality = 0.72): 
 export function captureWebcamSnapshotWithBox(
   video: HTMLVideoElement,
   box?: { x: number; y: number; width: number; height: number; label?: string; score?: number },
-  quality = 0.72
+  quality = 0.7
 ): string | null {
-  try {
-    if (!video || !video.videoWidth || !video.videoHeight) return null;
-    const canvas = document.createElement('canvas');
-    const maxWidth = 640;
-    const scale = Math.min(1, maxWidth / video.videoWidth);
-    canvas.width = Math.round(video.videoWidth * scale);
-    canvas.height = Math.round(video.videoHeight * scale);
-
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return null;
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-    if (box) {
-      const bx = box.x * scale;
-      const by = box.y * scale;
-      const bw = box.width * scale;
-      const bh = box.height * scale;
-
-      ctx.strokeStyle = '#F43F5E';
-      ctx.lineWidth = 3;
-      ctx.strokeRect(bx, by, bw, bh);
-
-      const label = box.label ?? (box.score ? `PHONE: ${Math.round(box.score * 100)}%` : 'PHONE DETECTED');
-      ctx.fillStyle = '#F43F5E';
-      const labelW = Math.max(130, label.length * 8 + 12);
-      ctx.fillRect(bx, Math.max(0, by - 20), labelW, 20);
-      ctx.fillStyle = '#FFFFFF';
-      ctx.font = 'bold 11px monospace';
-      ctx.fillText(label, bx + 5, Math.max(14, by - 6));
-    }
-
-    return canvas.toDataURL('image/jpeg', quality);
-  } catch (err) {
-    console.warn('[FaceDetector] Snapshot capture with box failed:', err);
-    return null;
-  }
+  return captureWebcamSnapshot(video, {
+    box,
+    violationCode: 'PHONE_DETECTED',
+    quality,
+  });
 }
 
 /**

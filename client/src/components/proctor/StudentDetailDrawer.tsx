@@ -11,7 +11,6 @@ import {
   Eye,
   FileText,
   Laptop,
-  Maximize2,
   RotateCcw,
   ShieldAlert,
   ShieldOff,
@@ -29,8 +28,8 @@ import {
   ReferenceLine,
 } from 'recharts';
 import { TrustRing } from '../ui/TrustRing';
+import { EvidenceImage } from '../ui/EvidenceImage';
 import { ParticleBurst } from '../ui/ParticleBurst';
-import { useAuthStore } from '../../store/authStore';
 import { StatusPill } from '../ui/StatusPill';
 import { SeverityBadge } from '../ui/SeverityBadge';
 import { ChartTooltip, useChartTheme } from '../charts/shared';
@@ -239,7 +238,7 @@ export function StudentDetailDrawer({ sessionId, onClose }: StudentDetailDrawerP
     label: `Current (${currentScore}%)`,
   });
 
-  if (typeof document === 'undefined') return null;
+  if (typeof document === 'undefined' || !sessionId) return null;
 
   return createPortal(
     <AnimatePresence>
@@ -257,6 +256,7 @@ export function StudentDetailDrawer({ sessionId, onClose }: StudentDetailDrawerP
         {/* Slide-over Container */}
         <motion.div
           key="drawer-slideover"
+          data-testid="student-detail-drawer"
           role="dialog"
           aria-modal="true"
           aria-label="Student Inspection Details"
@@ -321,8 +321,8 @@ export function StudentDetailDrawer({ sessionId, onClose }: StudentDetailDrawerP
                       currentScore < minThreshold
                         ? 'text-rose-500 font-bold'
                         : currentScore < 85
-                        ? 'text-amber-500 font-bold'
-                        : 'text-emerald-500 font-bold'
+                          ? 'text-amber-500 font-bold'
+                          : 'text-emerald-500 font-bold'
                     }
                   >
                     {currentScore}%
@@ -349,15 +349,15 @@ export function StudentDetailDrawer({ sessionId, onClose }: StudentDetailDrawerP
                       currentScore < minThreshold || isTerminated
                         ? 'text-rose-500 font-bold'
                         : currentScore < 100
-                        ? 'text-amber-500 font-bold'
-                        : 'text-emerald-500 font-bold'
+                          ? 'text-amber-500 font-bold'
+                          : 'text-emerald-500 font-bold'
                     }
                   >
                     {currentScore < minThreshold || isTerminated
                       ? 'DISQUALIFIED'
                       : currentScore < 100
-                      ? 'FLAGGED'
-                      : 'CLEAN'}
+                        ? 'FLAGGED'
+                        : 'CLEAN'}
                   </span>
                 </div>
               </div>
@@ -523,13 +523,12 @@ export function StudentDetailDrawer({ sessionId, onClose }: StudentDetailDrawerP
             {/* Time Extension Status & Actions */}
             {session?.extension_request_status && (
               <div
-                className={`rounded-2xl border p-4 font-mono text-xs space-y-3 ${
-                  session.extension_request_status === 'PENDING'
-                    ? 'border-amber-500/40 bg-amber-500/10 text-amber-500'
-                    : session.extension_request_status === 'APPROVED'
+                className={`rounded-2xl border p-4 font-mono text-xs space-y-3 ${session.extension_request_status === 'PENDING'
+                  ? 'border-amber-500/40 bg-amber-500/10 text-amber-500'
+                  : session.extension_request_status === 'APPROVED'
                     ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-500'
                     : 'border-border bg-surface-elevated/70 text-muted-foreground'
-                }`}
+                  }`}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -577,62 +576,37 @@ export function StudentDetailDrawer({ sessionId, onClose }: StudentDetailDrawerP
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {logs.map((log) => {
+                  {logs.map((log, idx) => {
                     const isPending = log.proctor_review_status === 'PENDING';
                     const isDismissed = log.proctor_review_status === 'DISMISSED';
 
-                    const token = useAuthStore.getState().token;
                     const logRecord = log as unknown as Record<string, unknown>;
                     const meta = log.evidence_meta as Record<string, unknown> | undefined;
                     const rawUrl =
                       (typeof logRecord.snapshot_url === 'string' ? logRecord.snapshot_url : undefined) ||
+                      (typeof logRecord.snapshotUrl === 'string' ? logRecord.snapshotUrl : undefined) ||
                       (typeof meta?.snapshot_url === 'string' ? meta.snapshot_url : undefined) ||
                       (typeof meta?.snapshotUrl === 'string' ? meta.snapshotUrl : undefined);
-                    const serverHost = (import.meta.env.VITE_API_URL ?? 'http://localhost:4000/api').replace(
-                      /\/api\/?$/,
-                      ''
-                    );
-                    const authParam = token ? `?token=${encodeURIComponent(token)}` : '';
-                    const snapshotUrl = rawUrl
-                      ? rawUrl.startsWith('http')
-                        ? `${rawUrl}${authParam}`
-                        : `${serverHost}${rawUrl}${authParam}`
-                      : `https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80`;
 
                     return (
                       <div
-                        key={log.log_id}
-                        className={`rounded-xl border p-3 transition-colors ${
-                          isDismissed
-                            ? 'border-border/60 bg-surface/50 opacity-60'
-                            : 'border-border bg-surface'
-                        }`}
+                        key={`audit-log-${log.log_id ?? idx}-${idx}`}
+                        className={`rounded-xl border p-3 transition-colors ${isDismissed
+                          ? 'border-border/60 bg-surface/50 opacity-60'
+                          : 'border-border bg-surface'
+                          }`}
                       >
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex items-start gap-3 min-w-0">
-                            {/* Webcam Snapshot Thumbnail with Lightbox trigger */}
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setLightboxImage({
-                                  url: snapshotUrl,
-                                  caption: `${log.violation_label} (${log.violation_code})`,
-                                  code: log.violation_code,
-                                  time: new Date(log.occurred_at).toLocaleString(),
-                                })
-                              }
-                              className="group relative h-14 w-18 shrink-0 overflow-hidden rounded-lg border border-border bg-background cursor-pointer"
-                              title="Click to view optical snapshot in lightbox"
-                            >
-                              <img
-                                src={snapshotUrl}
-                                alt="Webcam Optical Capture"
-                                className="h-full w-full object-cover group-hover:scale-105 transition-transform"
-                              />
-                              <div className="absolute inset-0 bg-background/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                <Maximize2 className="w-4 h-4 text-brand" />
-                              </div>
-                            </button>
+                            {/* Webcam Snapshot Thumbnail with EvidenceImage */}
+                            <EvidenceImage
+                              src={rawUrl}
+                              violationCode={log.violation_code}
+                              timestamp={log.occurred_at}
+                              containerClassName="h-16 w-24 shrink-0"
+                              aspectRatio="video"
+                              enableLightbox={true}
+                            />
 
                             <div className="min-w-0 flex-1">
                               <div className="flex items-center gap-2 flex-wrap">
@@ -959,9 +933,9 @@ export function StudentDetailDrawer({ sessionId, onClose }: StudentDetailDrawerP
             </div>
           )}
 
-          {paperQuery.data?.questions.map((q) => (
+          {paperQuery.data?.questions.map((q, qIdx) => (
             <div
-              key={q.questionId}
+              key={`paper-q-${q.questionId ?? qIdx}-${qIdx}`}
               className="rounded-2xl border border-border bg-surface p-4 space-y-3 text-xs"
             >
               <div className="flex items-center justify-between pb-2 border-b border-border/70">
@@ -977,11 +951,10 @@ export function StudentDetailDrawer({ sessionId, onClose }: StudentDetailDrawerP
                   <span>{q.marks} {q.marks === 1 ? 'Mark' : 'Marks'}</span>
                   {q.studentAnswerOriginal && (
                     <span
-                      className={`px-2 py-0.5 rounded font-bold ${
-                        q.isCorrect
-                          ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/30'
-                          : 'bg-rose-500/10 text-rose-500 border border-rose-500/30'
-                      }`}
+                      className={`px-2 py-0.5 rounded font-bold ${q.isCorrect
+                        ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/30'
+                        : 'bg-rose-500/10 text-rose-500 border border-rose-500/30'
+                        }`}
                     >
                       {q.isCorrect ? 'Correct' : 'Incorrect'}
                     </span>
@@ -1003,16 +976,15 @@ export function StudentDetailDrawer({ sessionId, onClose }: StudentDetailDrawerP
 
                   return (
                     <div
-                      key={dispLetter}
-                      className={`p-2.5 rounded-xl border transition-all ${
-                        isSelected
-                          ? isCorrectAnswer
-                            ? 'border-emerald-500 bg-emerald-500/10'
-                            : 'border-rose-500 bg-rose-500/10'
-                          : isCorrectAnswer
+                      key={`q-${q.questionId ?? qIdx}-opt-${dispLetter}`}
+                      className={`p-2.5 rounded-xl border transition-all ${isSelected
+                        ? isCorrectAnswer
+                          ? 'border-emerald-500 bg-emerald-500/10'
+                          : 'border-rose-500 bg-rose-500/10'
+                        : isCorrectAnswer
                           ? 'border-emerald-500/40 bg-emerald-500/5'
                           : 'border-border bg-surface-elevated/60'
-                      }`}
+                        }`}
                     >
                       <div className="flex items-center justify-between mb-1">
                         <span className="font-bold flex items-center gap-1.5">

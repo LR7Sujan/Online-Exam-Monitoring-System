@@ -9,6 +9,7 @@ import {
   Info,
 } from 'lucide-react';
 import { TrustRing } from '../ui/TrustRing';
+import { EvidenceImage } from '../ui/EvidenceImage';
 import type { ViolationReportResponse } from '../../hooks/useProctoring';
 
 interface ViolationWarningOverlayProps {
@@ -101,6 +102,10 @@ export function ViolationWarningOverlay({
     if (!warning) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
+        // Let nested modals/lightboxes handle Escape first
+        if (document.querySelector('[data-testid="evidence-image-lightbox"]')) {
+          return;
+        }
         e.preventDefault();
         e.stopPropagation();
       }
@@ -137,10 +142,12 @@ export function ViolationWarningOverlay({
     warning.warning?.message
   );
 
-  // Render into document.fullscreenElement if student is in fullscreen, else document.body
+  // Render into document.fullscreenElement (if not <html>) so it shows during fullscreen, else document.body
   const mountTarget =
     typeof document !== 'undefined'
-      ? document.fullscreenElement ?? document.body
+      ? (document.fullscreenElement && document.fullscreenElement !== document.documentElement
+          ? document.fullscreenElement
+          : document.body)
       : null;
 
   if (!mountTarget) return null;
@@ -339,13 +346,14 @@ export function ViolationWarningOverlay({
                     <Camera className="w-3 h-3 text-brand" />
                     <span>Evidence Snapshot:</span>
                   </div>
-                  <div className="relative overflow-hidden rounded-xl border border-border/70 max-h-36 bg-black/40 flex items-center justify-center">
-                    <img
-                      src={snapshotUrl}
-                      alt="Violation Evidence Snapshot"
-                      className="w-full h-auto max-h-36 object-contain"
-                    />
-                  </div>
+                  <EvidenceImage
+                    src={snapshotUrl}
+                    violationCode={warning.violationCode}
+                    alt="Violation Evidence Snapshot"
+                    containerClassName="max-h-44"
+                    aspectRatio="video"
+                    enableLightbox={true}
+                  />
                 </div>
               )}
 

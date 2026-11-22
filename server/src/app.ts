@@ -7,6 +7,7 @@ import jwt from 'jsonwebtoken';
 import type { RowDataPacket } from 'mysql2/promise';
 import swaggerUi from 'swagger-ui-express';
 import { queryRows, getDbHealth } from './config/db.js';
+import { verifySignedSnapshotUrl } from './services/snapshotSigner.js';
 import { env } from './config/env.js';
 import { openApiSpec } from './docs/openapi.js';
 import { corsMiddleware } from './middleware/cors.js';
@@ -49,11 +50,37 @@ export function createApp() {
   app.use(corsMiddleware);
   app.use(express.json({ limit: '10mb' }));
 
-  // Protected static snapshots route: requires valid JWT in Bearer header or ?token= query parameter
-  // QA Security Fix (Sub-Phase 11.4): Restrict snapshot access to PROCTOR, ADMIN, or the session examinee (IDOR protection)
+  // Protected static snapshots route: requires valid signed URL (HMAC 5-min expiry) OR valid JWT with RBAC/IDOR checks
+  // QA Security Fix (Sub-Phase 11.4 & Phase 19): Restrict snapshot access to PROCTOR, ADMIN, or the session examinee
   app.use(
     '/uploads',
     async (req, res, next) => {
+      // 1. Short-lived signed URL access (HMAC 5-minute expiry, bound to logId/path)
+      if (req.query.sig || req.query.expires) {
+        const fullUploadPath = `/uploads${req.path.startsWith('/') ? req.path : `/${req.path}`}`;
+        const verifyResult = verifySignedSnapshotUrl(fullUploadPath, {
+          expires: typeof req.query.expires === 'string' ? req.query.expires : undefined,
+          logId: typeof req.query.logId === 'string' ? req.query.logId : undefined,
+          sig: typeof req.query.sig === 'string' ? req.query.sig : undefined,
+        });
+
+        if (!verifyResult.valid) {
+          res.status(401).json({
+            success: false,
+            data: null,
+            error: {
+              code: verifyResult.code ?? 'INVALID_SNAPSHOT_SIGNATURE',
+              message: verifyResult.message ?? 'Invalid signed snapshot authorization URL.',
+            },
+          });
+          return;
+        }
+
+        next();
+        return;
+      }
+
+      // 2. Token-based access (Bearer header or ?token=)
       const authHeader = req.headers.authorization;
       const token =
         (authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null) ||
@@ -79,7 +106,7 @@ export function createApp() {
         }
 
         // If STUDENT, strictly enforce IDOR check: only allow viewing their own session snapshots
-        const match = req.path.match(/^\/snapshot-(\d+)-/);
+        const match = req.path.match(/^\/(?:snapshot|sim-[a-z_]+)-(\d+)-/);
         if (match && decoded.role === 'STUDENT' && decoded.sub) {
           const snapshotSessionId = Number(match[1]);
           const rows = await queryRows<RowDataPacket[]>(

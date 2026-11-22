@@ -4,7 +4,10 @@ import {
   getObjectDetector,
   PhoneDetectionWindow,
 } from '../utils/phoneDetector';
-import { captureWebcamSnapshotWithBox } from '../utils/faceDetector';
+import {
+  captureWebcamSnapshotWithBox,
+  captureWebcamSnapshotAsync,
+} from '../utils/faceDetector';
 
 interface UsePhoneDetectionOptions {
   videoRef: React.RefObject<HTMLVideoElement | null>;
@@ -102,7 +105,11 @@ export function usePhoneDetection({
         }
 
         if (check.shouldReport) {
-          const snapshot = captureWebcamSnapshotWithBox(video, result.box);
+          const snapshot =
+            (await captureWebcamSnapshotAsync(video, {
+              violationCode: 'PHONE_DETECTED',
+              box: result.box,
+            })) || captureWebcamSnapshotWithBox(video, result.box);
           if (snapshot && onViolationRef.current) {
             onViolationRef.current('PHONE_DETECTED', snapshot, {
               reason: 'Mobile phone visible in camera frame (seen in 3 of 5 checks)',

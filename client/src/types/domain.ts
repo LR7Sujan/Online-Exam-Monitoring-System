@@ -259,6 +259,8 @@ export interface ViolationAuditRow {
   current_trust_score: number;
   session_status: SessionStatus;
   integrity_status: IntegrityStatus | null;
+  snapshot_url?: string | null;
+  snapshotUrl?: string | null;
 }
 
 export interface DbTelemetry {

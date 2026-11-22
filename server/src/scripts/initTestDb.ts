@@ -69,7 +69,9 @@ export async function initTestDatabase(options: { reset?: boolean; seed?: boolea
   const projectRootDir = path.resolve(__dirname, '../../../');
   const dbDir = path.resolve(projectRootDir, 'db');
   const migrationsDir = path.join(dbDir, 'migrations');
-  const seedPath = path.join(dbDir, 'seed.sql');
+  const seedPath = process.env.DB_SEED_PATH
+    ? path.resolve(projectRootDir, process.env.DB_SEED_PATH)
+    : path.join(dbDir, 'seed.sql');
 
   const conn = await mysql.createConnection({
     host,
