@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { AuthUser } from '../types/domain';
+import { mediaSession } from '../proctoring/mediaSession';
 
 interface AuthState {
   token: string | null;
@@ -47,6 +48,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ token, user });
   },
   logout: () => {
+    mediaSession.stopAll();
     localStorage.removeItem(STORAGE_KEY);
     set({ token: null, user: null });
   },

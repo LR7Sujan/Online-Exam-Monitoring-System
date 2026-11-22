@@ -6,6 +6,7 @@ import {
   AlertTriangle,
   GraduationCap,
   Calendar,
+  Lock,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -16,6 +17,7 @@ import { ErrorState } from '../components/ui/EmptyState';
 import { Skeleton } from '../components/ui/Skeleton';
 import { api } from '../lib/api';
 import { useAuthStore } from '../store/authStore';
+import { mediaSession } from '../proctoring/mediaSession';
 import type { ExamItem, ExamSession } from '../types/domain';
 
 function formatCountdown(targetDate: string): { label: string; isPast: boolean } {
@@ -80,6 +82,7 @@ export function StudentDashboardPage() {
       }
     },
     onError: (err) => {
+      mediaSession.stopAll();
       setStartError(err instanceof Error ? err.message : 'Unable to initialize exam session.');
     },
   });
@@ -245,6 +248,7 @@ export function StudentDashboardPage() {
             const hasSession = Boolean(exam.session_id);
             const isInProgress = exam.session_status === 'IN_PROGRESS';
             const isClosed = hasSession && exam.session_status && exam.session_status !== 'IN_PROGRESS';
+            const isWindowEnded = now > new Date(exam.end_window).getTime();
 
             const startCountdown = formatCountdown(exam.start_window);
             const endCountdown = formatCountdown(exam.end_window);
@@ -347,7 +351,7 @@ export function StudentDashboardPage() {
                             ? startCountdown.label
                             : isWindowOpen
                             ? endCountdown.label
-                            : 'Window Closed'}
+                            : `Closed on ${new Date(exam.end_window).toLocaleDateString()}`}
                         </span>
                       </div>
                     </div>
@@ -371,6 +375,16 @@ export function StudentDashboardPage() {
                         >
                           <Play className="w-4 h-4 fill-current" />
                           <span>Resume Active Session (Trust: {exam.session_trust_score}%)</span>
+                        </button>
+                      ) : isWindowEnded ? (
+                        <button
+                          type="button"
+                          disabled
+                          data-testid="window-closed-button"
+                          className="w-full py-2.5 px-4 rounded-xl font-medium text-xs text-muted-foreground bg-surface-elevated border border-border transition-all flex items-center justify-center gap-2 cursor-not-allowed opacity-60"
+                        >
+                          <Lock className="w-4 h-4 text-muted-foreground" />
+                          <span>Window closed</span>
                         </button>
                       ) : (
                         <button

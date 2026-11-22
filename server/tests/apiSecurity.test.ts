@@ -141,22 +141,27 @@ describe('API Security & Forensic Access Enforcement', () => {
     expect(violData.success).toBe(true);
     const snapshotUrl = violData.data.snapshot_url;
     expect(snapshotUrl).toMatch(/^\/uploads\/snapshot-/);
+    const rawSnapshotUrl = snapshotUrl.split('?')[0];
 
-    // 2. Unauthenticated request to snapshot -> MUST return 401
-    const unauthRes = await fetch(`${SERVER_ORIGIN}${snapshotUrl}`);
+    // 2. Unauthenticated request to raw snapshot without token/signature -> MUST return 401
+    const unauthRes = await fetch(`${SERVER_ORIGIN}${rawSnapshotUrl}`);
     const unauthData = await unauthRes.json();
     expect(unauthRes.status).toBe(401);
     expect(unauthData.error.code).toBe('UNAUTHORIZED_SNAPSHOT_ACCESS');
 
     // 3. Authenticated request using ?token= query parameter -> MUST return 200
-    const authQueryRes = await fetch(`${SERVER_ORIGIN}${snapshotUrl}?token=${studentToken}`);
+    const authQueryRes = await fetch(`${SERVER_ORIGIN}${rawSnapshotUrl}?token=${studentToken}`);
     expect(authQueryRes.status).toBe(200);
 
     // 4. Authenticated request using Bearer header -> MUST return 200
-    const authHeaderRes = await fetch(`${SERVER_ORIGIN}${snapshotUrl}`, {
+    const authHeaderRes = await fetch(`${SERVER_ORIGIN}${rawSnapshotUrl}`, {
       headers: { Authorization: `Bearer ${studentToken}` },
     });
     expect(authHeaderRes.status).toBe(200);
+
+    // 5. Signed URL (HMAC) request -> MUST return 200
+    const signedRes = await fetch(`${SERVER_ORIGIN}${snapshotUrl}`);
+    expect(signedRes.status).toBe(200);
   });
 });
 

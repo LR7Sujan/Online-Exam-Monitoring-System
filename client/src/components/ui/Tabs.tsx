@@ -36,6 +36,7 @@ export function Tabs({
             <button
               key={tab.id}
               role="tab"
+              data-testid={`tab-${tab.id}`}
               aria-selected={isActive}
               disabled={tab.disabled}
               onClick={() => onChange(tab.id)}
@@ -76,6 +77,7 @@ export function Tabs({
           <button
             key={tab.id}
             role="tab"
+            data-testid={`tab-${tab.id}`}
             aria-selected={isActive}
             disabled={tab.disabled}
             onClick={() => onChange(tab.id)}

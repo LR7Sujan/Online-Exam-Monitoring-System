@@ -5,6 +5,7 @@ import {
   CheckCircle2,
   AlertTriangle,
   ShieldAlert,
+  CameraOff,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
@@ -23,6 +24,7 @@ import { SkeletonCard } from '../components/ui/Skeleton';
 import { ErrorState } from '../components/ui/EmptyState';
 import { ChartTooltip, useChartTheme } from '../components/charts/shared';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
+import { mediaSession } from '../proctoring/mediaSession';
 import { api } from '../lib/api';
 import type {
   ExamSession,
@@ -61,6 +63,10 @@ export function StudentResultPage() {
   const warnings = warningsQuery.data ?? [];
 
   const percentage = Number(query.data?.result?.percentage ?? 0);
+
+  useEffect(() => {
+    mediaSession.stopAll();
+  }, []);
 
   useEffect(() => {
     if (query.data) {
@@ -137,9 +143,19 @@ export function StudentResultPage() {
           <span>Back to Candidate Dashboard</span>
         </Link>
 
-        <span className="font-mono text-xs text-brand font-semibold tracking-wide">
-          OFFICIAL INNODB TRANSACTION EVALUATION
-        </span>
+        <div className="flex items-center gap-3">
+          <div
+            data-testid="camera-off-indicator"
+            className="flex items-center gap-2 px-3 py-1 rounded-full text-xs font-mono border border-border bg-surface-elevated text-muted-foreground shadow-sm"
+          >
+            <CameraOff className="w-3.5 h-3.5 text-muted-foreground" />
+            <span>Exam ended, camera off</span>
+          </div>
+
+          <span className="font-mono text-xs text-brand font-semibold tracking-wide">
+            OFFICIAL INNODB TRANSACTION EVALUATION
+          </span>
+        </div>
       </div>
 
       {/* Hero Result Banner */}

@@ -28,14 +28,17 @@ INSERT INTO Users (id, full_name, email, password_hash, role, is_active) VALUES
 (7, 'Maya Alvarez', 'student4@proctoriq.io', '$2b$10$FlZlPTMFm3bi1YTpOqGSNu89sqsX7DOgiIkxk/G3lf7XPBXYDMgX2', 'STUDENT', TRUE),
 (8, 'Noah Brooks', 'student5@proctoriq.io', '$2b$10$FlZlPTMFm3bi1YTpOqGSNu89sqsX7DOgiIkxk/G3lf7XPBXYDMgX2', 'STUDENT', TRUE);
 
--- Seed Exams: 1 Published (#1), 1 Draft (#2)
+-- Seed Exams: 1 Published (#1), 1 Draft (#2), 1 Closed (#3)
 INSERT INTO Exams (id, title, description, duration_minutes, min_trust_score, max_extension_mins, start_window, end_window, is_published, created_by) VALUES
 (1, 'CS-401: Distributed Database Systems & ACID Internals',
  'Comprehensive assessment covering distributed database transactions, 2PC, Raft consensus, and snapshot isolation guarantees.',
  60, 30, 30, DATE_SUB(NOW(), INTERVAL 1 DAY), DATE_ADD(NOW(), INTERVAL 7 DAY), TRUE, 1),
 (2, 'SEC-305: Applied Cryptography & Zero-Knowledge Proofs',
  'Foundations of zero-knowledge SNARKs, lattice-based post-quantum cryptography, and elliptic curve signature schemes.',
- 45, 60, 20, DATE_ADD(NOW(), INTERVAL 1 DAY), DATE_ADD(NOW(), INTERVAL 14 DAY), FALSE, 1);
+ 45, 60, 20, DATE_ADD(NOW(), INTERVAL 1 DAY), DATE_ADD(NOW(), INTERVAL 14 DAY), FALSE, 1),
+(3, 'NET-220: Computer Networks & Transport Protocols',
+ 'Completed exam evaluating TCP congestion control, TLS 1.3 handshakes, and BGP routing.',
+ 50, 55, 0, DATE_SUB(NOW(), INTERVAL 4 DAY), DATE_SUB(NOW(), INTERVAL 3 DAY), TRUE, 1);
 
 -- Seed Questions for Exam 1 (4 questions)
 INSERT INTO Questions (id, exam_id, question_text, option_a, option_b, option_c, option_d, correct_option, marks, order_index) VALUES

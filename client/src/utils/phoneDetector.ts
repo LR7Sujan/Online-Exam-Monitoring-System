@@ -79,11 +79,35 @@ export class PhoneDetectionWindow {
 }
 
 // MediaPipe ObjectDetector lazy instance cache
-let objectDetectorInstance: any = null;
-let initPromise: Promise<any> | null = null;
+interface ObjectDetectorLike {
+  detect: (video: HTMLVideoElement) => {
+    detections?: Array<{
+      categories?: Array<{ categoryName?: string; score?: number }>;
+      boundingBox?: { originX: number; originY: number; width: number; height: number };
+    }>;
+  };
+}
+
+let objectDetectorInstance: ObjectDetectorLike | null = null;
+let initPromise: Promise<ObjectDetectorLike> | null = null;
 let modelLoadError: string | null = null;
 
-export async function getObjectDetector(): Promise<any> {
+export async function closePhoneDetector(): Promise<void> {
+  if (objectDetectorInstance) {
+    try {
+      if (typeof (objectDetectorInstance as unknown as { close?: () => void }).close === 'function') {
+        (objectDetectorInstance as unknown as { close: () => void }).close();
+      }
+    } catch {
+      // safe close
+    }
+    objectDetectorInstance = null;
+    initPromise = null;
+    modelLoadError = null;
+  }
+}
+
+export async function getObjectDetector(): Promise<ObjectDetectorLike> {
   if (objectDetectorInstance) return objectDetectorInstance;
   if (modelLoadError) throw new Error(modelLoadError);
   if (initPromise) return initPromise;
@@ -108,8 +132,8 @@ export async function getObjectDetector(): Promise<any> {
         categoryAllowlist: ['cell phone'],
       });
 
-      objectDetectorInstance = detector;
-      return detector;
+      objectDetectorInstance = detector as unknown as ObjectDetectorLike;
+      return objectDetectorInstance;
     } catch (err: unknown) {
       const errMsg =
         err instanceof Error ? err.message : 'MediaPipe ObjectDetector failed to initialize';
@@ -128,46 +152,41 @@ export async function getObjectDetector(): Promise<any> {
  * Runs 1 frame phone detection on an HTMLVideoElement
  */
 export async function detectPhoneInVideo(video: HTMLVideoElement): Promise<PhoneCheckResult> {
-  try {
-    if (!video || video.readyState < 2) {
-      return { detected: false };
-    }
-
-    const detector = await getObjectDetector();
-    const results = detector.detect(video);
-
-    if (!results?.detections || results.detections.length === 0) {
-      return { detected: false };
-    }
-
-    // Look for category 'cell phone' with score >= 0.5
-    for (const d of results.detections) {
-      const category = d.categories?.[0];
-      const categoryName = (category?.categoryName || '').toLowerCase();
-      const score = category?.score ?? 0;
-
-      if ((categoryName === 'cell phone' || categoryName === 'phone') && score >= 0.5) {
-        const box = d.boundingBox
-          ? {
-              x: d.boundingBox.originX,
-              y: d.boundingBox.originY,
-              width: d.boundingBox.width,
-              height: d.boundingBox.height,
-              score,
-            }
-          : undefined;
-
-        return {
-          detected: true,
-          score,
-          box,
-        };
-      }
-    }
-
+  if (!video || video.readyState < 2) {
     return { detected: false };
-  } catch (err) {
-    // If model failed or was not loaded, propagate error or return fallback
-    throw err;
   }
+
+  const detector = await getObjectDetector();
+  const results = detector.detect(video);
+
+  if (!results?.detections || results.detections.length === 0) {
+    return { detected: false };
+  }
+
+  // Look for category 'cell phone' with score >= 0.5
+  for (const d of results.detections) {
+    const category = d.categories?.[0];
+    const categoryName = (category?.categoryName || '').toLowerCase();
+    const score = category?.score ?? 0;
+
+    if ((categoryName === 'cell phone' || categoryName === 'phone') && score >= 0.5) {
+      const box = d.boundingBox
+        ? {
+            x: d.boundingBox.originX,
+            y: d.boundingBox.originY,
+            width: d.boundingBox.width,
+            height: d.boundingBox.height,
+            score,
+          }
+        : undefined;
+
+      return {
+        detected: true,
+        score,
+        box,
+      };
+    }
+  }
+
+  return { detected: false };
 }

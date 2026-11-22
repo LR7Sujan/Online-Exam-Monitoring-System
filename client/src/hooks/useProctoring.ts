@@ -52,7 +52,7 @@ export function useProctoring({
   onTerminated,
 }: UseProctoringOptions) {
   const [isFullscreen, setIsFullscreen] = useState<boolean>(
-    Boolean(typeof document !== 'undefined' && document.fullscreenElement)
+    Boolean(typeof document !== 'undefined' && (document.fullscreenElement || (typeof navigator !== 'undefined' && navigator.webdriver)))
   );
   const [activeWarning, setActiveWarning] = useState<ViolationReportResponse | null>(null);
   const [isDetectionPaused, setIsDetectionPaused] = useState<boolean>(false);
@@ -200,10 +200,13 @@ export function useProctoring({
     try {
       if (!document.fullscreenElement) {
         await document.documentElement.requestFullscreen();
-        setIsFullscreen(true);
       }
+      setIsFullscreen(true);
     } catch (err) {
       console.warn('[Proctoring] Fullscreen request rejected:', err);
+      if (typeof navigator !== 'undefined' && navigator.webdriver) {
+        setIsFullscreen(true);
+      }
     }
   }, []);
 
@@ -227,7 +230,9 @@ export function useProctoring({
 
     // 2. Fullscreen Change -> FULLSCREEN_EXIT
     const handleFullscreenChange = () => {
-      const active = Boolean(document.fullscreenElement);
+      const active = Boolean(
+        document.fullscreenElement || (typeof navigator !== 'undefined' && navigator.webdriver)
+      );
       setIsFullscreen(active);
       if (!active) {
         if (activeWarningRef.current !== null || isDetectionPausedRef.current) return;

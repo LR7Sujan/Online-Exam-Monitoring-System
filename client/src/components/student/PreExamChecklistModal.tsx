@@ -16,6 +16,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { LiveDot } from '../ui/LiveDot';
+import { mediaSession } from '../../proctoring/mediaSession';
 import type { ExamItem } from '../../types/domain';
 
 interface PreExamChecklistModalProps {
@@ -143,8 +144,29 @@ export function PreExamChecklistModal({
     }
   }, []);
 
+  const isCancelledRef = useRef<boolean>(false);
+  const isOpenRef = useRef<boolean>(isOpen);
+
+  useEffect(() => {
+    isOpenRef.current = isOpen;
+    if (!isOpen) {
+      isCancelledRef.current = true;
+      mediaSession.stopAll();
+      streamRef.current = null;
+      setCameraActive(false);
+    } else {
+      isCancelledRef.current = false;
+      mediaSession.startSession();
+    }
+    return () => {
+      isCancelledRef.current = true;
+      mediaSession.stopAll();
+    };
+  }, [isOpen]);
+
   // Initialize camera & microphone for step 2
   const startCamera = useCallback(async () => {
+    mediaSession.startSession();
     setCameraError(null);
     try {
       if (streamRef.current) {
@@ -158,22 +180,34 @@ export function PreExamChecklistModal({
         audio: true,
       });
 
+      // StrictMode cancellation or unmount check
+      if (isCancelledRef.current || !isOpenRef.current || mediaSession.isSessionStopped()) {
+        stream.getTracks().forEach((t) => t.stop());
+        return;
+      }
+
       const hasVideo = stream.getVideoTracks().some((t) => t.readyState === 'live');
       const hasAudio = stream.getAudioTracks().some((t) => t.readyState === 'live');
 
       if (!hasVideo || !hasAudio) {
+        stream.getTracks().forEach((t) => t.stop());
         throw new Error(
           'Both camera and microphone permissions are required to begin the examination.'
         );
       }
 
       streamRef.current = stream;
+      mediaSession.registerStream(stream);
+
       if (videoRef.current) {
+        mediaSession.registerVideo(videoRef.current);
         videoRef.current.srcObject = stream;
         videoRef.current.play().catch(() => {});
       }
       setCameraActive(true);
     } catch (err) {
+      if (isCancelledRef.current || !isOpen) return;
+
       // Auto-fallback to synthetic optical sensor stream
       const synthetic = createSyntheticStream();
       if (synthetic) {
@@ -183,16 +217,21 @@ export function PreExamChecklistModal({
             window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
           if (AudioContextClass) {
             const audioCtx = new AudioContextClass();
+            mediaSession.registerAudioContext(audioCtx);
             const osc = audioCtx.createOscillator();
             const dest = audioCtx.createMediaStreamDestination();
             osc.connect(dest);
             osc.start();
             dest.stream.getAudioTracks().forEach((t) => synthetic.addTrack(t));
           }
-        } catch {}
+        } catch {
+          // Synthetic audio track fallback ignored in mock tests
+        }
 
         streamRef.current = synthetic;
+        mediaSession.registerStream(synthetic);
         if (videoRef.current) {
+          mediaSession.registerVideo(videoRef.current);
           videoRef.current.srcObject = synthetic;
           videoRef.current.play().catch(() => {});
         }
@@ -207,7 +246,7 @@ export function PreExamChecklistModal({
         );
       }
     }
-  }, [createSyntheticStream]);
+  }, [createSyntheticStream, isOpen]);
 
   // Request fullscreen for step 3
   const triggerFullscreen = async () => {
@@ -235,14 +274,32 @@ export function PreExamChecklistModal({
     }
   }, [currentStep]);
 
-  // Clean up camera on modal close
+  // Clean up camera on modal close or unmount
   useEffect(() => {
-    if (!isOpen && streamRef.current) {
-      streamRef.current.getTracks().forEach((t) => t.stop());
+    if (!isOpen) {
+      mediaSession.stopAll();
       streamRef.current = null;
       setCameraActive(false);
     }
   }, [isOpen]);
+
+  const handleClose = useCallback(() => {
+    isCancelledRef.current = true;
+    isOpenRef.current = false;
+    mediaSession.stopAll();
+    streamRef.current = null;
+    setCameraActive(false);
+    onClose();
+  }, [onClose]);
+
+  const handleComplete = useCallback(async () => {
+    isCancelledRef.current = true;
+    isOpenRef.current = false;
+    mediaSession.stopAll();
+    streamRef.current = null;
+    setCameraActive(false);
+    await onComplete();
+  }, [onComplete]);
 
   if (!isOpen || !exam) return null;
 
@@ -252,7 +309,7 @@ export function PreExamChecklistModal({
   return (
     <Modal
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={handleClose}
       size="lg"
       showCloseButton={false}
       bodyClassName="p-0 flex flex-col"
@@ -276,7 +333,7 @@ export function PreExamChecklistModal({
             </div>
             <button
               type="button"
-              onClick={onClose}
+              onClick={handleClose}
               className="p-1.5 text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted transition-colors cursor-pointer"
               aria-label="Close modal"
             >
@@ -344,7 +401,7 @@ export function PreExamChecklistModal({
               <button
                 type="button"
                 disabled={!allStepsValid || isLoading}
-                onClick={onComplete}
+                onClick={handleComplete}
                 className="py-2.5 px-5 rounded-xl text-xs font-semibold text-white bg-gradient-to-r from-emerald-500 to-teal-600 hover:opacity-95 shadow-md shadow-emerald-500/20 active:scale-[0.99] transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isLoading ? (

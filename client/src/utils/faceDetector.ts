@@ -157,6 +157,21 @@ export async function initMediaPipeDetector(): Promise<boolean> {
   }
 }
 
+export async function closeMediaPipeDetector(): Promise<void> {
+  if (mpFaceDetector) {
+    try {
+      if (typeof mpFaceDetector.close === 'function') {
+        await mpFaceDetector.close();
+      }
+    } catch {
+      // safe close
+    }
+    mpFaceDetector = null;
+    mpInitAttempted = false;
+    mpInitSuccess = false;
+  }
+}
+
 /**
  * Analyzes video frame optical luminance and contrast to verify if the lens
  * is obscured (tape, hand, covered, or complete darkness).

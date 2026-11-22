@@ -8,6 +8,7 @@ import {
   MultiFaceTracker,
   type DetectionResult,
 } from '../utils/faceDetector';
+import { mediaSession } from '../proctoring/mediaSession';
 
 interface UseFaceDetectionOptions {
   enabled?: boolean;
@@ -57,8 +58,12 @@ export function useFaceDetection({
     initMediaPipeDetector().catch(() => { });
   }, []);
 
+  // Cancellation ref for StrictMode safety
+  const isCancelledRef = useRef<boolean>(false);
+
   // Camera & Microphone start / restart logic
   const startCamera = useCallback(async () => {
+    mediaSession.startSession();
     setCameraDenied(false);
 
     try {
@@ -80,8 +85,15 @@ export function useFaceDetection({
         audio: true,
       });
 
+      // StrictMode cancellation or unmount check
+      if (isCancelledRef.current || !enabled || mediaSession.isSessionStopped()) {
+        mediaStream.getTracks().forEach((t) => t.stop());
+        return;
+      }
+
       streamRef.current = mediaStream;
       setStream(mediaStream);
+      mediaSession.registerStream(mediaStream);
 
       // Handle optical track ending mid-exam (unplugged, disabled, hardware disconnect)
       mediaStream.getVideoTracks().forEach((track) => {
@@ -106,12 +118,15 @@ export function useFaceDetection({
       });
 
       if (videoRef.current) {
+        mediaSession.registerVideo(videoRef.current);
         videoRef.current.srcObject = mediaStream;
         await videoRef.current.play().catch(() => { });
       }
       setCameraActive(true);
       setCameraDenied(false);
     } catch (err: unknown) {
+      if (isCancelledRef.current || !enabled) return;
+
       console.warn('[FaceDetection] Camera / microphone initialization issue:', err);
       const error = err as { name?: string; message?: string };
       const errStr = String(err).toLowerCase();
@@ -158,6 +173,7 @@ export function useFaceDetection({
               window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
             if (AudioContextClass) {
               const audioCtx = new AudioContextClass();
+              mediaSession.registerAudioContext(audioCtx);
               const osc = audioCtx.createOscillator();
               const dest = audioCtx.createMediaStreamDestination();
               osc.connect(dest);
@@ -170,6 +186,8 @@ export function useFaceDetection({
 
           streamRef.current = capture;
           setStream(capture);
+          mediaSession.registerStream(capture);
+          mediaSession.registerVideo(videoRef.current);
           videoRef.current.srcObject = capture;
           await videoRef.current.play().catch(() => { });
           setCameraActive(true);
@@ -181,18 +199,27 @@ export function useFaceDetection({
         setCameraActive(false);
       }
     }
-  }, []);
+  }, [enabled]);
 
   // Mount camera
   useEffect(() => {
-    startCamera();
+    isCancelledRef.current = false;
+    if (enabled) {
+      startCamera();
+    } else {
+      mediaSession.stopAll();
+      setCameraActive(false);
+    }
 
     return () => {
+      isCancelledRef.current = true;
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((t) => t.stop());
+        streamRef.current = null;
       }
+      mediaSession.stopAll();
     };
-  }, [startCamera]);
+  }, [startCamera, enabled]);
 
   // Main Detection Loop: runs about once per second (1000ms)
   useEffect(() => {
@@ -301,6 +328,8 @@ export function useFaceDetection({
         console.warn('[FaceDetection] Detection iteration warning:', err);
       }
     }, 1000);
+
+    mediaSession.registerInterval(intervalId);
 
     return () => {
       clearInterval(intervalId);

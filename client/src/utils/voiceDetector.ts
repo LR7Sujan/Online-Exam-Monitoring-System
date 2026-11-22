@@ -6,6 +6,8 @@
  * Audio is strictly processed locally in memory; never stored or sent.
  */
 
+import { mediaSession } from '../proctoring/mediaSession';
+
 export function calculateBandEnergy(
   frequencyData: Uint8Array | Float32Array,
   sampleRate: number,
@@ -146,6 +148,8 @@ export class AudioVoiceDetector {
     }
 
     this.audioContext = new AudioContextClass();
+    mediaSession.registerAudioContext(this.audioContext);
+
     if (this.audioContext.state === 'suspended') {
       await this.audioContext.resume().catch(() => {});
     }
@@ -153,10 +157,12 @@ export class AudioVoiceDetector {
     this.analyser = this.audioContext.createAnalyser();
     this.analyser.fftSize = 1024;
     this.analyser.smoothingTimeConstant = 0.4;
+    mediaSession.registerAudioNode(this.analyser);
 
     this.sourceNode = this.audioContext.createMediaStreamSource(stream);
     // Connect source to analyser only (no destination connection, preventing audio playback feedback)
     this.sourceNode.connect(this.analyser);
+    mediaSession.registerAudioNode(this.sourceNode);
 
     this.isCalibrating = true;
     this.calibrationSamples = [];
@@ -230,6 +236,10 @@ export class AudioVoiceDetector {
         });
       }
     }, 200);
+
+    if (this.intervalId) {
+      mediaSession.registerInterval(this.intervalId);
+    }
   }
 
   public pause(): void {
@@ -257,19 +267,25 @@ export class AudioVoiceDetector {
     if (this.sourceNode) {
       try {
         this.sourceNode.disconnect();
-      } catch {}
+      } catch {
+        // Safe disconnect fallback
+      }
       this.sourceNode = null;
     }
     if (this.analyser) {
       try {
         this.analyser.disconnect();
-      } catch {}
+      } catch {
+        // Safe disconnect fallback
+      }
       this.analyser = null;
     }
     if (this.audioContext && this.audioContext.state !== 'closed') {
       try {
         this.audioContext.close().catch(() => {});
-      } catch {}
+      } catch {
+        // Safe close fallback
+      }
       this.audioContext = null;
     }
     this.tracker.reset();

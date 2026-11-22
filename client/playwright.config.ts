@@ -33,7 +33,7 @@ export default defineConfig({
     {
       command: 'npm --prefix ../server run start:test',
       url: 'http://localhost:4001/api/health',
-      reuseExistingServer: false,
+      reuseExistingServer: true,
       timeout: 30000,
       stdout: 'pipe',
       stderr: 'pipe',
@@ -41,7 +41,7 @@ export default defineConfig({
     {
       command: 'npm run dev -- --mode test --port 5174',
       url: 'http://localhost:5174',
-      reuseExistingServer: false,
+      reuseExistingServer: true,
       timeout: 30000,
       stdout: 'pipe',
       stderr: 'pipe',

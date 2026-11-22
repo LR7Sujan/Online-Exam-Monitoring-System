@@ -32,6 +32,7 @@ import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { api } from '../lib/api';
 import { getSocket } from '../lib/socket';
 import { useAuthStore } from '../store/authStore';
+import { mediaSession } from '../proctoring/mediaSession';
 import type {
   AnswerOption,
   ExamSession,
@@ -223,10 +224,18 @@ export function StudentExamPage() {
       return api.post<{ result: unknown }>(`/sessions/${numericSessionId}/submit`);
     },
     onSuccess: () => {
+      mediaSession.stopAll();
+      if (typeof document !== 'undefined' && document.fullscreenElement) {
+        document.exitFullscreen().catch(() => {});
+      }
       queryClient.invalidateQueries({ queryKey: ['session-result', numericSessionId] });
       navigate(`/student/results/${numericSessionId}`);
     },
     onError: () => {
+      mediaSession.stopAll();
+      if (typeof document !== 'undefined' && document.fullscreenElement) {
+        document.exitFullscreen().catch(() => {});
+      }
       navigate(`/student/results/${numericSessionId}`);
     },
   });
@@ -250,6 +259,10 @@ export function StudentExamPage() {
     },
     onTerminated: async () => {
       setSessionStatus('TERMINATED_CHEATING');
+      mediaSession.stopAll();
+      if (typeof document !== 'undefined' && document.fullscreenElement) {
+        document.exitFullscreen().catch(() => {});
+      }
       try {
         await api.post(`/sessions/${numericSessionId}/submit`);
       } catch (err) {
@@ -351,6 +364,10 @@ export function StudentExamPage() {
       if (payload.sessionId !== numericSessionId) return;
       if (typeof payload.trustScore === 'number') setTrustScore(payload.trustScore);
       setSessionStatus('TERMINATED_CHEATING');
+      mediaSession.stopAll();
+      if (typeof document !== 'undefined' && document.fullscreenElement) {
+        document.exitFullscreen().catch(() => {});
+      }
     };
 
     const onExtensionDecided = (payload: {
@@ -497,6 +514,26 @@ export function StudentExamPage() {
       }
     }
   }, [secondsLeft, sessionStatus, maxExtensionMins, extensionRequest, submitMutation]);
+
+  // Stop all media and exit fullscreen on unmount (leaving route)
+  useEffect(() => {
+    return () => {
+      mediaSession.stopAll();
+      if (typeof document !== 'undefined' && document.fullscreenElement) {
+        document.exitFullscreen().catch(() => {});
+      }
+    };
+  }, []);
+
+  // Stop all media when terminal status reached
+  useEffect(() => {
+    if (sessionStatus === 'TERMINATED_CHEATING' || sessionStatus === 'SUBMITTED') {
+      mediaSession.stopAll();
+      if (typeof document !== 'undefined' && document.fullscreenElement) {
+        document.exitFullscreen().catch(() => {});
+      }
+    }
+  }, [sessionStatus]);
 
   const handleRequestExtension = async (minutes: number, reasonText?: string) => {
     const res = await api.post<{ requestId: number; status: 'PENDING' }>(
@@ -720,6 +757,7 @@ export function StudentExamPage() {
 
           <button
             type="button"
+            data-testid="hud-submit-exam-button"
             onClick={() => setConfirmSubmitOpen(true)}
             className="py-2 px-3.5 rounded-xl text-xs font-semibold text-white bg-gradient-to-r from-emerald-500 to-teal-600 hover:opacity-95 shadow-sm transition-all flex items-center gap-1.5 cursor-pointer"
           >
@@ -1101,6 +1139,7 @@ export function StudentExamPage() {
             </button>
             <button
               type="button"
+              data-testid="confirm-submit-modal-btn"
               disabled={submitMutation.isPending}
               onClick={() => submitMutation.mutate()}
               className="py-2 px-4 rounded-xl text-xs font-semibold text-white bg-gradient-to-r from-emerald-500 to-teal-600 hover:opacity-95 shadow-sm transition-all cursor-pointer"

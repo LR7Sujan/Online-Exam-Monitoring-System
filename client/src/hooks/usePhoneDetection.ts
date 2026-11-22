@@ -8,6 +8,7 @@ import {
   captureWebcamSnapshotWithBox,
   captureWebcamSnapshotAsync,
 } from '../utils/faceDetector';
+import { mediaSession } from '../proctoring/mediaSession';
 
 interface UsePhoneDetectionOptions {
   videoRef: React.RefObject<HTMLVideoElement | null>;
@@ -129,6 +130,8 @@ export function usePhoneDetection({
         }
       }
     }, 1000);
+
+    mediaSession.registerInterval(intervalId);
 
     return () => {
       clearInterval(intervalId);
