@@ -258,7 +258,7 @@ export function LoginPage({ initialTab }: { initialTab?: AuthTab }) {
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
-        className="rounded-3xl border border-border bg-surface/90 backdrop-blur-xl p-5 sm:p-6 shadow-layered-md space-y-3.5 relative overflow-hidden"
+        className="rounded-3xl border border-border/80 dark:border-white/10 bg-surface/85 backdrop-blur-2xl p-5 sm:p-6 shadow-layered-lg shadow-black/20 dark:shadow-black/40 space-y-3.5 relative overflow-hidden"
       >
         {/* Top ambient highlight line */}
         <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500" />
