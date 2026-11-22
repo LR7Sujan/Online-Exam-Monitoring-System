@@ -16,6 +16,7 @@ export default defineConfig({
       'tests/warningGate.api.test.ts',
       'tests/uniquePaperVersions.api.test.ts',
       'tests/snapshotAccess.api.test.ts',
+      'tests/simulatorPersonas.test.ts',
     ],
     testTimeout: 25000,
     fileParallelism: false,

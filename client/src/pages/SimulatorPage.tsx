@@ -30,20 +30,35 @@ import { api } from '../lib/api';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import type { ExamItem } from '../types/domain';
 
-interface SimCandidate {
+export type PersonaType = 'honest' | 'mostly_honest' | 'careless' | 'cheater';
+export type ScenarioType = 'realistic' | 'strict' | 'stress_test';
+
+export interface SimResult {
+  rawScore: number;
+  totalMarks: number;
+  percentage: number;
+  finalTrustScore: number;
+  integrityStatus: 'CLEAN' | 'FLAGGED' | 'DISQUALIFIED';
+  gradedAt: string;
+}
+
+export interface SimCandidate {
   studentId: number;
   fullName: string;
   email: string;
   sessionId: number;
   trustScore: number;
-  status: 'IN_PROGRESS' | 'SUBMITTED' | 'TERMINATED_CHEATING';
+  status: 'IN_PROGRESS' | 'SUBMITTED' | 'TERMINATED_CHEATING' | 'TIMED_OUT';
   lastAction: string;
   lastActionAt: string;
   violationsCount: number;
   answersCount: number;
+  persona?: PersonaType;
+  ability?: number;
+  result?: SimResult;
 }
 
-interface SimActivityLog {
+export interface SimActivityLog {
   id: string;
   timestamp: string;
   candidateName: string;
@@ -53,20 +68,33 @@ interface SimActivityLog {
   trustScore?: number;
 }
 
-interface SimulatorStatusResponse {
+export interface SimulatorSummary {
+  cleanCount: number;
+  flaggedCount: number;
+  disqualifiedCount: number;
+  avgScore: number;
+  avgTrust: number;
+}
+
+export interface SimulatorStatusResponse {
   isRunning: boolean;
   isPaused: boolean;
   examId: number;
   studentCount: number;
   speed: number;
   chaos: 'low' | 'medium' | 'high';
+  scenario: ScenarioType;
+  seed: string | number;
   startedAt: string | null;
+  endedAt?: string | null;
   stats: {
     activeCount: number;
     answersCount: number;
     infractionsCount: number;
     terminatedCount: number;
+    submittedCount?: number;
   };
+  summary?: SimulatorSummary;
   candidates: SimCandidate[];
   activityLogs: SimActivityLog[];
 }
@@ -80,6 +108,8 @@ export const SimulatorPage: React.FC = () => {
   const [studentCount, setStudentCount] = useState<number>(12);
   const [speed, setSpeed] = useState<number>(2.0);
   const [chaos, setChaos] = useState<'low' | 'medium' | 'high'>('medium');
+  const [scenario, setScenario] = useState<ScenarioType>('realistic');
+  const [seed, setSeed] = useState<string>('');
   const [isResetModalOpen, setIsResetModalOpen] = useState<boolean>(false);
 
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -142,6 +172,8 @@ export const SimulatorPage: React.FC = () => {
         studentCount,
         speed,
         chaos,
+        scenario,
+        seed: seed.trim() !== '' ? seed.trim() : undefined,
       }),
     onSuccess: () => {
       toast.success(`Launched simulator swarm with ${studentCount} candidates.`);
@@ -240,12 +272,15 @@ export const SimulatorPage: React.FC = () => {
         studentCount: 12,
         speed: 2.0,
         chaos: 'medium',
+        scenario: 'realistic',
+        seed: 42,
         startedAt: null,
         stats: {
           activeCount: 0,
           answersCount: 0,
           infractionsCount: 0,
           terminatedCount: 0,
+          submittedCount: 0,
         },
         candidates: [],
         activityLogs: [],
@@ -261,6 +296,8 @@ export const SimulatorPage: React.FC = () => {
       setStudentCount(12);
       setSpeed(2.0);
       setChaos('medium');
+      setScenario('realistic');
+      setSeed('');
 
       // 4. Clear scroll positions
       if (candidateGridRef.current) {
@@ -481,7 +518,7 @@ export const SimulatorPage: React.FC = () => {
         </div>
 
         {/* Sliders and Selectors Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
           {/* Target Exam */}
           <div className="space-y-2">
             <label className="text-xs font-medium text-foreground block">
@@ -510,6 +547,23 @@ export const SimulatorPage: React.FC = () => {
                 );
               })}
               {exams.length === 0 && <option value={1} className="bg-surface text-foreground">Exam #1 (Default)</option>}
+            </select>
+          </div>
+
+          {/* Scenario Selector */}
+          <div className="space-y-2">
+            <label className="text-xs font-medium text-foreground block">
+              SCENARIO
+            </label>
+            <select
+              disabled={isRunning}
+              value={scenario}
+              onChange={(e) => setScenario(e.target.value as ScenarioType)}
+              className="w-full rounded-xl border border-border bg-surface px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-brand disabled:opacity-50 transition-all font-mono"
+            >
+              <option value="realistic" className="bg-surface text-foreground">Realistic (Default)</option>
+              <option value="strict" className="bg-surface text-foreground">Strict Exam</option>
+              <option value="stress_test" className="bg-surface text-foreground">Stress Test</option>
             </select>
           </div>
 
@@ -568,12 +622,12 @@ export const SimulatorPage: React.FC = () => {
             <label className="text-xs font-medium text-foreground block">
               CHAOS PROFILE
             </label>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-3 gap-1.5">
               <button
                 type="button"
                 disabled={isRunning}
                 onClick={() => setChaos('low')}
-                className={`py-2 px-2 rounded-xl border text-xs font-mono font-bold transition-all ${chaos === 'low'
+                className={`py-2 px-1 rounded-xl border text-xs font-mono font-bold transition-all ${chaos === 'low'
                   ? 'border-emerald/60 bg-emerald/20 text-emerald shadow-[0_0_15px_rgba(16,185,129,0.2)]'
                   : 'border-border bg-surface text-muted-foreground hover:text-foreground hover:bg-muted'
                   } disabled:opacity-50`}
@@ -584,7 +638,7 @@ export const SimulatorPage: React.FC = () => {
                 type="button"
                 disabled={isRunning}
                 onClick={() => setChaos('medium')}
-                className={`py-2 px-2 rounded-xl border text-xs font-mono font-bold transition-all ${chaos === 'medium'
+                className={`py-2 px-1 rounded-xl border text-xs font-mono font-bold transition-all ${chaos === 'medium'
                   ? 'border-amber/60 bg-amber/20 text-amber shadow-[0_0_15px_rgba(245,158,11,0.2)]'
                   : 'border-border bg-surface text-muted-foreground hover:text-foreground hover:bg-muted'
                   } disabled:opacity-50`}
@@ -595,7 +649,7 @@ export const SimulatorPage: React.FC = () => {
                 type="button"
                 disabled={isRunning}
                 onClick={() => setChaos('high')}
-                className={`py-2 px-2 rounded-xl border text-xs font-mono font-bold transition-all ${chaos === 'high'
+                className={`py-2 px-1 rounded-xl border text-xs font-mono font-bold transition-all ${chaos === 'high'
                   ? 'border-rose/60 bg-rose/20 text-rose shadow-[0_0_15px_rgba(244,63,94,0.3)]'
                   : 'border-border bg-surface text-muted-foreground hover:text-foreground hover:bg-muted'
                   } disabled:opacity-50`}
@@ -603,6 +657,22 @@ export const SimulatorPage: React.FC = () => {
                 HIGH 🔥
               </button>
             </div>
+          </div>
+
+          {/* Seed Input */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-xs font-mono">
+              <span className="text-muted-foreground">RANDOM SEED</span>
+              <span className="text-[10px] text-muted-foreground">(Optional)</span>
+            </div>
+            <input
+              type="text"
+              disabled={isRunning}
+              value={seed}
+              onChange={(e) => setSeed(e.target.value)}
+              placeholder="e.g. 42 or cohort_1"
+              className="w-full rounded-xl border border-border bg-surface px-3 py-2 text-xs font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-brand disabled:opacity-50 transition-all"
+            />
           </div>
         </div>
 
@@ -626,7 +696,36 @@ export const SimulatorPage: React.FC = () => {
         )}
       </GlassCard>
 
-      {/* 4. Swarm Candidate Grid + Live Activity Feed */}
+      {/* 4. End-of-Run Summary Strip */}
+      {sim?.summary && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          data-testid="simulator-summary-strip"
+          className="p-4 rounded-2xl border border-brand/40 bg-brand/10 backdrop-blur-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 font-mono text-xs shadow-[0_0_25px_rgba(99,102,241,0.15)]"
+        >
+          <div className="flex items-center gap-2 flex-wrap">
+            <CheckCircle2 className="w-4 h-4 text-emerald" />
+            <span className="font-bold text-foreground">Cohort Outcome Summary:</span>
+            <span className="px-2 py-0.5 rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-400 font-bold">
+              {sim.summary.cleanCount} CLEAN
+            </span>
+            <span className="px-2 py-0.5 rounded-full border border-amber-500/40 bg-amber-500/10 text-amber-400 font-bold">
+              {sim.summary.flaggedCount} FLAGGED
+            </span>
+            <span className="px-2 py-0.5 rounded-full border border-rose-500/40 bg-rose-500/10 text-rose-400 font-bold">
+              {sim.summary.disqualifiedCount} DISQUALIFIED
+            </span>
+          </div>
+          <div className="flex items-center gap-4 text-muted-foreground">
+            <span>Avg Score: <strong className="text-cyan font-bold">{sim.summary.avgScore}%</strong></span>
+            <span>•</span>
+            <span>Avg Trust: <strong className="text-foreground font-bold">{sim.summary.avgTrust}%</strong></span>
+          </div>
+        </motion.div>
+      )}
+
+      {/* 5. Swarm Candidate Grid + Live Activity Feed */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left 2 Cols: Live Candidate Grid */}
         <div className="lg:col-span-2 space-y-4">
@@ -674,10 +773,25 @@ export const SimulatorPage: React.FC = () => {
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-bold text-sm text-foreground truncate">
                             {c.fullName}
                           </span>
+                          {c.persona && (
+                            <span
+                              className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-bold uppercase border ${
+                                c.persona === 'honest'
+                                  ? 'border-sky-500/40 bg-sky-500/10 text-sky-400'
+                                  : c.persona === 'mostly_honest'
+                                  ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400'
+                                  : c.persona === 'careless'
+                                  ? 'border-amber-500/40 bg-amber-500/10 text-amber-400'
+                                  : 'border-rose-500/40 bg-rose-500/10 text-rose-400'
+                              }`}
+                            >
+                              {c.persona.replace('_', ' ')}
+                            </span>
+                          )}
                         </div>
                         <span className="text-[10px] font-mono text-muted-foreground block truncate">
                           Session #{c.sessionId} • {c.email}
@@ -696,9 +810,34 @@ export const SimulatorPage: React.FC = () => {
 
                     {/* Stats & Status Pills */}
                     <div className="mt-3 flex items-center justify-between text-[11px] font-mono border-t border-border pt-2">
-                      <StatusPill status={c.status} size="sm" />
+                      {c.result ? (
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold border uppercase ${
+                            c.result.integrityStatus === 'CLEAN'
+                              ? 'border-emerald-500/50 bg-emerald-500/15 text-emerald-400'
+                              : c.result.integrityStatus === 'FLAGGED'
+                              ? 'border-amber-500/50 bg-amber-500/15 text-amber-400'
+                              : 'border-rose-500/50 bg-rose-500/15 text-rose-400'
+                          }`}
+                        >
+                          {c.result.integrityStatus}
+                        </span>
+                      ) : isTerminated ? (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold border uppercase border-rose-500/50 bg-rose-500/15 text-rose-400">
+                          DISQUALIFIED
+                        </span>
+                      ) : (
+                        <StatusPill status={c.status} size="sm" />
+                      )}
+
                       <div className="flex items-center gap-2 text-muted-foreground">
-                        <span>Ans: <strong className="text-cyan">{c.answersCount}</strong></span>
+                        {c.result ? (
+                          <span className="text-cyan font-bold">
+                            Score: {c.result.percentage}%
+                          </span>
+                        ) : (
+                          <span>Ans: <strong className="text-cyan">{c.answersCount}</strong></span>
+                        )}
                         <span>•</span>
                         <span>Inf: <strong className="text-amber">{c.violationsCount}</strong></span>
                       </div>

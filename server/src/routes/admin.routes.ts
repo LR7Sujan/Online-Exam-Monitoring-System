@@ -3,7 +3,7 @@ import type { RowDataPacket } from 'mysql2/promise';
 import { executeSql, queryRows } from '../config/db.js';
 import { env } from '../config/env.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
-import { simulatorEngine, type ChaosLevel } from '../services/simulator.js';
+import { simulatorEngine, type ChaosLevel, type ScenarioType } from '../services/simulator.js';
 import { sendSuccess } from '../utils/response.js';
 import { AppError } from '../utils/errors.js';
 
@@ -236,12 +236,14 @@ adminRouter.get('/simulator/status', (_req, res) => {
 // POST /api/admin/simulator/start
 adminRouter.post('/simulator/start', async (req, res, next) => {
   try {
-    const { examId, studentCount, speed, chaos } = req.body || {};
+    const { examId, studentCount, speed, chaos, scenario, seed } = req.body || {};
     const state = await simulatorEngine.start({
       examId: examId ? Number(examId) : 1,
       studentCount: studentCount ? Number(studentCount) : 10,
       speed: speed ? Number(speed) : 1.5,
       chaos: (chaos as ChaosLevel) || 'medium',
+      scenario: (scenario as ScenarioType) || 'realistic',
+      seed: seed !== undefined ? seed : undefined,
     });
     sendSuccess(res, state);
   } catch (err) {

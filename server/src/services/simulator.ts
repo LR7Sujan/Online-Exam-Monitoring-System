@@ -1,11 +1,12 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import type { RowDataPacket } from 'mysql2/promise';
+import type { RowDataPacket, ResultSetHeader } from 'mysql2/promise';
 import { executeSql, pool, queryRows } from '../config/db.js';
 import { env } from '../config/env.js';
 import { startOrResumeExamSession } from '../routes/exams.routes.js';
 import {
+  emitExamSubmitted,
   emitSessionTerminated,
   emitSessionUpdate,
   emitSimulatorReset,
@@ -13,19 +14,28 @@ import {
   emitWarningIssued,
   emitWarningAcked,
 } from '../realtime/socket.js';
-import { mapDisplayedToOriginalAnswer } from './paperGenerator.js';
 import type { AnswerOption, ExamSessionRow, ViolationTypeRow } from '../types/api.js';
 import { AppError } from '../utils/errors.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-// Resolve uploads directory relative to project root or script location
 const projectRootDir = path.resolve(__dirname, '../../../');
 const uploadsDir = env.UPLOADS_DIR
   ? path.resolve(projectRootDir, env.UPLOADS_DIR)
   : path.resolve(__dirname, '../../uploads');
 
 export type ChaosLevel = 'low' | 'medium' | 'high';
+export type ScenarioType = 'realistic' | 'strict' | 'stress_test';
+export type PersonaType = 'honest' | 'mostly_honest' | 'careless' | 'cheater';
+
+export interface SimResult {
+  rawScore: number;
+  totalMarks: number;
+  percentage: number;
+  finalTrustScore: number;
+  integrityStatus: 'CLEAN' | 'FLAGGED' | 'DISQUALIFIED';
+  gradedAt: string;
+}
 
 export interface SimCandidate {
   studentId: number;
@@ -33,13 +43,23 @@ export interface SimCandidate {
   email: string;
   sessionId: number;
   trustScore: number;
-  status: 'IN_PROGRESS' | 'SUBMITTED' | 'TERMINATED_CHEATING';
+  status: 'IN_PROGRESS' | 'SUBMITTED' | 'TERMINATED_CHEATING' | 'TIMED_OUT';
   lastAction: string;
   lastActionAt: string;
   violationsCount: number;
   answersCount: number;
   paperCode?: string;
   optionMaps?: Record<string, AnswerOption[]>;
+  persona: PersonaType;
+  ability: number; // 0.40 to 0.95
+  violationBudget: number; // Hard cap
+  targetFinishMode: 'SUBMIT' | 'TIMEOUT';
+  nextViolationAllowedAt: number;
+  graceUntilTime: number;
+  isAcknowledgingWarning: boolean;
+  questionsRemaining: number[];
+  pendingAnswerChanges: number[];
+  result?: SimResult;
 }
 
 export interface SimActivityLog {
@@ -52,6 +72,14 @@ export interface SimActivityLog {
   trustScore?: number;
 }
 
+export interface SimulatorSummary {
+  cleanCount: number;
+  flaggedCount: number;
+  disqualifiedCount: number;
+  avgScore: number;
+  avgTrust: number;
+}
+
 export interface SimulatorState {
   isRunning: boolean;
   isPaused: boolean;
@@ -59,13 +87,18 @@ export interface SimulatorState {
   studentCount: number;
   speed: number;
   chaos: ChaosLevel;
+  scenario: ScenarioType;
+  seed: string | number;
   startedAt: string | null;
+  endedAt?: string | null;
   stats: {
     activeCount: number;
     answersCount: number;
     infractionsCount: number;
     terminatedCount: number;
+    submittedCount: number;
   };
+  summary?: SimulatorSummary;
   candidates: SimCandidate[];
   activityLogs: SimActivityLog[];
 }
@@ -73,40 +106,145 @@ export interface SimulatorState {
 interface QuestionRow extends RowDataPacket {
   id: number;
   marks: number;
+  correct_option: string;
 }
 
 const DEFAULT_HASH = '$2b$10$FlZlPTMFm3bi1YTpOqGSNu89sqsX7DOgiIkxk/G3lf7XPBXYDMgX2'; // password123
 
+/**
+ * Seeded PRNG using mulberry32 algorithm for fully reproducible simulations.
+ */
+export function createRng(seed?: number | string): () => number {
+  let s: number;
+  if (typeof seed === 'string') {
+    let h = 2166136261 >>> 0;
+    for (let i = 0; i < seed.length; i++) {
+      h = Math.imul(h ^ seed.charCodeAt(i), 16777619);
+    }
+    s = h >>> 0;
+  } else if (typeof seed === 'number' && !isNaN(seed)) {
+    s = seed >>> 0;
+  } else {
+    s = Math.floor(Math.random() * 0xffffffff);
+  }
+
+  return function next(): number {
+    s = (s + 0x6d2b79f5) | 0;
+    let t = Math.imul(s ^ (s >>> 15), 1 | s);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+export interface PersonaWeights {
+  honest: number;
+  mostly_honest: number;
+  careless: number;
+  cheater: number;
+}
+
+export function getPersonaWeights(scenario: ScenarioType, chaos: ChaosLevel): PersonaWeights {
+  if (scenario === 'stress_test') {
+    if (chaos === 'low') return { honest: 0.10, mostly_honest: 0.20, careless: 0.30, cheater: 0.40 };
+    if (chaos === 'medium') return { honest: 0.05, mostly_honest: 0.15, careless: 0.30, cheater: 0.50 };
+    return { honest: 0.00, mostly_honest: 0.10, careless: 0.30, cheater: 0.60 };
+  }
+  if (scenario === 'strict') {
+    if (chaos === 'low') return { honest: 0.50, mostly_honest: 0.35, careless: 0.10, cheater: 0.05 };
+    if (chaos === 'medium') return { honest: 0.30, mostly_honest: 0.35, careless: 0.20, cheater: 0.15 };
+    return { honest: 0.15, mostly_honest: 0.20, careless: 0.35, cheater: 0.30 };
+  }
+  // Realistic (default)
+  // LOW: 60% Honest, 30% Mostly honest, 8% Careless, 2% Cheater
+  // MED: 42.5% Honest, 30% Mostly honest, 17.5% Careless, 10% Cheater
+  // HIGH: 20% Honest, 25% Mostly honest, 30% Careless, 25% Cheater
+  if (chaos === 'low') return { honest: 0.60, mostly_honest: 0.30, careless: 0.08, cheater: 0.02 };
+  if (chaos === 'medium') return { honest: 0.425, mostly_honest: 0.30, careless: 0.175, cheater: 0.10 };
+  return { honest: 0.20, mostly_honest: 0.25, careless: 0.30, cheater: 0.25 };
+}
+
+export function allocatePersonas(
+  count: number,
+  weights: PersonaWeights,
+  rng: () => number
+): PersonaType[] {
+  const rawCounts = {
+    honest: count * weights.honest,
+    mostly_honest: count * weights.mostly_honest,
+    careless: count * weights.careless,
+    cheater: count * weights.cheater,
+  };
+
+  const personas: PersonaType[] = [];
+  const remainders: Array<{ type: PersonaType; rem: number }> = [];
+
+  let allocated = 0;
+  for (const [key, val] of Object.entries(rawCounts) as [PersonaType, number][]) {
+    const floor = Math.floor(val);
+    allocated += floor;
+    for (let i = 0; i < floor; i++) {
+      personas.push(key);
+    }
+    remainders.push({ type: key, rem: val - floor });
+  }
+
+  // Sort descending by remainder and fill up to count
+  remainders.sort((a, b) => b.rem - a.rem);
+  let idx = 0;
+  while (allocated < count) {
+    personas.push(remainders[idx % remainders.length].type);
+    allocated++;
+    idx++;
+  }
+
+  // Fisher-Yates shuffle with seeded rng
+  for (let i = personas.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [personas[i], personas[j]] = [personas[j], personas[i]];
+  }
+
+  return personas;
+}
+
 class SimulatorEngine {
   private timer: NodeJS.Timeout | null = null;
+  private rng: () => number = createRng();
   private state: SimulatorState = {
     isRunning: false,
     isPaused: false,
     examId: 1,
-    studentCount: 10,
-    speed: 1.5,
+    studentCount: 12,
+    speed: 2.0,
     chaos: 'medium',
+    scenario: 'realistic',
+    seed: 42,
     startedAt: null,
     stats: {
       activeCount: 0,
       answersCount: 0,
       infractionsCount: 0,
       terminatedCount: 0,
+      submittedCount: 0,
     },
     candidates: [],
     activityLogs: [],
   };
 
-  private questionCache: Array<{ id: number; marks: number }> = [];
+  private questionCache: Array<{ id: number; marks: number; correct_option: string }> = [];
   private violationTypesCache: ViolationTypeRow[] = [];
 
   public getState(): SimulatorState {
+    const active = this.state.candidates.filter((c) => c.status === 'IN_PROGRESS').length;
+    const terminated = this.state.candidates.filter((c) => c.status === 'TERMINATED_CHEATING').length;
+    const submitted = this.state.candidates.filter((c) => c.status === 'SUBMITTED' || c.status === 'TIMED_OUT').length;
+
     return {
       ...this.state,
       stats: {
         ...this.state.stats,
-        activeCount: this.state.candidates.filter((c) => c.status === 'IN_PROGRESS').length,
-        terminatedCount: this.state.candidates.filter((c) => c.status === 'TERMINATED_CHEATING').length,
+        activeCount: active,
+        terminatedCount: terminated,
+        submittedCount: submitted,
       },
     };
   }
@@ -116,6 +254,8 @@ class SimulatorEngine {
     studentCount?: number;
     speed?: number;
     chaos?: ChaosLevel;
+    scenario?: ScenarioType;
+    seed?: string | number;
   }): Promise<SimulatorState> {
     if (this.state.isRunning) {
       await this.stop();
@@ -123,8 +263,12 @@ class SimulatorEngine {
 
     const examId = config.examId ?? 1;
     const studentCount = Math.max(1, Math.min(100, config.studentCount ?? 12));
-    const speed = Math.max(0.5, Math.min(5, config.speed ?? 1.5));
+    const speed = Math.max(0.5, Math.min(10, config.speed ?? 2.0));
     const chaos = config.chaos ?? 'medium';
+    const scenario = config.scenario ?? 'realistic';
+    const seed = config.seed !== undefined && config.seed !== '' ? config.seed : Math.floor(Math.random() * 1000000);
+
+    this.rng = createRng(seed);
 
     // Verify exam exists, is published, and has open window
     const exams = await queryRows<RowDataPacket[]>(
@@ -143,7 +287,7 @@ class SimulatorEngine {
 
     // Cache exam questions
     this.questionCache = await queryRows<QuestionRow[]>(
-      'SELECT id, marks FROM Questions WHERE exam_id = ? ORDER BY id ASC',
+      'SELECT id, marks, correct_option FROM Questions WHERE exam_id = ? ORDER BY id ASC',
       [examId]
     );
     if (this.questionCache.length === 0) {
@@ -155,12 +299,25 @@ class SimulatorEngine {
       'SELECT id, code, label, penalty_points, severity FROM Violation_Types'
     );
 
+    // Allocate personas across the cohort based on scenario & chaos
+    const weights = getPersonaWeights(scenario, chaos);
+    const personaList = allocatePersonas(studentCount, weights, this.rng);
+
     // Create or retrieve virtual student users
     const runSuffix = Date.now().toString().slice(-6);
     const candidates: SimCandidate[] = [];
-    for (let i = 1; i <= studentCount; i++) {
-      const email = `virtual.candidate.${i}.${runSuffix}@proctoriq.io`;
-      const fullName = `Virtual Candidate ${i}`;
+
+    // Pre-calculate timeout candidate indices (1 or 2 candidates timeout)
+    const timeoutCount = Math.min(2, Math.max(1, Math.floor(studentCount * 0.08)));
+    const timeoutIndices = new Set<number>();
+    for (let t = 0; t < timeoutCount; t++) {
+      timeoutIndices.add(Math.floor(this.rng() * studentCount));
+    }
+
+    for (let i = 0; i < studentCount; i++) {
+      const candidateIdx = i + 1;
+      const email = `virtual.candidate.${candidateIdx}.${runSuffix}@proctoriq.io`;
+      const fullName = `Virtual Candidate ${candidateIdx}`;
 
       const ins = await executeSql(
         'INSERT INTO Users (full_name, email, password_hash, role, is_active) VALUES (?, ?, ?, ?, 1)',
@@ -168,7 +325,7 @@ class SimulatorEngine {
       );
       const studentId = ins.insertId;
 
-      const ip = `192.168.10.${100 + (i % 150)}`;
+      const ip = `192.168.10.${100 + (candidateIdx % 150)}`;
       const fingerprint = `sim-fp-${studentId}-${runSuffix}`;
       const sessionToken = `sim-tok-${studentId}-${runSuffix}`;
 
@@ -188,6 +345,59 @@ class SimulatorEngine {
           : session.option_maps;
       }
 
+      const persona = personaList[i];
+      // Candidate ability between 40% and 95%
+      const ability = Math.round((0.40 + this.rng() * 0.55) * 100) / 100;
+
+      // Budget per persona
+      let violationBudget = 0;
+      if (persona === 'honest') {
+        // Honest: 0 violations, at most 1 minor if budget allowed, but 0 guarantees CLEAN (>40% requirement)
+        violationBudget = 0;
+      } else if (persona === 'mostly_honest') {
+        // 1 to 2 minor/medium violations
+        violationBudget = 1 + Math.floor(this.rng() * 2);
+      } else if (persona === 'careless') {
+        // 2 to 3 mixed violations
+        violationBudget = 2 + Math.floor(this.rng() * 2);
+      } else if (persona === 'cheater') {
+        // 4 to 6 serious violations (ensures termination)
+        violationBudget = 4 + Math.floor(this.rng() * 3);
+      }
+
+      const targetFinishMode: 'SUBMIT' | 'TIMEOUT' = timeoutIndices.has(i) ? 'TIMEOUT' : 'SUBMIT';
+
+      // Setup question list in candidate's paper order
+      let questionOrder: number[] = this.questionCache.map((q) => q.id);
+      if (session.question_order) {
+        try {
+          const parsed = typeof session.question_order === 'string'
+            ? JSON.parse(session.question_order)
+            : session.question_order;
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            questionOrder = parsed.map(Number);
+          }
+        } catch {
+          // ignore fallback
+        }
+      }
+
+      // ~20% of candidates will change 1 or 2 answers after initially answering
+      const pendingAnswerChanges: number[] = [];
+      if (this.rng() < 0.25 && questionOrder.length > 1) {
+        const changeCount = Math.min(2, Math.max(1, Math.floor(this.rng() * 2) + 1));
+        for (let c = 0; c < changeCount; c++) {
+          const qId = questionOrder[Math.floor(this.rng() * questionOrder.length)];
+          if (!pendingAnswerChanges.includes(qId)) {
+            pendingAnswerChanges.push(qId);
+          }
+        }
+      }
+
+      // Spread initial violation schedule (random delay before first violation)
+      const initialDelaySec = 2 + this.rng() * 4;
+      const nextViolationAllowedAt = Date.now() + Math.round((initialDelaySec * 1000) / speed);
+
       candidates.push({
         studentId,
         fullName,
@@ -195,15 +405,23 @@ class SimulatorEngine {
         sessionId: session.id,
         trustScore: session.trust_score,
         status: session.status as SimCandidate['status'],
-        lastAction: 'Session initiated',
+        lastAction: `Session initiated (${persona})`,
         lastActionAt: new Date().toISOString(),
         violationsCount: 0,
         answersCount: 0,
         paperCode: session.paper_code,
         optionMaps: oMaps,
+        persona,
+        ability,
+        violationBudget,
+        targetFinishMode,
+        nextViolationAllowedAt,
+        graceUntilTime: 0,
+        isAcknowledgingWarning: false,
+        questionsRemaining: [...questionOrder],
+        pendingAnswerChanges,
       });
 
-      // Emit session update to live proctor monitor
       emitSessionUpdate(
         studentId,
         session.id,
@@ -227,12 +445,15 @@ class SimulatorEngine {
       studentCount,
       speed,
       chaos,
+      scenario,
+      seed,
       startedAt: new Date().toISOString(),
       stats: {
         activeCount: candidates.length,
         answersCount: 0,
         infractionsCount: 0,
         terminatedCount: 0,
+        submittedCount: 0,
       },
       candidates,
       activityLogs: [
@@ -241,12 +462,11 @@ class SimulatorEngine {
           timestamp: new Date().toLocaleTimeString(),
           candidateName: 'System Swarm Engine',
           type: 'status_change',
-          detail: `Spawned ${candidates.length} virtual candidates for Exam #${examId} (Speed: ${speed}x, Chaos: ${chaos})`,
+          detail: `Spawned ${candidates.length} virtual candidates for Exam #${examId} (Speed: ${speed}x, Chaos: ${chaos}, Scenario: ${scenario}, Seed: ${seed})`,
         },
       ],
     };
 
-    // Calculate tick interval based on speed: ~1500ms at 1.0x, 300ms at 5.0x
     const intervalMs = Math.round(1500 / speed);
     this.timer = setInterval(() => {
       this.tick().catch((err) => {
@@ -280,7 +500,6 @@ class SimulatorEngine {
     }
     this.state.isRunning = false;
     this.state.isPaused = false;
-    this.addLog('System Swarm Engine', 'status_change', 'Simulation halted.');
     return this.getState();
   }
 
@@ -291,7 +510,6 @@ class SimulatorEngine {
     deletedSessions: number;
     deletedUsers: number;
   }> {
-    // 1. Stop timer and clear in-memory state
     if (this.timer) {
       clearInterval(this.timer);
       this.timer = null;
@@ -304,18 +522,21 @@ class SimulatorEngine {
       studentCount: 12,
       speed: 2.0,
       chaos: 'medium',
+      scenario: 'realistic',
+      seed: 42,
       startedAt: null,
       stats: {
         activeCount: 0,
         answersCount: 0,
         infractionsCount: 0,
         terminatedCount: 0,
+        submittedCount: 0,
       },
       candidates: [],
       activityLogs: [],
     };
 
-    // 2. Remove any generated simulated snapshots from uploads directory
+    // Remove any generated simulated snapshots from uploads directory
     if (fs.existsSync(uploadsDir)) {
       try {
         const files = fs.readdirSync(uploadsDir);
@@ -333,7 +554,6 @@ class SimulatorEngine {
       }
     }
 
-    // 3. Database cleanup: execute stored procedure or transactional fallback
     let deletedCounts = {
       deletedLogs: 0,
       deletedResponses: 0,
@@ -362,7 +582,7 @@ class SimulatorEngine {
       }
     } catch (spErr: unknown) {
       const msg = spErr instanceof Error ? spErr.message : String(spErr);
-      console.warn('[SimulatorEngine] sp_ResetSimulatorData failed, falling back to direct transaction:', msg);
+      console.warn('[SimulatorEngine] sp_ResetSimulatorData fallback to direct transaction:', msg);
       const conn = await pool.getConnection();
       await conn.beginTransaction();
       try {
@@ -411,9 +631,7 @@ class SimulatorEngine {
       }
     }
 
-    // 4. Broadcast reset over Socket.IO to all listening dashboards
     emitSimulatorReset(deletedCounts);
-
     return deletedCounts;
   }
 
@@ -425,7 +643,7 @@ class SimulatorEngine {
     trustScore?: number
   ) {
     const entry: SimActivityLog = {
-      id: `log-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      id: `log-${Date.now()}-${Math.floor(this.rng() * 1000)}`,
       timestamp: new Date().toLocaleTimeString(),
       candidateName,
       type,
@@ -439,28 +657,111 @@ class SimulatorEngine {
     }
   }
 
+  private finalizeSimulation(): void {
+    const cleanCount = this.state.candidates.filter(
+      (c) => c.result?.integrityStatus === 'CLEAN'
+    ).length;
+    const flaggedCount = this.state.candidates.filter(
+      (c) => c.result?.integrityStatus === 'FLAGGED'
+    ).length;
+    const disqualifiedCount = this.state.candidates.filter(
+      (c) => c.result?.integrityStatus === 'DISQUALIFIED' || c.status === 'TERMINATED_CHEATING'
+    ).length;
+
+    const finishedWithScore = this.state.candidates.filter((c) => c.result);
+    const avgScore = finishedWithScore.length > 0
+      ? Math.round(
+          finishedWithScore.reduce((acc, c) => acc + (c.result?.percentage ?? 0), 0) /
+            finishedWithScore.length
+        )
+      : 0;
+    const avgTrust = this.state.candidates.length > 0
+      ? Math.round(
+          this.state.candidates.reduce((acc, c) => acc + c.trustScore, 0) /
+            this.state.candidates.length
+        )
+      : 0;
+
+    this.state.summary = {
+      cleanCount,
+      flaggedCount,
+      disqualifiedCount,
+      avgScore,
+      avgTrust,
+    };
+    this.state.endedAt = new Date().toISOString();
+    this.state.isRunning = false;
+    this.state.isPaused = false;
+    if (this.timer) {
+      clearInterval(this.timer);
+      this.timer = null;
+    }
+
+    this.addLog(
+      'System Swarm Engine',
+      'status_change',
+      'Simulation complete. All candidates have concluded their sessions.'
+    );
+  }
+
   private async tick(): Promise<void> {
     if (!this.state.isRunning || this.state.isPaused) return;
 
-    // Pick random active candidate
     const activeCandidates = this.state.candidates.filter((c) => c.status === 'IN_PROGRESS');
     if (activeCandidates.length === 0) {
-      this.addLog('System Swarm Engine', 'status_change', 'All candidates have concluded their sessions.');
-      await this.stop();
+      this.finalizeSimulation();
       return;
     }
 
-    const candidate = activeCandidates[Math.floor(Math.random() * activeCandidates.length)];
+    // Process a slice of candidates per tick for responsive, lively execution
+    const sliceSize = Math.min(8, Math.max(1, Math.ceil(activeCandidates.length / 5)));
+    // Shuffle active candidates for fair turns
+    const candidatesToStep = [...activeCandidates]
+      .sort(() => this.rng() - 0.5)
+      .slice(0, sliceSize);
 
-    // Decide whether to submit an answer or trigger an infraction based on chaos
-    const infractionProb =
-      this.state.chaos === 'low' ? 0.2 : this.state.chaos === 'medium' ? 0.45 : 0.72;
+    for (const candidate of candidatesToStep) {
+      await this.stepCandidate(candidate);
+    }
+  }
 
-    const isInfraction = Math.random() < infractionProb;
+  private async stepCandidate(candidate: SimCandidate): Promise<void> {
+    if (candidate.status !== 'IN_PROGRESS') return;
 
-    if (isInfraction) {
+    const now = Date.now();
+    const hasRemainingQuestions =
+      candidate.questionsRemaining.length > 0 || candidate.pendingAnswerChanges.length > 0;
+    const hasRemainingViolations = candidate.violationsCount < candidate.violationBudget;
+
+    // 1. If candidate has completed both all questions and all planned violations, submit exam!
+    if (!hasRemainingQuestions && !hasRemainingViolations) {
+      await this.submitCandidateExam(candidate);
+      return;
+    }
+
+    // 2. Check if candidate can commit a scheduled violation
+    const canViolate =
+      hasRemainingViolations &&
+      now >= candidate.nextViolationAllowedAt &&
+      !candidate.isAcknowledgingWarning &&
+      now >= candidate.graceUntilTime;
+
+    let shouldViolate = false;
+    if (canViolate) {
+      if (!hasRemainingQuestions) {
+        shouldViolate = true;
+      } else if (candidate.persona === 'cheater') {
+        shouldViolate = true;
+      } else if (candidate.persona === 'careless') {
+        shouldViolate = this.rng() < 0.6;
+      } else {
+        shouldViolate = this.rng() < 0.4;
+      }
+    }
+
+    if (shouldViolate) {
       await this.triggerCandidateViolation(candidate);
-    } else {
+    } else if (hasRemainingQuestions) {
       await this.submitCandidateAnswer(candidate);
     }
   }
@@ -468,28 +769,132 @@ class SimulatorEngine {
   private async submitCandidateAnswer(candidate: SimCandidate): Promise<void> {
     if (this.questionCache.length === 0) return;
 
-    const q = this.questionCache[Math.floor(Math.random() * this.questionCache.length)];
-    const options: AnswerOption[] = ['A', 'B', 'C', 'D'];
-    const displayedChosen = options[Math.floor(Math.random() * options.length)];
+    let targetQuestionId: number;
+    let isRevision = false;
+
+    if (candidate.questionsRemaining.length > 0) {
+      targetQuestionId = candidate.questionsRemaining.shift()!;
+    } else if (candidate.pendingAnswerChanges.length > 0) {
+      targetQuestionId = candidate.pendingAnswerChanges.shift()!;
+      isRevision = true;
+    } else {
+      return;
+    }
+
+    const q = this.questionCache.find((item) => item.id === targetQuestionId) || this.questionCache[0];
+    const correctLetter = (q.correct_option || 'A').toUpperCase() as AnswerOption;
+    const allOptions: AnswerOption[] = ['A', 'B', 'C', 'D'];
+
+    // Decide if student picks correct or incorrect option based on candidate ability
+    const picksCorrect = this.rng() < candidate.ability;
+    let chosenOriginalLetter: AnswerOption;
+    if (picksCorrect) {
+      chosenOriginalLetter = correctLetter;
+    } else {
+      const wrongOptions = allOptions.filter((opt) => opt !== correctLetter);
+      chosenOriginalLetter = wrongOptions[Math.floor(this.rng() * wrongOptions.length)];
+    }
+
+    // Map to displayed letter using candidate's optionMaps
     const oMap = candidate.optionMaps?.[String(q.id)];
-    const originalLetter = mapDisplayedToOriginalAnswer(displayedChosen, oMap);
+    let displayedLetter: AnswerOption = chosenOriginalLetter;
+    if (oMap && oMap.length === 4) {
+      const idx = oMap.indexOf(chosenOriginalLetter);
+      if (idx !== -1) {
+        displayedLetter = allOptions[idx];
+      }
+    }
 
     try {
       await executeSql(
         `INSERT INTO Student_Responses (session_id, question_id, selected_option, answered_at)
          VALUES (?, ?, ?, NOW())
          ON DUPLICATE KEY UPDATE selected_option = VALUES(selected_option), answered_at = NOW()`,
-        [candidate.sessionId, q.id, originalLetter]
+        [candidate.sessionId, q.id, chosenOriginalLetter]
       );
 
       candidate.answersCount += 1;
-      candidate.lastAction = `Answered Question #${q.id} (${displayedChosen})`;
+      const actionText = isRevision
+        ? `Revised Question #${q.id} (${displayedLetter})`
+        : `Answered Question #${q.id} (${displayedLetter})`;
+
+      candidate.lastAction = actionText;
       candidate.lastActionAt = new Date().toISOString();
       this.state.stats.answersCount += 1;
 
-      this.addLog(candidate.fullName, 'answer', `Submitted option ${displayedChosen} for Question #${q.id}`);
+      this.addLog(
+        candidate.fullName,
+        'answer',
+        isRevision
+          ? `Changed answer for Question #${q.id} to option ${displayedLetter}`
+          : `Submitted option ${displayedLetter} for Question #${q.id}`
+      );
     } catch (err) {
       console.warn('[SimulatorEngine] Failed to submit simulated answer:', err);
+    }
+  }
+
+  private async submitCandidateExam(candidate: SimCandidate): Promise<void> {
+    const trigger = candidate.targetFinishMode === 'TIMEOUT' ? 'TIMEOUT' : 'STUDENT_SUBMIT';
+
+    try {
+      const [resultSets] = await pool.query<RowDataPacket[][]>(
+        'CALL sp_SubmitAndGradeExam(?, ?)',
+        [candidate.sessionId, trigger]
+      );
+      const graded = resultSets[0]?.[0];
+      if (!graded) return;
+
+      const rawScore = Number(graded.raw_score ?? 0);
+      const totalMarks = Number(graded.total_marks ?? 0);
+      const percentage = Number(graded.percentage ?? 0);
+      const finalTrustScore = Number(graded.final_trust_score ?? candidate.trustScore);
+      const integrityStatus = (graded.integrity_status as SimResult['integrityStatus']) || 'CLEAN';
+
+      candidate.result = {
+        rawScore,
+        totalMarks,
+        percentage,
+        finalTrustScore,
+        integrityStatus,
+        gradedAt: graded.graded_at ? new Date(graded.graded_at).toISOString() : new Date().toISOString(),
+      };
+
+      candidate.status = trigger === 'TIMEOUT' ? 'TIMED_OUT' : 'SUBMITTED';
+      candidate.trustScore = finalTrustScore;
+      candidate.lastAction = `Completed (${integrityStatus}, Score: ${percentage}%)`;
+      candidate.lastActionAt = new Date().toISOString();
+      this.state.stats.submittedCount += 1;
+
+      emitExamSubmitted(
+        candidate.studentId,
+        candidate.sessionId,
+        {
+          sessionId: candidate.sessionId,
+          examId: this.state.examId,
+          studentId: candidate.studentId,
+          studentName: candidate.fullName,
+          status: candidate.status,
+          result: candidate.result,
+          submittedAt: new Date().toISOString(),
+        },
+        {
+          sessionId: candidate.sessionId,
+          trust_score: finalTrustScore,
+          status: candidate.status,
+          result: candidate.result,
+        }
+      );
+
+      this.addLog(
+        candidate.fullName,
+        'status_change',
+        `Submitted assessment (${trigger === 'TIMEOUT' ? 'Timeout' : 'Normal'}). Graded: ${percentage}% (${integrityStatus}, Trust: ${finalTrustScore}%)`,
+        integrityStatus === 'DISQUALIFIED' ? 'CRITICAL' : integrityStatus === 'FLAGGED' ? 'MEDIUM' : undefined,
+        finalTrustScore
+      );
+    } catch (err) {
+      console.warn('[SimulatorEngine] Failed to finalize exam submission:', err);
     }
   }
 
@@ -499,21 +904,24 @@ class SimulatorEngine {
       'SELECT pending_warning_log_id, warning_count FROM Exam_Sessions WHERE id = ?',
       [candidate.sessionId]
     );
-    if (sessRows[0]?.pending_warning_log_id) {
+    if (sessRows[0]?.pending_warning_log_id || candidate.isAcknowledgingWarning) {
       return;
     }
 
-    // Select violation code based on chaos level
+    // Select violation code tailored to candidate persona
     let codes: string[];
-    if (this.state.chaos === 'low') {
-      codes = ['TAB_SWITCH', 'COPY_PASTE', 'TAB_SWITCH'];
-    } else if (this.state.chaos === 'medium') {
-      codes = ['TAB_SWITCH', 'FULLSCREEN_EXIT', 'NO_FACE', 'PHONE_DETECTED', 'VOICE_DETECTED', 'COPY_PASTE'];
+    if (candidate.persona === 'honest') {
+      codes = ['COPY_PASTE', 'NO_FACE'];
+    } else if (candidate.persona === 'mostly_honest') {
+      codes = ['TAB_SWITCH', 'FULLSCREEN_EXIT', 'NO_FACE', 'VOICE_DETECTED', 'COPY_PASTE'];
+    } else if (candidate.persona === 'careless') {
+      codes = ['TAB_SWITCH', 'FULLSCREEN_EXIT', 'NO_FACE', 'VOICE_DETECTED', 'PHONE_DETECTED', 'DEVTOOLS_OPEN'];
     } else {
-      codes = ['NO_FACE', 'MULTIPLE_FACES', 'PHONE_DETECTED', 'VOICE_DETECTED', 'DEVTOOLS_OPEN', 'TAB_SWITCH', 'FULLSCREEN_EXIT'];
+      // cheater: repeated serious violations
+      codes = ['PHONE_DETECTED', 'MULTIPLE_FACES', 'DEVTOOLS_OPEN', 'NO_FACE'];
     }
 
-    const chosenCode = codes[Math.floor(Math.random() * codes.length)];
+    const chosenCode = codes[Math.floor(this.rng() * codes.length)];
     const vType = this.violationTypesCache.find((t) => t.code === chosenCode) || {
       id: 1,
       code: chosenCode,
@@ -523,7 +931,6 @@ class SimulatorEngine {
     };
 
     try {
-      // Ensure uploads directory exists and write a real snapshot JPEG
       if (!fs.existsSync(uploadsDir)) {
         fs.mkdirSync(uploadsDir, { recursive: true });
       }
@@ -531,8 +938,6 @@ class SimulatorEngine {
       const filename = `sim-${chosenCode.toLowerCase()}-${candidate.sessionId}-${Date.now()}.jpg`;
       const filePath = path.join(uploadsDir, filename);
 
-      // Create a lightweight synthetic image buffer for the snapshot
-      // 1x1 or 120x90 JPEG header bytes or standard tiny valid JPEG
       const tinyJpeg = Buffer.from(
         '/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA=',
         'base64'
@@ -572,6 +977,10 @@ class SimulatorEngine {
       candidate.lastActionAt = new Date().toISOString();
       this.state.stats.infractionsCount += 1;
 
+      // Minimum spacing 20 to 40 simulated seconds before next violation can occur
+      const spacingSeconds = 20 + this.rng() * 20;
+      candidate.nextViolationAllowedAt = Date.now() + Math.round((spacingSeconds * 1000) / this.state.speed);
+
       const basePayload = {
         logId: insertRes.insertId,
         sessionId: candidate.sessionId,
@@ -592,7 +1001,6 @@ class SimulatorEngine {
         occurredAt: new Date().toISOString(),
       };
 
-      // Realtime broadcast to live proctors via Socket.IO
       emitViolationNew(candidate.studentId, candidate.sessionId, basePayload, {
         sessionId: candidate.sessionId,
         trust_score: updated.trust_score,
@@ -601,12 +1009,12 @@ class SimulatorEngine {
 
       if (updated.status !== 'TERMINATED_CHEATING') {
         const warningMessage = `${vType.label}: Violation detected. Please adhere to proctoring guidelines.`;
-        const [warningInsert] = await pool.query<any>(
+        const [warningInsert] = await pool.query<ResultSetHeader>(
           `INSERT INTO Session_Warnings (session_id, log_id, violation_code, message, penalty_points, trust_score_after, issued_at)
            VALUES (?, ?, ?, ?, ?, ?, NOW())`,
           [candidate.sessionId, insertRes.insertId, vType.code, warningMessage, vType.penalty_points, updated.trust_score]
         );
-        const warningId = (warningInsert as { insertId: number }).insertId;
+        const warningId = warningInsert.insertId;
         const newWarningCount = (sessRows[0]?.warning_count ?? 0) + 1;
 
         await pool.query(
@@ -616,6 +1024,8 @@ class SimulatorEngine {
             WHERE id = ?`,
           [insertRes.insertId, candidate.sessionId]
         );
+
+        candidate.isAcknowledgingWarning = true;
 
         const warningPayload = {
           warningId,
@@ -631,6 +1041,8 @@ class SimulatorEngine {
         };
         emitWarningIssued(candidate.studentId, candidate.sessionId, warningPayload);
 
+        // Acknowledge warning after random 2 to 6 simulated seconds
+        const ackDelayMs = Math.round(((2000 + this.rng() * 4000)) / this.state.speed);
         setTimeout(async () => {
           try {
             await pool.query(
@@ -644,6 +1056,11 @@ class SimulatorEngine {
                 WHERE id = ?`,
               [candidate.sessionId]
             );
+
+            candidate.isAcknowledgingWarning = false;
+            // 5 second simulated grace period
+            candidate.graceUntilTime = Date.now() + Math.round(5000 / this.state.speed);
+
             emitWarningAcked(candidate.studentId, candidate.sessionId, {
               warningId,
               sessionId: candidate.sessionId,
@@ -651,9 +1068,9 @@ class SimulatorEngine {
               graceSeconds: 5,
             });
           } catch {
-            // ignore
+            candidate.isAcknowledgingWarning = false;
           }
-        }, 1500);
+        }, ackDelayMs);
       }
 
       this.addLog(
@@ -673,6 +1090,17 @@ class SimulatorEngine {
           [candidate.sessionId, 'AUTO_TERMINATED']
         );
         const gradedResult = resultSets[0]?.[0] ?? null;
+
+        if (gradedResult) {
+          candidate.result = {
+            rawScore: 0,
+            totalMarks: Number(gradedResult.total_marks ?? 0),
+            percentage: 0,
+            finalTrustScore: updated.trust_score,
+            integrityStatus: 'DISQUALIFIED',
+            gradedAt: gradedResult.graded_at ? new Date(gradedResult.graded_at).toISOString() : new Date().toISOString(),
+          };
+        }
 
         emitSessionTerminated(
           candidate.studentId,

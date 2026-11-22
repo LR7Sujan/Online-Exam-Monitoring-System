@@ -15,6 +15,7 @@ describe('Forensic Snapshot Security, RBAC, IDOR & Signed URLs', () => {
   let proctorToken: string;
   let ownerStudentToken: string;
   let otherStudentToken: string;
+  let otherStudentId: number;
   let testExamId: number;
   let sessionId: number;
   let snapshotRelativeUrl: string;
@@ -48,6 +49,7 @@ describe('Forensic Snapshot Security, RBAC, IDOR & Signed URLs', () => {
         role: 'STUDENT',
       });
     otherStudentToken = regRes.body.data.token;
+    otherStudentId = regRes.body.data.user.id;
 
     // 2. Create test exam
     const createExamRes = await request(app)
