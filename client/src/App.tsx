@@ -118,6 +118,7 @@ export function App() {
                       <Route path="overlays" element={<OverlaysSection />} />
                       <Route path="charts" element={<ChartsSection />} />
                       <Route path="loading-empty" element={<LoadingEmptySection />} />
+                      <Route path="loading-empty-states" element={<LoadingEmptySection />} />
                       <Route path="motion" element={<MotionSection />} />
                     </Route>
 

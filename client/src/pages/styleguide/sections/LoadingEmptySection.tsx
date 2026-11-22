@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useReducer } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ShieldCheck,
@@ -11,6 +11,9 @@ import {
   Users,
   RotateCcw,
   Sparkles,
+  Cpu,
+  Database,
+  Lock,
 } from 'lucide-react';
 import { SectionDocPage } from '../SectionDocPage';
 import { ComponentPreview } from '../ComponentPreview';
@@ -21,10 +24,45 @@ import {
   EmptyState,
   ErrorState,
   SeverityBadge,
+  TrustRing,
   useToast,
 } from '../../../components/ui';
 
-type DemoState = 'loading' | 'loaded' | 'empty' | 'error';
+export type DemoStatus = 'loading' | 'loaded' | 'empty' | 'error';
+
+interface StateMachineState {
+  status: DemoStatus;
+  durationMs: number;
+}
+
+type StateMachineAction =
+  | { type: 'SELECT_STATUS'; status: DemoStatus; durationMs?: number }
+  | { type: 'AUTO_RESOLVED' };
+
+function stateReducer(state: StateMachineState, action: StateMachineAction): StateMachineState {
+  switch (action.type) {
+    case 'SELECT_STATUS':
+      return {
+        status: action.status,
+        durationMs:
+          action.durationMs !== undefined
+            ? action.durationMs
+            : action.status === 'loading'
+            ? 1500
+            : 0,
+      };
+    case 'AUTO_RESOLVED':
+      if (state.status === 'loading') {
+        return {
+          status: 'loaded',
+          durationMs: 0,
+        };
+      }
+      return state;
+    default:
+      return state;
+  }
+}
 
 interface SampleViolation {
   id: number;
@@ -87,90 +125,64 @@ const SAMPLE_VIOLATIONS: SampleViolation[] = [
 export function LoadingEmptySection() {
   const toast = useToast();
 
-  // 1. Interactive Demo State (Default is LOADED per requirement)
-  const [activeState, setActiveState] = useState<DemoState>('loaded');
-  const [isAutoResolving, setIsAutoResolving] = useState<boolean>(false);
-  const [isAutoCycling, setIsAutoCycling] = useState<boolean>(false);
-  const autoCycleTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const autoResolveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // 1. Interactive Demo State Machine (Default is LOADED per requirement)
+  const [demoState, dispatch] = useReducer(stateReducer, {
+    status: 'loaded', // Default state on open: LOADED so the user immediately sees working content
+    durationMs: 0,
+  });
 
-  // 2. Standalone Skeleton Demo mode ('skeleton' | 'content')
-  const [standaloneMode, setStandaloneMode] = useState<'skeleton' | 'content'>('skeleton');
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Auto-resolve timer managed via state machine effect, survives StrictMode and re-renders
+  useEffect(() => {
+    if (demoState.status === 'loading' && demoState.durationMs > 0) {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => {
+        dispatch({ type: 'AUTO_RESOLVED' });
+        timerRef.current = null;
+        toast.info('Data Stream Resolved', 'Skeletons resolved to Loaded state');
+      }, demoState.durationMs);
+    } else {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+    }
+
+    return () => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+    };
+  }, [demoState.status, demoState.durationMs, toast]);
+
+  // 2. Standalone Skeleton Demo mode ('content' | 'skeleton')
+  // Default tab: Content so users immediately see what the skeleton is replacing
+  const [standaloneMode, setStandaloneMode] = useState<'content' | 'skeleton'>('content');
   const [isReplaying, setIsReplaying] = useState<boolean>(false);
-
-  // 3. Actionable Empty & Error states
-  const [emptyCardLoading, setEmptyCardLoading] = useState<boolean>(false);
-  const [errorCardState, setErrorCardState] = useState<'error' | 'loading' | 'loaded'>('error');
+  const replayTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     return () => {
-      if (autoCycleTimeoutRef.current) clearTimeout(autoCycleTimeoutRef.current);
-      if (autoResolveTimeoutRef.current) clearTimeout(autoResolveTimeoutRef.current);
+      if (replayTimeoutRef.current) clearTimeout(replayTimeoutRef.current);
     };
   }, []);
-
-  const handleStateSelect = (st: DemoState) => {
-    if (autoCycleTimeoutRef.current) {
-      clearTimeout(autoCycleTimeoutRef.current);
-      setIsAutoCycling(false);
-    }
-    if (autoResolveTimeoutRef.current) {
-      clearTimeout(autoResolveTimeoutRef.current);
-      setIsAutoResolving(false);
-    }
-
-    if (st === 'loading') {
-      setActiveState('loading');
-      setIsAutoResolving(true);
-      autoResolveTimeoutRef.current = setTimeout(() => {
-        setActiveState('loaded');
-        setIsAutoResolving(false);
-        toast.info('Data Stream Resolved', 'Skeletons resolved to Loaded state (1.5s)');
-      }, 1500);
-    } else {
-      setActiveState(st);
-      setIsAutoResolving(false);
-    }
-  };
-
-  const handleAutoCycle = () => {
-    if (autoCycleTimeoutRef.current) {
-      clearTimeout(autoCycleTimeoutRef.current);
-    }
-    if (autoResolveTimeoutRef.current) {
-      clearTimeout(autoResolveTimeoutRef.current);
-      setIsAutoResolving(false);
-    }
-
-    setIsAutoCycling(true);
-    setActiveState('loading');
-
-    autoCycleTimeoutRef.current = setTimeout(() => {
-      setActiveState('loaded');
-      setIsAutoCycling(false);
-      toast.info('Auto Cycle Complete', 'Transitioned from Loading (1.5s) to Loaded state');
-    }, 1500);
-  };
-
-  const handleRetryInDemo = () => {
-    setActiveState('loading');
-    setIsAutoResolving(true);
-    setTimeout(() => {
-      setActiveState('loaded');
-      setIsAutoResolving(false);
-      toast.success('Connection Restored', 'Telemetry stream re-established and loaded 5 records');
-    }, 1200);
-  };
 
   const handleReplayLoad = () => {
     setIsReplaying(true);
     setStandaloneMode('skeleton');
-    setTimeout(() => {
+    if (replayTimeoutRef.current) clearTimeout(replayTimeoutRef.current);
+    replayTimeoutRef.current = setTimeout(() => {
       setStandaloneMode('content');
       setIsReplaying(false);
       toast.success('Load Replayed', 'Rendered real card content after simulated 1s load');
     }, 1000);
   };
+
+  // 3. Actionable Empty & Error states in Section 3
+  const [emptyCardLoading, setEmptyCardLoading] = useState<boolean>(false);
+  const [errorCardState, setErrorCardState] = useState<'error' | 'loading' | 'loaded'>('error');
 
   const handleEmptyRefresh = () => {
     setEmptyCardLoading(true);
@@ -197,7 +209,7 @@ export function LoadingEmptySection() {
   return (
     <SectionDocPage slug="loading-empty" toc={toc}>
       {/* ============================================================== */}
-      {/* 1. INTERACTIVE STATE MACHINE DEMO (REQUIREMENT 1)              */}
+      {/* 1. INTERACTIVE STATE MACHINE DEMO                              */}
       {/* ============================================================== */}
       <ComponentPreview
         id="interactive-state-machine"
@@ -205,12 +217,12 @@ export function LoadingEmptySection() {
         description="Four-state interactive data card demonstrating row-shaped moving shimmer skeletons, loaded real telemetry data, zero-state empty illustration, and error state with functioning retry."
         badge="State Machine"
         code={`// Interactive State Machine pattern:
-type DemoState = 'loading' | 'loaded' | 'empty' | 'error';
+type DemoStatus = 'loading' | 'loaded' | 'empty' | 'error';
 
 // 1. Loading: row-shaped skeletons with moving shimmer (auto-resolves in 1.5s)
-// 2. Loaded: real sample data rows with metrics
-// 3. Empty: illustration, explanation & actionable button
-// 4. Error: alert banner & Retry button (Loading -> Loaded)`}
+// 2. Loaded: real sample data rows with metrics (Default)
+// 3. Empty: illustration, explanation & actionable Refresh button (1s loading -> loaded)
+// 4. Error: alert banner & Retry button (1s loading -> loaded)`}
       >
         <div className="w-full space-y-5">
           {/* Controls Bar: Segmented Control + Caption + Auto Cycle Button */}
@@ -219,21 +231,22 @@ type DemoState = 'loading' | 'loaded' | 'empty' | 'error';
             <div className="flex flex-wrap items-center gap-2.5">
               <div className="flex items-center gap-1 p-1 rounded-xl border border-border bg-background shadow-xs">
                 {(['loading', 'loaded', 'empty', 'error'] as const).map((st) => {
-                  const isSelected = activeState === st;
+                  const isSelected = demoState.status === st;
                   const label = st.charAt(0).toUpperCase() + st.slice(1);
 
                   return (
                     <button
                       key={st}
                       type="button"
-                      onClick={() => handleStateSelect(st)}
+                      data-testid={`btn-state-${st}`}
+                      onClick={() => dispatch({ type: 'SELECT_STATUS', status: st })}
                       className={`h-8 px-3.5 rounded-lg text-xs font-mono font-medium transition-all cursor-pointer flex items-center gap-1.5 ${
                         isSelected
                           ? 'bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 text-white font-semibold shadow-sm'
                           : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
                       }`}
                     >
-                      {st === 'loading' && <Radio className={`w-3 h-3 ${isAutoResolving ? 'animate-pulse' : ''}`} />}
+                      {st === 'loading' && <Radio className={`w-3 h-3 ${demoState.status === 'loading' ? 'animate-pulse' : ''}`} />}
                       {st === 'loaded' && <CheckCircle2 className="w-3 h-3" />}
                       {st === 'empty' && <FileQuestion className="w-3 h-3" />}
                       {st === 'error' && <AlertTriangle className="w-3 h-3" />}
@@ -243,17 +256,15 @@ type DemoState = 'loading' | 'loaded' | 'empty' | 'error';
                 })}
               </div>
 
-              {/* Requirement: Visible "Showing: Loading (auto-resolves)" caption */}
+              {/* Requirement: Visible "Showing: Loading (auto-resolves in 1.5s)" caption */}
               <div className="px-3 py-1.5 rounded-xl border border-border bg-background text-xs font-mono text-muted-foreground">
                 Showing:{' '}
                 <span className="font-semibold text-foreground">
-                  {activeState === 'loading'
-                    ? isAutoResolving
-                      ? 'Loading (auto-resolves in 1.5s)'
-                      : 'Loading'
-                    : activeState === 'loaded'
+                  {demoState.status === 'loading'
+                    ? `Loading (auto-resolves in ${(demoState.durationMs / 1000).toFixed(1)}s)`
+                    : demoState.status === 'loaded'
                     ? 'Loaded (5 incidents visible)'
-                    : activeState === 'empty'
+                    : demoState.status === 'empty'
                     ? 'Empty (Zero infractions)'
                     : 'Error (Connection lost)'}
                 </span>
@@ -263,16 +274,17 @@ type DemoState = 'loading' | 'loaded' | 'empty' | 'error';
             {/* Right: Auto Cycle Button */}
             <button
               type="button"
-              onClick={handleAutoCycle}
-              disabled={isAutoCycling}
+              data-testid="btn-auto-cycle"
+              onClick={() => dispatch({ type: 'SELECT_STATUS', status: 'loading', durationMs: 1500 })}
+              disabled={demoState.status === 'loading'}
               className={`h-9 px-4 rounded-xl text-xs font-semibold font-mono transition-all flex items-center gap-2 cursor-pointer border ${
-                isAutoCycling
+                demoState.status === 'loading'
                   ? 'border-brand/40 bg-brand/10 text-brand shadow-sm animate-pulse cursor-wait'
                   : 'border-border bg-surface hover:bg-muted text-foreground hover:border-brand/30 shadow-xs'
               }`}
             >
-              <Play className={`w-3.5 h-3.5 ${isAutoCycling ? 'animate-spin' : 'text-brand'}`} />
-              <span>{isAutoCycling ? 'Cycling (1.5s)...' : 'Auto cycle'}</span>
+              <Play className={`w-3.5 h-3.5 ${demoState.status === 'loading' ? 'animate-spin' : 'text-brand'}`} />
+              <span>{demoState.status === 'loading' ? 'Cycling (1.5s)...' : 'Auto cycle'}</span>
             </button>
           </div>
 
@@ -297,20 +309,20 @@ type DemoState = 'loading' | 'loaded' | 'empty' | 'error';
               {/* Status Chip */}
               <span
                 className={`text-[10px] font-mono font-semibold px-2.5 py-1 rounded-full border ${
-                  activeState === 'loading'
+                  demoState.status === 'loading'
                     ? 'bg-amber-500/10 text-amber-500 border-amber-500/30 animate-pulse'
-                    : activeState === 'loaded'
+                    : demoState.status === 'loaded'
                     ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30'
-                    : activeState === 'empty'
+                    : demoState.status === 'empty'
                     ? 'bg-muted text-muted-foreground border-border'
                     : 'bg-rose-500/10 text-rose-500 border-rose-500/30'
                 }`}
               >
-                {activeState === 'loading'
+                {demoState.status === 'loading'
                   ? 'STREAM BUFFERING'
-                  : activeState === 'loaded'
+                  : demoState.status === 'loaded'
                   ? '5 INCIDENTS LOGGED'
-                  : activeState === 'empty'
+                  : demoState.status === 'empty'
                   ? 'ALL CLEAR'
                   : 'DISCONNECTED'}
               </span>
@@ -320,19 +332,20 @@ type DemoState = 'loading' | 'loaded' | 'empty' | 'error';
             <div className="p-4 sm:p-6 min-h-[360px] flex flex-col justify-center">
               <AnimatePresence mode="wait">
                 {/* 1. LOADING STATE: 5 row-shaped skeletons with visible moving shimmer */}
-                {activeState === 'loading' && (
+                {demoState.status === 'loading' && (
                   <motion.div
                     key="loading"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    transition={{ duration: 0.2 }}
+                    transition={{ duration: 0.15 }}
                     className="space-y-3 w-full"
                   >
                     {Array.from({ length: 5 }).map((_, idx) => (
                       <div
                         key={idx}
-                        className="p-3.5 rounded-2xl border border-border/80 bg-surface-elevated/50 flex items-center justify-between gap-4"
+                        data-testid="interactive-skeleton"
+                        className="min-h-[52px] p-3.5 rounded-2xl border border-border/80 bg-surface-elevated/50 flex items-center justify-between gap-4"
                       >
                         <div className="flex items-center gap-3 min-w-0">
                           <Skeleton variant="circle" className="w-9 h-9 shrink-0" />
@@ -353,19 +366,21 @@ type DemoState = 'loading' | 'loaded' | 'empty' | 'error';
                 )}
 
                 {/* 2. LOADED STATE: real sample data rows (Default) */}
-                {activeState === 'loaded' && (
+                {demoState.status === 'loaded' && (
                   <motion.div
                     key="loaded"
-                    initial={{ opacity: 0, y: 8 }}
+                    initial={{ opacity: 0, y: 4 }}
                     animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -8 }}
-                    transition={{ duration: 0.2 }}
+                    exit={{ opacity: 0, y: -4 }}
+                    transition={{ duration: 0.15 }}
                     className="space-y-2.5 w-full"
                   >
                     {SAMPLE_VIOLATIONS.map((row) => (
                       <div
                         key={row.id}
-                        className="p-3.5 rounded-2xl border border-border bg-surface-elevated/60 hover:bg-surface-elevated hover:border-brand/40 transition-all flex items-center justify-between gap-4 shadow-2xs font-mono text-xs"
+                        data-testid="interactive-row"
+                        style={{ opacity: 1 }}
+                        className="min-h-[52px] p-3.5 rounded-2xl border border-border bg-surface-elevated/90 hover:bg-surface-elevated hover:border-brand/40 transition-all flex items-center justify-between gap-4 shadow-2xs font-mono text-xs opacity-100"
                       >
                         {/* Student Name & Email */}
                         <div className="flex items-center gap-3 min-w-0">
@@ -399,14 +414,14 @@ type DemoState = 'loading' | 'loaded' | 'empty' | 'error';
                   </motion.div>
                 )}
 
-                {/* 3. EMPTY STATE: illustration/icon, title, explanation, action button */}
-                {activeState === 'empty' && (
+                {/* 3. EMPTY STATE: illustration/icon, title, explanation, working Refresh button */}
+                {demoState.status === 'empty' && (
                   <motion.div
                     key="empty"
                     initial={{ opacity: 0, scale: 0.96 }}
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.96 }}
-                    transition={{ duration: 0.2 }}
+                    transition={{ duration: 0.15 }}
                     className="w-full max-w-lg mx-auto py-4"
                   >
                     <EmptyState
@@ -414,30 +429,27 @@ type DemoState = 'loading' | 'loaded' | 'empty' | 'error';
                       title="No Active Violations"
                       description="All candidate telemetry feeds are currently operating within the authorized clean threshold. Zero infractions recorded."
                       action={{
-                        label: 'Simulate Candidate Infraction',
-                        onClick: () => {
-                          toast.info('Simulated Infraction', 'Switched to Loaded state with 5 incidents');
-                          setActiveState('loaded');
-                        },
+                        label: 'Refresh',
+                        onClick: () => dispatch({ type: 'SELECT_STATUS', status: 'loading', durationMs: 1000 }),
                       }}
                     />
                   </motion.div>
                 )}
 
-                {/* 4. ERROR STATE: icon, message, "Retry" button (returns to Loading then Loaded) */}
-                {activeState === 'error' && (
+                {/* 4. ERROR STATE: icon, message, working "Retry" button (Loading 1s -> Loaded) */}
+                {demoState.status === 'error' && (
                   <motion.div
                     key="error"
                     initial={{ opacity: 0, scale: 0.96 }}
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.96 }}
-                    transition={{ duration: 0.2 }}
+                    transition={{ duration: 0.15 }}
                     className="w-full max-w-lg mx-auto py-4"
                   >
                     <ErrorState
                       title="Telemetry Synchronization Failed"
                       description="Lost WebSocket connection to MySQL 8.0 telemetry buffer. Request timed out after 10000ms."
-                      onRetry={handleRetryInDemo}
+                      onRetry={() => dispatch({ type: 'SELECT_STATUS', status: 'loading', durationMs: 1000 })}
                     />
                   </motion.div>
                 )}
@@ -467,6 +479,7 @@ type DemoState = 'loading' | 'loaded' | 'empty' | 'error';
             <div className="flex items-center gap-1.5 p-1 rounded-xl border border-border bg-background shadow-xs">
               <button
                 type="button"
+                data-testid="tab-skeleton"
                 onClick={() => setStandaloneMode('skeleton')}
                 className={`h-7 px-3 rounded-lg text-xs font-mono font-medium transition-all cursor-pointer ${
                   standaloneMode === 'skeleton'
@@ -478,6 +491,7 @@ type DemoState = 'loading' | 'loaded' | 'empty' | 'error';
               </button>
               <button
                 type="button"
+                data-testid="tab-content"
                 onClick={() => setStandaloneMode('content')}
                 className={`h-7 px-3 rounded-lg text-xs font-mono font-medium transition-all cursor-pointer ${
                   standaloneMode === 'content'
@@ -491,6 +505,7 @@ type DemoState = 'loading' | 'loaded' | 'empty' | 'error';
 
             <button
               type="button"
+              data-testid="btn-replay-load"
               onClick={handleReplayLoad}
               disabled={isReplaying}
               className="h-8 px-3 rounded-xl border border-border bg-surface hover:bg-muted text-xs font-mono font-medium text-foreground flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
@@ -500,79 +515,114 @@ type DemoState = 'loading' | 'loaded' | 'empty' | 'error';
             </button>
           </div>
 
-          {/* Cards Grid: flips between Skeleton & Content */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
-            {standaloneMode === 'skeleton' ? (
-              <>
-                <SkeletonCard />
-                <div className="p-6 rounded-2xl border border-border bg-surface shadow-bento space-y-4">
-                  <h5 className="text-xs font-mono uppercase tracking-wider text-muted-foreground">
-                    Shimmer Text Block
-                  </h5>
-                  <SkeletonText lines={4} />
-                </div>
-              </>
-            ) : (
-              <>
-                {/* Real Content Card matching SkeletonCard layout */}
-                <div className="p-6 rounded-2xl border border-border bg-surface shadow-bento space-y-4 flex flex-col justify-between">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-xl bg-brand/10 border border-brand/30 flex items-center justify-center text-brand">
-                        <Users className="w-4 h-4" />
-                      </div>
-                      <span className="text-xs font-mono uppercase tracking-wider text-muted-foreground">
-                        Active Examinee Registry
+          {/* Cards Grid: flips conditionally between Skeleton & Content */}
+          {standaloneMode === 'skeleton' ? (
+            <div data-testid="standalone-skeleton-view" className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
+              <SkeletonCard />
+              <div className="p-6 rounded-2xl border border-border bg-surface shadow-bento space-y-4">
+                <h5 className="text-xs font-mono uppercase tracking-wider text-muted-foreground">
+                  Shimmer Text Block
+                </h5>
+                <SkeletonText lines={4} />
+              </div>
+            </div>
+          ) : (
+            <div data-testid="standalone-content-view" className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
+              {/* Real Content Card 1: Exam card with title, candidate name, trust ring, chips */}
+              <div className="p-6 rounded-2xl border border-border bg-surface shadow-bento space-y-4 flex flex-col justify-between">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-brand/10 border border-brand/30 flex items-center justify-center text-brand">
+                      <Users className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <span className="text-xs font-mono uppercase tracking-wider text-muted-foreground block">
+                        SYS-310: Distributed Systems
+                      </span>
+                      <span className="text-sm font-bold text-foreground">
+                        Elena Kaur
                       </span>
                     </div>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-surface-elevated text-muted-foreground border border-border font-semibold">
+                      P0011
+                    </span>
                     <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 font-semibold flex items-center gap-1">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                       ONLINE
                     </span>
                   </div>
+                </div>
 
+                <div className="flex items-center gap-4 py-2">
+                  <TrustRing score={98} size={56} />
                   <div>
-                    <div className="text-3xl font-extrabold font-mono tracking-tight text-foreground">
-                      1,436
+                    <div className="text-2xl font-extrabold font-mono tracking-tight text-foreground">
+                      98% Trust
                     </div>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Verified Examinees Active in Distributed MySQL Swarm
+                    <p className="text-xs text-muted-foreground">
+                      Min: 50% • 0 Infractions Recorded
                     </p>
                   </div>
+                </div>
 
-                  <div className="pt-3 border-t border-border/70 flex items-center justify-between text-[11px] font-mono text-muted-foreground">
-                    <span>MediaPipe Vision v0.10.x</span>
-                    <span className="text-emerald-500 font-semibold">99.2% Facial Lock</span>
+                <div className="pt-3 border-t border-border/70 flex items-center justify-between text-[11px] font-mono text-muted-foreground">
+                  <span>MediaPipe Vision v0.10.x</span>
+                  <span className="text-emerald-500 font-semibold">99.8% Facial Lock</span>
+                </div>
+              </div>
+
+              {/* Real Content Card 2: Telemetry block with 4 metric lines */}
+              <div className="p-6 rounded-2xl border border-border bg-surface shadow-bento space-y-4 flex flex-col justify-between">
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <h5 className="text-xs font-mono uppercase tracking-wider text-brand font-semibold flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5" />
+                      Zero-Trust Telemetry Engine
+                    </h5>
+                    <span className="text-[10px] font-mono text-muted-foreground">InnoDB ACID</span>
+                  </div>
+                  <h4 className="text-base font-bold text-foreground tracking-tight">
+                    Authoritative Telemetry Metrics
+                  </h4>
+                </div>
+
+                {/* 4 Metric Lines */}
+                <div className="space-y-2 font-mono text-xs">
+                  <div className="p-2 rounded-xl bg-surface-elevated/70 border border-border flex items-center justify-between">
+                    <span className="flex items-center gap-2 text-muted-foreground">
+                      <Radio className="w-3.5 h-3.5 text-brand" /> WebSocket Buffer
+                    </span>
+                    <span className="font-semibold text-foreground">Sub-15ms Latency</span>
+                  </div>
+                  <div className="p-2 rounded-xl bg-surface-elevated/70 border border-border flex items-center justify-between">
+                    <span className="flex items-center gap-2 text-muted-foreground">
+                      <Database className="w-3.5 h-3.5 text-emerald-500" /> ACID Auto-Deduct
+                    </span>
+                    <span className="font-semibold text-emerald-500">MySQL 8.0 Active</span>
+                  </div>
+                  <div className="p-2 rounded-xl bg-surface-elevated/70 border border-border flex items-center justify-between">
+                    <span className="flex items-center gap-2 text-muted-foreground">
+                      <Cpu className="w-3.5 h-3.5 text-violet-500" /> MediaPipe Neural Lock
+                    </span>
+                    <span className="font-semibold text-foreground">60 FPS Edge Vision</span>
+                  </div>
+                  <div className="p-2 rounded-xl bg-surface-elevated/70 border border-border flex items-center justify-between">
+                    <span className="flex items-center gap-2 text-muted-foreground">
+                      <Lock className="w-3.5 h-3.5 text-amber-500" /> Immutability Ledger
+                    </span>
+                    <span className="font-semibold text-foreground">SQLSTATE 45000 Guard</span>
                   </div>
                 </div>
 
-                {/* Real Text Content matching SkeletonText block */}
-                <div className="p-6 rounded-2xl border border-border bg-surface shadow-bento space-y-4 flex flex-col justify-between">
-                  <div className="space-y-1">
-                    <div className="flex items-center justify-between">
-                      <h5 className="text-xs font-mono uppercase tracking-wider text-brand font-semibold flex items-center gap-1.5">
-                        <Sparkles className="w-3.5 h-3.5" />
-                        Zero-Trust Exam Core
-                      </h5>
-                      <span className="text-[10px] font-mono text-muted-foreground">InnoDB ACID</span>
-                    </div>
-                    <h4 className="text-base font-bold text-foreground tracking-tight">
-                      Biometric Neural Surveillance Engine
-                    </h4>
-                  </div>
-
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                    Continuous client-side neural tracking for facial presence, 5-second absence detection, and unauthorized multi-person flags. Zero video streaming: 100% edge detection protecting student biometric privacy.
-                  </p>
-
-                  <div className="pt-2 border-t border-border/70 flex items-center justify-between text-[11px] font-mono text-muted-foreground">
-                    <span>Sub-20ms WebSocket cluster</span>
-                    <span className="text-brand font-semibold">Row-level Lock Active</span>
-                  </div>
+                <div className="pt-2 border-t border-border/70 flex items-center justify-between text-[11px] font-mono text-muted-foreground">
+                  <span>Sub-20ms WebSocket cluster</span>
+                  <span className="text-brand font-semibold">Row-level Lock Active</span>
                 </div>
-              </>
-            )}
-          </div>
+              </div>
+            </div>
+          )}
         </div>
       </ComponentPreview>
 
@@ -657,7 +707,7 @@ type DemoState = 'loading' | 'loaded' | 'empty' | 'error';
                   </span>
                 </div>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Successfully queried MySQL 8.0 `information_schema.tables`. Found 14 system tables with active row triggers.
+                  Successfully queried MySQL 8.0 information_schema.tables. Found 14 system tables with active row triggers.
                 </p>
                 <div className="flex items-center justify-between pt-2">
                   <span className="text-[11px] font-mono text-emerald-500 font-semibold">
