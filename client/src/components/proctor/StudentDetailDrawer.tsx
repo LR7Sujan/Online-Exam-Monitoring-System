@@ -604,7 +604,7 @@ export function StudentDetailDrawer({ sessionId, onClose }: StudentDetailDrawerP
                               violationCode={log.violation_code}
                               timestamp={log.occurred_at}
                               containerClassName="h-16 w-24 shrink-0"
-                              aspectRatio="video"
+                              aspectRatio="auto"
                               enableLightbox={true}
                             />
 

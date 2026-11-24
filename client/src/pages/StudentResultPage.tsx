@@ -499,7 +499,7 @@ export function StudentResultPage() {
                         violationCode={v.violation_code}
                         timestamp={v.occurred_at}
                         containerClassName="h-14 w-20 shrink-0"
-                        aspectRatio="video"
+                        aspectRatio="auto"
                       />
                     )}
                     <div className="space-y-1">

@@ -114,6 +114,19 @@ export function ViolationWarningOverlay({
     return () => window.removeEventListener('keydown', handleKeyDown, true);
   }, [warning]);
 
+  // Lock page scrolling while warning overlay is active so the page does not scroll behind the modal
+  useEffect(() => {
+    if (!warning) return;
+    const prevBodyOverflow = document.body.style.overflow;
+    const prevHtmlOverflow = document.documentElement.style.overflow;
+    document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prevBodyOverflow;
+      document.documentElement.style.overflow = prevHtmlOverflow;
+    };
+  }, [warning]);
+
   if (!warning) return null;
 
   const warningCount =
@@ -182,7 +195,7 @@ export function ViolationWarningOverlay({
           }`}
         />
 
-        {/* Modal Window Container (fits comfortably on 390px screens) */}
+        {/* Modal Window Container (fits comfortably on 390px screens and 1366x768 without page scroll) */}
         <motion.div
           initial={{ scale: 0.94, opacity: 0, y: 12 }}
           animate={{
@@ -193,7 +206,7 @@ export function ViolationWarningOverlay({
           }}
           exit={{ scale: 0.94, opacity: 0 }}
           transition={{ duration: 0.3, ease: 'easeOut' }}
-          className={`relative z-10 w-full max-w-[460px] my-auto rounded-3xl border p-5 sm:p-7 text-center shadow-2xl backdrop-blur-3xl overflow-hidden ${
+          className={`relative z-10 w-full max-w-[460px] my-auto max-h-[calc(100vh-2rem)] flex flex-col rounded-3xl border p-4 sm:p-6 text-center shadow-2xl backdrop-blur-3xl overflow-hidden ${
             isTerminated
               ? 'border-rose-500/50 bg-surface/98 shadow-rose-950/40 text-foreground'
               : 'border-amber-500/50 bg-surface/98 shadow-amber-950/30 text-foreground'
@@ -212,25 +225,25 @@ export function ViolationWarningOverlay({
             /* ========================================================== */
             /* LOCK-SCREEN OVERLAY: TERMINATED_CHEATING */
             /* ========================================================== */
-            <div className="space-y-5 pt-2">
-              <div className="relative mx-auto flex h-16 w-16 sm:h-20 sm:w-20 items-center justify-center">
+            <div className="space-y-4 pt-1 overflow-y-auto max-h-full pr-1">
+              <div className="relative mx-auto flex h-14 w-14 sm:h-16 sm:w-16 items-center justify-center">
                 <motion.div
                   animate={{ scale: [1, 1.25, 1], opacity: [0.3, 0.65, 0.3] }}
                   transition={{ repeat: Infinity, duration: 1.5 }}
                   className="absolute inset-0 rounded-full bg-rose-500/25 blur-xl"
                 />
-                <div className="relative z-10 flex h-16 w-16 sm:h-20 sm:w-20 items-center justify-center rounded-2xl border border-rose-500/40 bg-rose-500/15 text-rose-500 shadow-lg">
-                  <Lock className="h-8 w-8 sm:h-10 sm:w-10 animate-pulse" />
+                <div className="relative z-10 flex h-14 w-14 sm:h-16 sm:w-16 items-center justify-center rounded-2xl border border-rose-500/40 bg-rose-500/15 text-rose-500 shadow-lg">
+                  <Lock className="h-7 w-7 sm:h-8 sm:w-8 animate-pulse" />
                 </div>
               </div>
 
-              <div className="space-y-1.5">
+              <div className="space-y-1">
                 <span className="rounded-full border border-rose-500/30 bg-rose-500/10 px-3 py-0.5 font-mono text-[10px] font-bold uppercase tracking-widest text-rose-500 inline-block">
                   SECURITY PROTOCOL ENGAGED
                 </span>
                 <h2
                   id="warning-dialog-title"
-                  className="text-xl sm:text-2xl font-extrabold tracking-tight text-foreground"
+                  className="text-lg sm:text-xl font-extrabold tracking-tight text-foreground"
                 >
                   Exam Terminated: Cheating Limit Breached
                 </h2>
@@ -246,7 +259,7 @@ export function ViolationWarningOverlay({
               </div>
 
               {/* Trust Score Gauge */}
-              <div className="py-1 flex justify-center">
+              <div className="py-0.5 flex justify-center">
                 <TrustRing
                   score={trustScore}
                   minThreshold={minThreshold}
@@ -255,7 +268,7 @@ export function ViolationWarningOverlay({
                 />
               </div>
 
-              <div className="rounded-2xl border border-border bg-surface-elevated/70 p-3.5 space-y-1.5 text-left text-xs font-mono">
+              <div className="rounded-2xl border border-border bg-surface-elevated/70 p-3 space-y-1.5 text-left text-xs font-mono">
                 <div className="flex justify-between text-muted-foreground">
                   <span>Enforcing Rule:</span>
                   <span className="text-rose-500 font-semibold">trg_after_violation_insert</span>
@@ -273,7 +286,7 @@ export function ViolationWarningOverlay({
               <button
                 type="button"
                 onClick={onProceedToResult}
-                className="w-full py-3 px-4 rounded-xl font-bold text-xs text-white bg-gradient-to-r from-rose-500 to-rose-600 hover:from-rose-600 hover:to-rose-700 shadow-md shadow-rose-500/20 active:scale-[0.99] transition-all flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full py-2.5 px-4 rounded-xl font-bold text-xs text-white bg-gradient-to-r from-rose-500 to-rose-600 hover:from-rose-600 hover:to-rose-700 shadow-md shadow-rose-500/20 active:scale-[0.99] transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
                 <span>Proceed to Integrity Report ({countdown}s)</span>
                 <ArrowRight className="w-4 h-4" />
@@ -283,11 +296,11 @@ export function ViolationWarningOverlay({
             /* ========================================================== */
             /* FULL-SCREEN WARNING OVERLAY: REPEATABLE VIOLATION */
             /* ========================================================== */
-            <div className="space-y-4 pt-1 text-center">
+            <div className="space-y-3.5 pt-0.5 text-center overflow-y-auto max-h-full pr-1">
               {/* Header Icon + Badges */}
-              <div className="flex flex-col items-center gap-2">
-                <div className="mx-auto flex h-14 w-14 sm:h-16 sm:w-16 items-center justify-center rounded-2xl border border-amber-500/40 bg-amber-500/10 text-amber-500 shadow-md">
-                  <ShieldAlert className="h-7 w-7 sm:h-8 sm:w-8 animate-bounce" />
+              <div className="flex flex-col items-center gap-1.5">
+                <div className="mx-auto flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-2xl border border-amber-500/40 bg-amber-500/10 text-amber-500 shadow-md">
+                  <ShieldAlert className="h-6 w-6 sm:h-7 sm:w-7 animate-bounce" />
                 </div>
 
                 <div className="flex flex-wrap items-center justify-center gap-2">
@@ -301,34 +314,34 @@ export function ViolationWarningOverlay({
               </div>
 
               {/* Title & Plain-Language Reason */}
-              <div className="space-y-1.5 px-1">
+              <div className="space-y-1 px-1">
                 <h2
                   id="warning-dialog-title"
-                  className="text-lg sm:text-xl font-extrabold tracking-tight text-foreground leading-snug"
+                  className="text-base sm:text-lg font-extrabold tracking-tight text-foreground leading-snug"
                 >
                   A penalty has occurred and a warning has been issued
                 </h2>
-                <div className="p-2.5 rounded-xl border border-amber-500/30 bg-amber-500/10 text-xs font-semibold text-foreground leading-relaxed">
+                <div className="p-2 rounded-xl border border-amber-500/30 bg-amber-500/10 text-xs font-semibold text-foreground leading-relaxed">
                   {plainReason}
                 </div>
               </div>
 
               {/* Penalty Points & Trust Score Display */}
-              <div className="grid grid-cols-2 gap-3 items-center rounded-2xl border border-border bg-surface-elevated/70 p-3">
+              <div className="grid grid-cols-2 gap-2.5 items-center rounded-2xl border border-border bg-surface-elevated/70 p-2.5">
                 <div className="flex flex-col items-center justify-center border-r border-border pr-2">
                   <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
                     Penalty Deducted
                   </span>
-                  <span className="text-xl sm:text-2xl font-mono font-black text-rose-500 mt-1">
+                  <span className="text-xl sm:text-2xl font-mono font-black text-rose-500 mt-0.5">
                     -{penaltyPoints} pts
                   </span>
-                  <span className="text-[10px] font-mono text-muted-foreground mt-0.5">
+                  <span className="text-[10px] font-mono text-muted-foreground">
                     Trust Penalty
                   </span>
                 </div>
 
                 <div className="flex flex-col items-center justify-center pl-2">
-                  <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground mb-1">
+                  <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground mb-0.5">
                     New Trust Score
                   </span>
                   <TrustRing
@@ -339,26 +352,29 @@ export function ViolationWarningOverlay({
                 </div>
               </div>
 
-              {/* Evidence Snapshot (if available) */}
+              {/* Evidence Snapshot (if available, max 220px height) */}
               {snapshotUrl && (
                 <div className="rounded-2xl border border-border bg-surface-elevated/60 p-2 text-left">
-                  <div className="flex items-center gap-1.5 text-[10px] font-mono text-muted-foreground mb-1.5 px-1">
+                  <div className="flex items-center gap-1.5 text-[10px] font-mono text-muted-foreground mb-1 px-1">
                     <Camera className="w-3 h-3 text-brand" />
                     <span>Evidence Snapshot:</span>
                   </div>
-                  <EvidenceImage
-                    src={snapshotUrl}
-                    violationCode={warning.violationCode}
-                    alt="Violation Evidence Snapshot"
-                    containerClassName="max-h-44"
-                    aspectRatio="video"
-                    enableLightbox={true}
-                  />
+                  <div className="flex justify-center w-full">
+                    <EvidenceImage
+                      src={snapshotUrl}
+                      violationCode={warning.violationCode}
+                      alt="Violation Evidence Snapshot"
+                      maxHeight={220}
+                      containerClassName="max-h-[220px]"
+                      aspectRatio="auto"
+                      enableLightbox={true}
+                    />
+                  </div>
                 </div>
               )}
 
               {/* Rules Reminder */}
-              <div className="flex items-start gap-2 rounded-xl border border-border/80 bg-surface-elevated/50 p-2.5 text-left text-[11px] text-muted-foreground leading-relaxed">
+              <div className="flex items-start gap-2 rounded-xl border border-border/80 bg-surface-elevated/50 p-2 text-left text-[11px] text-muted-foreground leading-relaxed">
                 <Info className="w-4 h-4 text-brand shrink-0 mt-0.5" />
                 <p id="warning-dialog-desc">
                   <strong className="text-foreground">Rules reminder:</strong> Remain seated, look directly at the screen, avoid talking, and keep all secondary devices away. Dropping below {minThreshold}% will immediately terminate and submit your assessment.
@@ -366,14 +382,14 @@ export function ViolationWarningOverlay({
               </div>
 
               {/* Primary Action Button (Enabled after 2 seconds) */}
-              <div className="pt-1">
+              <div className="pt-0.5">
                 <button
                   ref={ackButtonRef}
                   type="button"
                   data-testid="warning-ack-btn"
                   disabled={ackCountdown > 0}
                   onClick={onDismiss}
-                  className={`w-full py-3 px-4 rounded-xl font-bold text-xs transition-all shadow-md flex items-center justify-center gap-2 ${
+                  className={`w-full py-2.5 px-4 rounded-xl font-bold text-xs transition-all shadow-md flex items-center justify-center gap-2 ${
                     ackCountdown > 0
                       ? 'bg-muted text-muted-foreground cursor-not-allowed border border-border opacity-70'
                       : 'text-white bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 hover:opacity-95 active:scale-[0.99] cursor-pointer shadow-indigo-500/20'

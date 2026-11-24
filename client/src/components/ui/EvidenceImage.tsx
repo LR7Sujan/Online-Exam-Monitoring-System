@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { Camera, CameraOff, Maximize2, RotateCcw, X, ShieldAlert } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
@@ -10,7 +10,8 @@ export interface EvidenceImageProps {
   timestamp?: string | Date;
   className?: string;
   containerClassName?: string;
-  aspectRatio?: 'video' | 'square' | 'auto';
+  aspectRatio?: '4/3' | '16/9' | 'square' | 'auto' | 'video' | string;
+  maxHeight?: number | string;
   enableLightbox?: boolean;
   onError?: () => void;
   onLoad?: () => void;
@@ -23,7 +24,8 @@ export function EvidenceImage({
   timestamp,
   className = '',
   containerClassName = '',
-  aspectRatio = 'video',
+  aspectRatio = 'auto',
+  maxHeight,
   enableLightbox = true,
   onError,
   onLoad,
@@ -34,6 +36,10 @@ export function EvidenceImage({
   const [error, setError] = useState<boolean>(false);
   const [retryCount, setRetryCount] = useState<number>(0);
   const [isLightboxOpen, setIsLightboxOpen] = useState<boolean>(false);
+
+  // Natural aspect ratio detected from image once loaded (default 4/3 per Phase 20 spec)
+  const [naturalRatio, setNaturalRatio] = useState<string>('4/3');
+  const [ratioMultiplier, setRatioMultiplier] = useState<number>(4 / 3);
 
   const activeBlobUrlRef = useRef<string | null>(null);
 
@@ -60,7 +66,6 @@ export function EvidenceImage({
       setObjectUrl(trimmed);
       setLoading(false);
       setError(false);
-      onLoad?.();
       return;
     }
 
@@ -100,7 +105,6 @@ export function EvidenceImage({
       setObjectUrl(url);
       setLoading(false);
       setError(false);
-      onLoad?.();
     } catch {
       cleanupObjectUrl();
       setObjectUrl(null);
@@ -108,7 +112,7 @@ export function EvidenceImage({
       setError(true);
       onError?.();
     }
-  }, [src, token, cleanupObjectUrl, onError, onLoad]);
+  }, [src, token, cleanupObjectUrl, onError]);
 
   useEffect(() => {
     fetchImage();
@@ -116,6 +120,20 @@ export function EvidenceImage({
       cleanupObjectUrl();
     };
   }, [fetchImage, retryCount, cleanupObjectUrl]);
+
+  // Reset/probe natural aspect ratio when src changes
+  useEffect(() => {
+    if (src && typeof src === 'string' && src.startsWith('data:image/')) {
+      const probe = new Image();
+      probe.onload = () => {
+        if (probe.naturalWidth > 0 && probe.naturalHeight > 0) {
+          setNaturalRatio(`${probe.naturalWidth} / ${probe.naturalHeight}`);
+          setRatioMultiplier(probe.naturalWidth / probe.naturalHeight);
+        }
+      };
+      probe.src = src;
+    }
+  }, [src]);
 
   // Handle escape to close lightbox
   useEffect(() => {
@@ -131,30 +149,80 @@ export function EvidenceImage({
     return () => window.removeEventListener('keydown', handleKeyDown, true);
   }, [isLightboxOpen]);
 
+  const handleImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    const img = e.currentTarget;
+    if (img.naturalWidth > 0 && img.naturalHeight > 0) {
+      setNaturalRatio(`${img.naturalWidth} / ${img.naturalHeight}`);
+      setRatioMultiplier(img.naturalWidth / img.naturalHeight);
+    }
+    setLoading(false);
+    setError(false);
+    onLoad?.();
+  };
+
+  const handleImageError = () => {
+    setLoading(false);
+    setError(true);
+    onError?.();
+  };
+
   const meaningfulAlt =
     alt ||
     `Violation evidence snapshot${
       violationCode ? ` for ${violationCode.replace(/_/g, ' ')}` : ''
     }${timestamp ? ` at ${new Date(timestamp).toLocaleTimeString()}` : ''}`;
 
-  const aspectClass =
-    aspectRatio === 'video'
-      ? 'aspect-video'
-      : aspectRatio === 'square'
-      ? 'aspect-square'
-      : '';
+  // Determine aspect ratio to apply
+  let resolvedAspectRatio = naturalRatio;
+  if (aspectRatio === 'square') {
+    resolvedAspectRatio = '1 / 1';
+  } else if (aspectRatio === '16/9' || aspectRatio === 'video') {
+    resolvedAspectRatio = naturalRatio !== '4/3' ? naturalRatio : '16 / 9';
+  } else if (aspectRatio === '4/3') {
+    resolvedAspectRatio = '4 / 3';
+  } else if (aspectRatio !== 'auto') {
+    resolvedAspectRatio = aspectRatio;
+  }
+
+  // Detect custom dimension constraints from containerClassName
+  const hasFixedW = /\b(w-\d+|w-\[.+\])\b/.test(containerClassName);
+  const hasFixedH = /\b(h-\d+|h-\[.+\])\b/.test(containerClassName);
+
+  // Parse maxHeight prop if passed
+  const parsedMaxHeightPx =
+    typeof maxHeight === 'number'
+      ? maxHeight
+      : typeof maxHeight === 'string' && maxHeight.endsWith('px')
+      ? parseInt(maxHeight, 10)
+      : undefined;
+
+  // Exact width calculation when maxHeight is capped to keep the frame matching the image without black bars
+  let computedWidth: string | undefined = hasFixedW ? undefined : '100%';
+  if (parsedMaxHeightPx && !hasFixedW) {
+    computedWidth = `min(100%, ${Math.round(parsedMaxHeightPx * ratioMultiplier)}px)`;
+  }
 
   return (
     <>
       <div
         data-testid="evidence-image-container"
-        className={`relative overflow-hidden rounded-xl border border-border/80 bg-black/40 flex items-center justify-center ${aspectClass} ${containerClassName}`}
+        className={`evidence-image-wrapper relative overflow-hidden rounded-[12px] border border-border/80 bg-[#0c0d12] dark:bg-[#090a0f] text-foreground flex items-center justify-center min-w-0 max-w-full ${
+          enableLightbox ? 'group cursor-zoom-in' : ''
+        } ${containerClassName}`}
+        onClick={enableLightbox ? () => setIsLightboxOpen(true) : undefined}
+        style={{
+          aspectRatio: hasFixedH ? undefined : resolvedAspectRatio,
+          maxHeight: maxHeight ? (typeof maxHeight === 'number' ? `${maxHeight}px` : maxHeight) : undefined,
+          width: computedWidth,
+          marginLeft: 'auto',
+          marginRight: 'auto',
+        }}
       >
         {/* Loading Skeleton */}
         {loading && (
           <div
             data-testid="evidence-image-loading"
-            className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 bg-surface-elevated/70 animate-pulse text-muted-foreground p-3"
+            className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 bg-surface-elevated/70 animate-pulse text-muted-foreground p-3 z-10 pointer-events-none"
           >
             <Camera className="w-5 h-5 text-brand/70 animate-bounce" />
             <span className="text-[10px] font-mono tracking-wider uppercase">
@@ -167,7 +235,8 @@ export function EvidenceImage({
         {!loading && error && (
           <div
             data-testid="evidence-image-error"
-            className="flex flex-col items-center justify-center gap-2 p-3 text-center text-muted-foreground select-none w-full h-full"
+            className="absolute inset-0 flex flex-col items-center justify-center gap-2 p-3 text-center text-muted-foreground select-none w-full h-full z-10"
+            onClick={(e) => e.stopPropagation()}
           >
             <div className="p-2 rounded-xl bg-rose-500/10 text-rose-500 border border-rose-500/20">
               <CameraOff className="w-4 h-4" />
@@ -181,7 +250,10 @@ export function EvidenceImage({
             <button
               type="button"
               data-testid="evidence-image-retry-btn"
-              onClick={() => setRetryCount((c) => c + 1)}
+              onClick={(e) => {
+                e.stopPropagation();
+                setRetryCount((c) => c + 1);
+              }}
               className="mt-1 flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-mono font-medium border border-border bg-surface hover:bg-muted text-foreground transition-colors cursor-pointer"
             >
               <RotateCcw className="w-3 h-3" />
@@ -191,31 +263,30 @@ export function EvidenceImage({
         )}
 
         {/* Successfully Loaded Snapshot */}
-        {!loading && !error && objectUrl && (
+        {objectUrl && (
+          <img
+            src={objectUrl}
+            alt={meaningfulAlt}
+            onLoad={handleImageLoad}
+            onError={handleImageError}
+            className={`absolute inset-0 w-full h-full object-contain block m-auto select-none ${className}`}
+            style={{
+              maxWidth: '100%',
+              maxHeight: '100%',
+            }}
+          />
+        )}
+
+        {/* Hover Zoom Overlay */}
+        {enableLightbox && !loading && !error && (
           <div
-            className={`group relative w-full h-full flex items-center justify-center ${
-              enableLightbox ? 'cursor-zoom-in' : ''
-            }`}
-            onClick={enableLightbox ? () => setIsLightboxOpen(true) : undefined}
+            title="Click to view enlarged snapshot"
+            className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none z-10"
           >
-            <img
-              src={objectUrl}
-              alt={meaningfulAlt}
-              className={`w-full h-full object-contain select-none transition-transform duration-200 ${
-                enableLightbox ? 'group-hover:scale-[1.02]' : ''
-              } ${className}`}
-            />
-            {enableLightbox && (
-              <div
-                title="Click to view enlarged snapshot"
-                className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
-              >
-                <div className="p-2 rounded-xl bg-black/70 backdrop-blur-md text-white border border-white/20 shadow-xl flex items-center gap-1.5 text-xs font-mono">
-                  <Maximize2 className="w-3.5 h-3.5 text-brand" />
-                  <span>Enlarge Snapshot</span>
-                </div>
-              </div>
-            )}
+            <div className="p-2 rounded-xl bg-black/70 backdrop-blur-md text-white border border-white/20 shadow-xl flex items-center gap-1.5 text-xs font-mono">
+              <Maximize2 className="w-3.5 h-3.5 text-brand" />
+              <span>Enlarge Snapshot</span>
+            </div>
           </div>
         )}
       </div>
@@ -266,11 +337,11 @@ export function EvidenceImage({
               </div>
 
               {/* Lightbox Image Container */}
-              <div className="relative rounded-xl border border-border/80 bg-black/60 overflow-hidden max-h-[75vh] flex items-center justify-center">
+              <div className="relative rounded-xl border border-border/80 bg-black/60 overflow-hidden max-h-[75vh] flex items-center justify-center p-1">
                 <img
                   src={objectUrl}
                   alt={meaningfulAlt}
-                  className="max-h-[75vh] w-auto max-w-full object-contain"
+                  className="max-h-[72vh] w-auto max-w-full object-contain block mx-auto rounded-lg"
                 />
               </div>
 

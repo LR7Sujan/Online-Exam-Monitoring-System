@@ -444,7 +444,7 @@ export function ReviewQueueTable({ onInspectStudent }: ReviewQueueTableProps) {
                               violationCode={log.violation_code}
                               timestamp={log.occurred_at}
                               containerClassName="h-9 w-14 shrink-0 rounded-lg"
-                              aspectRatio="video"
+                              aspectRatio="auto"
                             />
                           )}
                           <div className="min-w-0">

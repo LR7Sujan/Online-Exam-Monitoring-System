@@ -172,8 +172,9 @@ export function WarningHistoryDrawer({
                               src={w.snapshot_url || w.snapshotUrl}
                               violationCode={code}
                               alt={`Warning #${idx + 1} evidence snapshot`}
-                              containerClassName="max-h-32"
-                              aspectRatio="video"
+                              maxHeight={160}
+                              containerClassName="max-h-40"
+                              aspectRatio="auto"
                             />
                           </div>
                         )}
