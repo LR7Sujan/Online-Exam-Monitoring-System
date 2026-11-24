@@ -6,6 +6,7 @@ import type { RowDataPacket } from 'mysql2/promise';
 import { executeSql, queryRows } from '../config/db.js';
 import { env } from '../config/env.js';
 import { AppError } from '../utils/errors.js';
+import { generateSignedSnapshotUrl } from './snapshotSigner.js';
 
 export interface ExamRecordingRow extends RowDataPacket {
   recording_id: number;
@@ -21,6 +22,49 @@ export interface ExamRecordingRow extends RowDataPacket {
   expires_at: Date;
   created_at: Date;
   updated_at: Date;
+}
+
+export interface RecordingNoteRow extends RowDataPacket {
+  note_id: number;
+  recording_id: number;
+  author_id: number;
+  author_name: string;
+  time_ms: number;
+  text: string;
+  created_at: Date;
+}
+
+export interface ReviewTimelineEvent {
+  id: string;
+  type: 'VIOLATION' | 'WARNING';
+  code: string;
+  label: string;
+  penalty: number;
+  timeMs: number;
+  occurredAt: string;
+  severity?: string;
+  status?: string;
+  snapshotUrl?: string | null;
+}
+
+export interface RecordingReviewDetails {
+  recording: ExamRecordingRow & { has_audio: boolean };
+  session: {
+    sessionId: number;
+    studentName: string;
+    studentEmail: string;
+    examTitle: string;
+    examId: number;
+    paperCode: string;
+    startedAt: string;
+    finishedAt: string | null;
+    currentTrustScore: number;
+    minTrustScore: number;
+    sessionStatus: string;
+    ipAddress: string | null;
+  };
+  events: ReviewTimelineEvent[];
+  notes: RecordingNoteRow[];
 }
 
 export interface StorageStats {
@@ -337,14 +381,198 @@ export async function getRecordingBySessionId(sessionId: number): Promise<ExamRe
 export async function logRecordingAccess(params: {
   recordingId: number;
   userId: number;
+  action?: 'VIEW' | 'DOWNLOAD';
   ipAddress?: string | null;
   userAgent?: string | null;
 }): Promise<void> {
   await executeSql(
-    `INSERT INTO Recording_Access_Log (recording_id, user_id, ip_address, user_agent, viewed_at)
-     VALUES (?, ?, ?, ?, NOW())`,
-    [params.recordingId, params.userId, params.ipAddress ?? null, params.userAgent ?? null]
+    `INSERT INTO Recording_Access_Log (recording_id, user_id, action, ip_address, user_agent, viewed_at)
+     VALUES (?, ?, ?, ?, ?, NOW())`,
+    [params.recordingId, params.userId, params.action ?? 'VIEW', params.ipAddress ?? null, params.userAgent ?? null]
   );
+}
+
+/**
+ * Retrieves notes for a recording.
+ */
+export async function getRecordingNotes(recordingId: number): Promise<RecordingNoteRow[]> {
+  return queryRows<RecordingNoteRow[]>(
+    `SELECT n.note_id, n.recording_id, n.author_id, u.full_name AS author_name,
+            n.time_ms, n.text, n.created_at
+       FROM Recording_Notes n
+       JOIN Users u ON u.id = n.author_id
+      WHERE n.recording_id = ?
+      ORDER BY n.time_ms ASC, n.created_at ASC`,
+    [recordingId]
+  );
+}
+
+/**
+ * Adds a new timestamped note to a recording.
+ */
+export async function addRecordingNote(params: {
+  recordingId: number;
+  authorId: number;
+  timeMs: number;
+  text: string;
+}): Promise<RecordingNoteRow> {
+  const timeMs = Math.max(0, Math.round(params.timeMs));
+  const res = await executeSql(
+    `INSERT INTO Recording_Notes (recording_id, author_id, time_ms, text, created_at)
+     VALUES (?, ?, ?, ?, NOW())`,
+    [params.recordingId, params.authorId, timeMs, params.text.trim()]
+  );
+  const rows = await queryRows<RecordingNoteRow[]>(
+    `SELECT n.note_id, n.recording_id, n.author_id, u.full_name AS author_name,
+            n.time_ms, n.text, n.created_at
+       FROM Recording_Notes n
+       JOIN Users u ON u.id = n.author_id
+      WHERE n.note_id = ?`,
+    [res.insertId]
+  );
+  return rows[0];
+}
+
+/**
+ * Deletes a note from a recording.
+ */
+export async function deleteRecordingNote(noteId: number, authorId: number, isAdmin: boolean): Promise<boolean> {
+  let sql = 'DELETE FROM Recording_Notes WHERE note_id = ?';
+  const sqlParams: (string | number)[] = [noteId];
+  if (!isAdmin) {
+    sql += ' AND author_id = ?';
+    sqlParams.push(authorId);
+  }
+  const res = await executeSql(sql, sqlParams);
+  return res.affectedRows > 0;
+}
+
+/**
+ * Retrieves full review payload for the review player:
+ * session details, recording metadata, violation & warning events, notes.
+ */
+export async function getRecordingReviewDetails(recordingId: number): Promise<RecordingReviewDetails | null> {
+  const recordingRows = await queryRows<(ExamRecordingRow & { record_audio: number | boolean })[]>(
+    `SELECT er.*, e.record_audio
+       FROM Exam_Recordings er
+       JOIN Exam_Sessions es ON es.id = er.session_id
+       JOIN Exams e ON e.id = es.exam_id
+      WHERE er.recording_id = ?`,
+    [recordingId]
+  );
+  if (!recordingRows[0]) return null;
+
+  const recRow = recordingRows[0];
+  const sessionId = recRow.session_id;
+
+  const sessionRows = await queryRows<RowDataPacket[]>(
+    `SELECT es.id AS session_id, es.paper_code, es.started_at, es.ended_at AS finished_at,
+            es.trust_score AS current_trust_score, es.status AS session_status, es.ip_address,
+            u.full_name AS student_name, u.email AS student_email,
+            e.id AS exam_id, e.title AS exam_title, e.min_trust_score
+       FROM Exam_Sessions es
+       JOIN Users u ON u.id = es.student_id
+       JOIN Exams e ON e.id = es.exam_id
+      WHERE es.id = ?`,
+    [sessionId]
+  );
+
+  const sess = sessionRows[0] || {
+    session_id: sessionId,
+    paper_code: 'P000',
+    started_at: recRow.started_at,
+    finished_at: recRow.finished_at,
+    current_trust_score: 100,
+    session_status: 'COMPLETED',
+    ip_address: null,
+    student_name: 'Candidate',
+    student_email: '',
+    exam_id: 0,
+    exam_title: 'Exam Assessment',
+    min_trust_score: 50,
+  };
+
+  const sessionStartMs = new Date(sess.started_at).getTime();
+
+  // Fetch violations
+  const violationRows = await queryRows<RowDataPacket[]>(
+    `SELECT log_id, violation_code, violation_label, penalty_applied, occurred_at,
+            severity, proctor_review_status, snapshot_url, evidence_meta
+       FROM vw_ViolationAuditReport
+      WHERE session_id = ?
+      ORDER BY occurred_at ASC`,
+    [sessionId]
+  );
+
+  const violationEvents: ReviewTimelineEvent[] = violationRows.map((v) => {
+    const rawSnap = v.snapshot_url as string | null | undefined;
+    const signedSnap = generateSignedSnapshotUrl(rawSnap, v.log_id as number);
+    const occurredMs = new Date(v.occurred_at).getTime();
+    const timeMs = Math.max(0, occurredMs - sessionStartMs);
+    return {
+      id: `violation-${v.log_id}`,
+      type: 'VIOLATION',
+      code: v.violation_code,
+      label: v.violation_label || v.violation_code,
+      penalty: Number(v.penalty_applied || 0),
+      timeMs,
+      occurredAt: new Date(v.occurred_at).toISOString(),
+      severity: v.severity,
+      status: v.proctor_review_status,
+      snapshotUrl: signedSnap,
+    };
+  });
+
+  // Fetch warnings
+  const warningRows = await queryRows<RowDataPacket[]>(
+    `SELECT warning_id, message, issued_at, acknowledged_at, penalty_points, violation_code
+       FROM Session_Warnings
+      WHERE session_id = ?
+      ORDER BY issued_at ASC`,
+    [sessionId]
+  );
+
+  const warningEvents: ReviewTimelineEvent[] = warningRows.map((w, index) => {
+    const issuedMs = new Date(w.issued_at).getTime();
+    const timeMs = Math.max(0, issuedMs - sessionStartMs);
+    return {
+      id: `warning-${w.warning_id}`,
+      type: 'WARNING',
+      code: (w.violation_code as string) || `WARN_${index + 1}`,
+      label: (w.message as string) || `Official Warning #${index + 1}`,
+      penalty: Number(w.penalty_points || 0),
+      timeMs,
+      occurredAt: new Date(w.issued_at).toISOString(),
+      severity: 'WARNING',
+      status: w.acknowledged_at ? 'ACKNOWLEDGED' : 'PENDING',
+    };
+  });
+
+  const allEvents = [...violationEvents, ...warningEvents].sort((a, b) => a.timeMs - b.timeMs);
+  const notes = await getRecordingNotes(recordingId);
+
+  return {
+    recording: {
+      ...recRow,
+      has_audio: Boolean(recRow.record_audio),
+    },
+    session: {
+      sessionId: sess.session_id,
+      studentName: sess.student_name,
+      studentEmail: sess.student_email,
+      examTitle: sess.exam_title,
+      examId: sess.exam_id,
+      paperCode: sess.paper_code || 'P0001',
+      startedAt: new Date(sess.started_at).toISOString(),
+      finishedAt: sess.finished_at ? new Date(sess.finished_at).toISOString() : null,
+      currentTrustScore: Number(sess.current_trust_score ?? 100),
+      minTrustScore: Number(sess.min_trust_score ?? 50),
+      sessionStatus: sess.session_status,
+      ipAddress: sess.ip_address ?? null,
+    },
+    events: allEvents,
+    notes,
+  };
 }
 
 /**

@@ -13,6 +13,7 @@ import {
   FileText,
   Laptop,
   Lock,
+  Maximize2,
   RotateCcw,
   ShieldAlert,
   ShieldOff,
@@ -40,6 +41,7 @@ import { ChartTooltip, useChartTheme } from '../charts/shared';
 import { api } from '../../lib/api';
 import { playPingSound } from '../../utils/audioAlert';
 import { useAuthStore } from '../../store/authStore';
+import { RecordingPlayer } from '../recording/RecordingPlayer';
 import type {
   ProctorLiveMonitorRow,
   ReviewStatus,
@@ -138,6 +140,7 @@ export function StudentDetailDrawer({ sessionId, onClose }: StudentDetailDrawerP
 
   const token = useAuthStore((s) => s.token);
   const [playbackSpeed, setPlaybackSpeed] = useState<number>(1);
+  const [playerModalOpen, setPlayerModalOpen] = useState<boolean>(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
   const recordingQuery = useQuery<ExamRecordingItem | null>({
@@ -605,17 +608,30 @@ export function StudentDetailDrawer({ sessionId, onClose }: StudentDetailDrawerP
                   <span>Webcam Session Recording</span>
                 </h4>
                 {recording && (
-                  <span
-                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase border ${
-                      recording.status === 'READY'
-                        ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
-                        : recording.status === 'RECORDING'
-                        ? 'bg-amber-500/10 border-amber-500/30 text-amber-400 animate-pulse'
-                        : 'bg-rose-500/10 border-rose-500/30 text-rose-400'
-                    }`}
-                  >
-                    {recording.status}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    {recording.status === 'READY' && (
+                      <button
+                        type="button"
+                        data-testid="open-full-review-player-btn"
+                        onClick={() => setPlayerModalOpen(true)}
+                        className="flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold border border-brand/40 bg-brand/10 text-brand hover:bg-brand/20 transition-colors cursor-pointer"
+                      >
+                        <Maximize2 className="w-3 h-3" />
+                        <span>Review Player</span>
+                      </button>
+                    )}
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase border ${
+                        recording.status === 'READY'
+                          ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+                          : recording.status === 'RECORDING'
+                          ? 'bg-amber-500/10 border-amber-500/30 text-amber-400 animate-pulse'
+                          : 'bg-rose-500/10 border-rose-500/30 text-rose-400'
+                      }`}
+                    >
+                      {recording.status}
+                    </span>
+                  </div>
                 )}
               </div>
 
@@ -1190,6 +1206,16 @@ export function StudentDetailDrawer({ sessionId, onClose }: StudentDetailDrawerP
           ))}
         </div>
       </Modal>
+
+      {/* FULL RECORDING REVIEW PLAYER PORTAL */}
+      {playerModalOpen && recording && (
+        <RecordingPlayer
+          recordingId={recording.recording_id}
+          isOpen={playerModalOpen}
+          onClose={() => setPlayerModalOpen(false)}
+          mode="modal"
+        />
+      )}
     </AnimatePresence>,
     document.body
   );

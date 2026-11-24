@@ -319,4 +319,47 @@ export interface RecordingStorageStats {
   retentionDays: number;
 }
 
+export interface RecordingNoteItem {
+  note_id: number;
+  recording_id: number;
+  author_id: number;
+  author_name: string;
+  time_ms: number;
+  text: string;
+  created_at: string;
+}
+
+export interface ReviewTimelineEvent {
+  id: string;
+  type: 'VIOLATION' | 'WARNING';
+  code: string;
+  label: string;
+  penalty: number;
+  timeMs: number;
+  occurredAt: string;
+  severity?: string;
+  status?: string;
+  snapshotUrl?: string | null;
+}
+
+export interface RecordingReviewDetails {
+  recording: ExamRecordingItem & { has_audio: boolean };
+  session: {
+    sessionId: number;
+    studentName: string;
+    studentEmail: string;
+    examTitle: string;
+    examId: number;
+    paperCode: string;
+    startedAt: string;
+    finishedAt: string | null;
+    currentTrustScore: number;
+    minTrustScore: number;
+    sessionStatus: SessionStatus;
+    ipAddress: string | null;
+  };
+  events: ReviewTimelineEvent[];
+  notes: RecordingNoteItem[];
+}
+
 

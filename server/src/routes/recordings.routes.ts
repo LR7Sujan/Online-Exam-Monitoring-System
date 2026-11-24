@@ -8,12 +8,16 @@ import { queryRows } from '../config/db.js';
 import { requireAuth, requireRole, verifyJwtToken, type AuthenticatedRequest } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 import {
+  addRecordingNote,
   canStartRecording,
   cleanupExpiredRecordings,
   deleteRecording,
+  deleteRecordingNote,
   finishRecording,
   getRecordingById,
   getRecordingBySessionId,
+  getRecordingNotes,
+  getRecordingReviewDetails,
   getRecordingStorageStats,
   logRecordingAccess,
   saveRecordingChunk,
@@ -44,6 +48,16 @@ const finishRecordingSchema = z.object({
 
 const legalHoldSchema = z.object({
   legalHold: z.boolean(),
+});
+
+const createNoteSchema = z.object({
+  timeMs: z.number().int().nonnegative(),
+  text: z.string().min(1).max(2000),
+});
+
+const noteIdParamSchema = z.object({
+  recordingId: z.coerce.number().int().positive(),
+  noteId: z.coerce.number().int().positive(),
 });
 
 // Helper to check session ownership
@@ -258,6 +272,171 @@ recordingsRouter.get(
         throw new AppError(404, 'RECORDING_NOT_FOUND', 'Recording not found');
       }
       sendSuccess(res, recording);
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+/**
+ * GET /api/recordings/:recordingId/review
+ * Full review metadata: session info, timeline events (violations/warnings), notes.
+ */
+recordingsRouter.get(
+  '/recordings/:recordingId/review',
+  requireAuth,
+  requireRole('ADMIN', 'PROCTOR'),
+  validate({ params: recordingIdParamSchema }),
+  async (req: AuthenticatedRequest, res, next) => {
+    try {
+      const { recordingId } = req.params as unknown as z.infer<typeof recordingIdParamSchema>;
+      const details = await getRecordingReviewDetails(recordingId);
+      if (!details) {
+        throw new AppError(404, 'RECORDING_NOT_FOUND', 'Recording not found for review');
+      }
+      sendSuccess(res, details);
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+/**
+ * GET /api/recordings/:recordingId/notes
+ * List proctor/admin timestamped notes.
+ */
+recordingsRouter.get(
+  '/recordings/:recordingId/notes',
+  requireAuth,
+  requireRole('ADMIN', 'PROCTOR'),
+  validate({ params: recordingIdParamSchema }),
+  async (req: AuthenticatedRequest, res, next) => {
+    try {
+      const { recordingId } = req.params as unknown as z.infer<typeof recordingIdParamSchema>;
+      const notes = await getRecordingNotes(recordingId);
+      sendSuccess(res, notes);
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+/**
+ * POST /api/recordings/:recordingId/notes
+ * Add a timestamped note.
+ */
+recordingsRouter.post(
+  '/recordings/:recordingId/notes',
+  requireAuth,
+  requireRole('ADMIN', 'PROCTOR'),
+  validate({ params: recordingIdParamSchema, body: createNoteSchema }),
+  async (req: AuthenticatedRequest, res, next) => {
+    try {
+      const { recordingId } = req.params as unknown as z.infer<typeof recordingIdParamSchema>;
+      const { timeMs, text } = req.body as z.infer<typeof createNoteSchema>;
+      const authorId = Number(req.user!.sub);
+      const note = await addRecordingNote({
+        recordingId,
+        authorId,
+        timeMs,
+        text,
+      });
+      sendSuccess(res, note, 201);
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+/**
+ * DELETE /api/recordings/:recordingId/notes/:noteId
+ * Delete a note (author or Admin).
+ */
+recordingsRouter.delete(
+  '/recordings/:recordingId/notes/:noteId',
+  requireAuth,
+  requireRole('ADMIN', 'PROCTOR'),
+  validate({ params: noteIdParamSchema }),
+  async (req: AuthenticatedRequest, res, next) => {
+    try {
+      const { noteId } = req.params as unknown as z.infer<typeof noteIdParamSchema>;
+      const authorId = Number(req.user!.sub);
+      const isAdmin = req.user!.role === 'ADMIN';
+      const deleted = await deleteRecordingNote(noteId, authorId, isAdmin);
+      if (!deleted) {
+        throw new AppError(404, 'NOTE_NOT_FOUND', 'Note not found or permission denied');
+      }
+      sendSuccess(res, { deleted: true, noteId });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+/**
+ * POST /api/recordings/:recordingId/view
+ * Explicitly log playback start event.
+ */
+recordingsRouter.post(
+  '/recordings/:recordingId/view',
+  requireAuth,
+  requireRole('ADMIN', 'PROCTOR'),
+  validate({ params: recordingIdParamSchema }),
+  async (req: AuthenticatedRequest, res, next) => {
+    try {
+      const { recordingId } = req.params as unknown as z.infer<typeof recordingIdParamSchema>;
+      const ip = (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress;
+      const ua = req.headers['user-agent'];
+      await logRecordingAccess({
+        recordingId,
+        userId: Number(req.user!.sub),
+        action: 'VIEW',
+        ipAddress: ip,
+        userAgent: ua,
+      });
+      sendSuccess(res, { logged: true });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+/**
+ * GET /api/recordings/:recordingId/download
+ * Admin download with audit log entry.
+ */
+recordingsRouter.get(
+  '/recordings/:recordingId/download',
+  requireAuth,
+  requireRole('ADMIN'),
+  validate({ params: recordingIdParamSchema }),
+  async (req: AuthenticatedRequest, res, next) => {
+    try {
+      const { recordingId } = req.params as unknown as z.infer<typeof recordingIdParamSchema>;
+      const rec = await getRecordingById(recordingId);
+      if (!rec) {
+        throw new AppError(404, 'RECORDING_NOT_FOUND', 'Recording not found');
+      }
+
+      const absolutePath = path.resolve(process.cwd(), env.UPLOADS_DIR, rec.file_path);
+      if (!fs.existsSync(absolutePath)) {
+        throw new AppError(404, 'FILE_NOT_FOUND', 'Physical video file is missing');
+      }
+
+      const ip = (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress;
+      const ua = req.headers['user-agent'];
+      await logRecordingAccess({
+        recordingId,
+        userId: Number(req.user!.sub),
+        action: 'DOWNLOAD',
+        ipAddress: ip,
+        userAgent: ua,
+      });
+
+      const filename = `recording-session-${rec.session_id}.webm`;
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.setHeader('Content-Type', rec.mime_type || 'video/webm');
+      fs.createReadStream(absolutePath).pipe(res);
     } catch (err) {
       next(err);
     }

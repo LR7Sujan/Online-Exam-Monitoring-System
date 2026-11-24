@@ -37,6 +37,7 @@ const ProctorDashboardPage = lazy(() => import('./pages/ProctorDashboardPage').t
 const StudentDashboardPage = lazy(() => import('./pages/StudentDashboardPage').then((m) => ({ default: m.StudentDashboardPage })));
 const StudentExamPage = lazy(() => import('./pages/StudentExamPage').then((m) => ({ default: m.StudentExamPage })));
 const StudentResultPage = lazy(() => import('./pages/StudentResultPage').then((m) => ({ default: m.StudentResultPage })));
+const RecordingPlayerPage = lazy(() => import('./pages/RecordingPlayerPage').then((m) => ({ default: m.RecordingPlayerPage })));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage').then((m) => ({ default: m.NotFoundPage })));
 
 const queryClient = new QueryClient({
@@ -154,6 +155,16 @@ export function App() {
                       element={
                         <RequireRole roles={['PROCTOR', 'ADMIN']}>
                           <ProctorDashboardPage initialTab="audit" />
+                        </RequireRole>
+                      }
+                    />
+
+                    {/* Recording Review Player Route (Proctor & Admin only) */}
+                    <Route
+                      path="/recordings/:recordingId"
+                      element={
+                        <RequireRole roles={['PROCTOR', 'ADMIN']}>
+                          <RecordingPlayerPage />
                         </RequireRole>
                       }
                     />
