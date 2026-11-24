@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { MultiFaceTracker } from '../src/utils/faceDetector.js';
-import { PhoneDetectionWindow } from '../src/utils/phoneDetector.js';
+import { PhoneDetectionWindow, InstantPhoneTracker } from '../src/utils/phoneDetector.js';
 import { VoiceActivityTracker } from '../src/utils/voiceDetector.js';
 
 describe('Proctoring Client Detectors Unit Tests', () => {
@@ -90,6 +90,45 @@ describe('Proctoring Client Detectors Unit Tests', () => {
       // Complete reset
       window.reset();
       expect(window.getHistory().length).toBe(0);
+    });
+  });
+
+  describe('InstantPhoneTracker (Single-Frame Detection & 3s Cooldown)', () => {
+    it('fires immediately on single-frame detection without waiting', () => {
+      const tracker = new InstantPhoneTracker();
+      const res = tracker.recordCheck(true, 1000);
+      expect(res.shouldReport).toBe(true);
+
+      // Subsequent continuous checks do not re-fire
+      expect(tracker.recordCheck(true, 1250).shouldReport).toBe(false);
+    });
+
+    it('enforces 3-second cooldown after dismissal before re-triggering', () => {
+      const tracker = new InstantPhoneTracker();
+      expect(tracker.recordCheck(true, 1000).shouldReport).toBe(true);
+
+      // Warning dismissed at t = 2000 -> 3s cooldown until t = 5000
+      tracker.setCooldown(3, 2000);
+
+      // Phone detected at t = 3000 (still in cooldown)
+      expect(tracker.recordCheck(true, 3000).shouldReport).toBe(false);
+
+      // Phone detected at t = 4900 (still in cooldown)
+      expect(tracker.recordCheck(true, 4900).shouldReport).toBe(false);
+
+      // Phone detected at t = 5050 (cooldown expired) -> fires!
+      expect(tracker.recordCheck(true, 5050).shouldReport).toBe(true);
+    });
+
+    it('resets reporting status when phone is removed', () => {
+      const tracker = new InstantPhoneTracker();
+      expect(tracker.recordCheck(true, 1000).shouldReport).toBe(true);
+
+      // Phone absent
+      expect(tracker.recordCheck(false, 2000).shouldReport).toBe(false);
+
+      // Phone reappears -> fires again
+      expect(tracker.recordCheck(true, 3000).shouldReport).toBe(true);
     });
   });
 

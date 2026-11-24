@@ -1,5 +1,6 @@
 import rateLimit from 'express-rate-limit';
 import { sendError } from '../utils/response.js';
+import { env } from '../config/env.js';
 
 const DEBOUNCE_MS = 3000;
 const recentViolations = new Map<string, number>();
@@ -36,7 +37,7 @@ export function clearViolationDebounceCache(): void {
 
 export const violationRateLimiter = rateLimit({
   windowMs: 60 * 1000,
-  max: 30,
+  max: env.NODE_ENV === 'test' ? 500 : 30,
   standardHeaders: true,
   legacyHeaders: false,
   handler: (_req, res) => {

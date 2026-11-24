@@ -19,6 +19,42 @@ export interface PhoneCheckResult {
 }
 
 /**
+ * Instant phone detector tracker (single frame detection with 3s post-dismiss cooldown)
+ */
+export class InstantPhoneTracker {
+  private reported = false;
+  private cooldownUntil = 0;
+
+  public recordCheck(phoneDetected: boolean, now = Date.now()): {
+    shouldReport: boolean;
+  } {
+    if (now < this.cooldownUntil) {
+      return { shouldReport: false };
+    }
+
+    if (phoneDetected) {
+      if (!this.reported) {
+        this.reported = true;
+        return { shouldReport: true };
+      }
+    } else {
+      this.reported = false;
+    }
+
+    return { shouldReport: false };
+  }
+
+  public setCooldown(cooldownSeconds = 3, now = Date.now()): void {
+    this.cooldownUntil = now + cooldownSeconds * 1000;
+    this.reported = false;
+  }
+
+  public reset(): void {
+    this.reported = false;
+  }
+}
+
+/**
  * Pure 3-of-5 sliding window evaluator for phone presence
  */
 export class PhoneDetectionWindow {
@@ -151,7 +187,7 @@ export async function getObjectDetector(): Promise<ObjectDetectorLike> {
 /**
  * Runs 1 frame phone detection on an HTMLVideoElement
  */
-export async function detectPhoneInVideo(video: HTMLVideoElement): Promise<PhoneCheckResult> {
+export async function detectPhoneInVideo(video: HTMLVideoElement, threshold = 0.6): Promise<PhoneCheckResult> {
   if (!video || video.readyState < 2) {
     return { detected: false };
   }
@@ -163,13 +199,13 @@ export async function detectPhoneInVideo(video: HTMLVideoElement): Promise<Phone
     return { detected: false };
   }
 
-  // Look for category 'cell phone' with score >= 0.5
+  // Look for category 'cell phone' with score >= threshold
   for (const d of results.detections) {
     const category = d.categories?.[0];
     const categoryName = (category?.categoryName || '').toLowerCase();
     const score = category?.score ?? 0;
 
-    if ((categoryName === 'cell phone' || categoryName === 'phone') && score >= 0.5) {
+    if ((categoryName === 'cell phone' || categoryName === 'phone') && score >= threshold) {
       const box = d.boundingBox
         ? {
             x: d.boundingBox.originX,

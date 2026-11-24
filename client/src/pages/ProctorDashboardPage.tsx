@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   CheckCircle2,
@@ -54,6 +54,25 @@ export function ProctorDashboardPage({ initialTab = 'monitor' }: { initialTab?: 
 
   // Shaking tiles map (sessionId -> boolean)
   const [shakingTiles, setShakingTiles] = useState<Record<number, boolean>>({});
+
+  // Batched socket query invalidation via requestAnimationFrame to avoid frame drops
+  const rafInvalidateRef = useRef<number | null>(null);
+  const batchInvalidate = useCallback(() => {
+    if (rafInvalidateRef.current !== null) return;
+    rafInvalidateRef.current = requestAnimationFrame(() => {
+      rafInvalidateRef.current = null;
+      queryClient.invalidateQueries({ queryKey: ['proctor-live-monitor'] });
+      queryClient.invalidateQueries({ queryKey: ['proctor-kpis'] });
+    });
+  }, [queryClient]);
+
+  useEffect(() => {
+    return () => {
+      if (rafInvalidateRef.current !== null) {
+        cancelAnimationFrame(rafInvalidateRef.current);
+      }
+    };
+  }, []);
 
   // Realtime streaming violation feed
   const [liveFeed, setLiveFeed] = useState<LiveViolationItem[]>([]);
@@ -234,9 +253,8 @@ export function ProctorDashboardPage({ initialTab = 'monitor' }: { initialTab?: 
       // 4. Shake the specific student tile
       triggerTileShake(payload.sessionId);
 
-      // 5. Invalidate cached queries immediately
-      queryClient.invalidateQueries({ queryKey: ['proctor-live-monitor'] });
-      queryClient.invalidateQueries({ queryKey: ['proctor-kpis'] });
+      // 5. Invalidate cached queries batched via rAF
+      batchInvalidate();
       queryClient.invalidateQueries({ queryKey: ['proctor-audit-report'] });
       if (inspectedSessionId === payload.sessionId) {
         queryClient.invalidateQueries({ queryKey: ['proctor-session-inspect', inspectedSessionId] });
@@ -275,8 +293,7 @@ export function ProctorDashboardPage({ initialTab = 'monitor' }: { initialTab?: 
       if (payload.status && payload.status !== 'IN_PROGRESS') {
         removeLiveTile(payload.sessionId, payload.studentName, payload.examTitle, payload.status);
       } else {
-        queryClient.invalidateQueries({ queryKey: ['proctor-live-monitor'] });
-        queryClient.invalidateQueries({ queryKey: ['proctor-kpis'] });
+        batchInvalidate();
         if (inspectedSessionId === payload.sessionId) {
           queryClient.invalidateQueries({ queryKey: ['proctor-session-inspect', inspectedSessionId] });
         }
@@ -285,14 +302,12 @@ export function ProctorDashboardPage({ initialTab = 'monitor' }: { initialTab?: 
 
     // Session Started Event (New Candidate Entered)
     const onSessionStarted = () => {
-      queryClient.invalidateQueries({ queryKey: ['proctor-live-monitor'] });
-      queryClient.invalidateQueries({ queryKey: ['proctor-kpis'] });
+      batchInvalidate();
     };
 
     // Simulator Reset Event
     const onSimulatorReset = () => {
-      queryClient.invalidateQueries({ queryKey: ['proctor-live-monitor'] });
-      queryClient.invalidateQueries({ queryKey: ['proctor-kpis'] });
+      batchInvalidate();
       queryClient.invalidateQueries({ queryKey: ['proctor-audit-report'] });
       queryClient.setQueryData<ProctorLiveMonitorRow[]>(['proctor-live-monitor'], (old) => {
         if (!old) return old;
@@ -397,7 +412,7 @@ export function ProctorDashboardPage({ initialTab = 'monitor' }: { initialTab?: 
       socket.off('warning:issued', onWarningIssued);
       socket.off('warning:acked', onWarningAcked);
     };
-  }, [inspectedSessionId, queryClient, removeLiveTile, token, triggerTileShake]);
+  }, [inspectedSessionId, queryClient, removeLiveTile, token, triggerTileShake, batchInvalidate]);
 
   // Filter & Sort Sessions for Student Grid
   const displaySessions = useMemo(() => {
@@ -729,10 +744,7 @@ export function ProctorDashboardPage({ initialTab = 'monitor' }: { initialTab?: 
                     }}
                   />
                 ) : (
-                  <motion.div
-                    layout
-                    className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4"
-                  >
+                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
                     <AnimatePresence>
                       {displaySessions.map((session) => (
                         <StudentTile
@@ -743,7 +755,7 @@ export function ProctorDashboardPage({ initialTab = 'monitor' }: { initialTab?: 
                         />
                       ))}
                     </AnimatePresence>
-                  </motion.div>
+                  </div>
                 )}
               </div>
 

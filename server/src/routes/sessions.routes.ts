@@ -27,7 +27,7 @@ import {
   violationRateLimiter,
 } from '../services/violationGuard.js';
 import { generateSignedSnapshotUrl } from '../services/snapshotSigner.js';
-import type { AnswerOption, ExamSessionRow, ResultRow, SessionWarningRow, TimeExtensionRequestRow, ViolationTypeRow } from '../types/api.js';
+import type { AnswerOption, ExamSessionRow, ResultRow, SessionStatus, SessionWarningRow, TimeExtensionRequestRow, ViolationTypeRow } from '../types/api.js';
 import { AppError } from '../utils/errors.js';
 import { sendSuccess } from '../utils/response.js';
 import { extractClientIp, startOrResumeExamSession } from './exams.routes.js';
@@ -655,6 +655,44 @@ sessionsRouter.post(
   handleUpsertAnswer
 );
 
+// In-memory cache for static Violation_Types
+let violationTypesCache: Map<string, ViolationTypeRow> | null = null;
+
+export async function getCachedViolationType(code: string): Promise<ViolationTypeRow | undefined> {
+  if (!violationTypesCache) {
+    const rows = await queryRows<ViolationTypeRow[]>(
+      'SELECT id, code, label, penalty_points, severity FROM Violation_Types'
+    );
+    violationTypesCache = new Map(rows.map((r) => [r.code.toUpperCase(), r]));
+  }
+  return violationTypesCache.get(code.toUpperCase());
+}
+
+export function invalidateViolationTypesCache(): void {
+  violationTypesCache = null;
+}
+
+interface CachedExam {
+  id: number;
+  min_trust_score: number;
+  title: string;
+}
+const examCache = new Map<number, { data: CachedExam; cachedAt: number }>();
+
+export async function getCachedExam(examId: number): Promise<CachedExam | null> {
+  const cached = examCache.get(examId);
+  if (cached && Date.now() - cached.cachedAt < 60000) {
+    return cached.data;
+  }
+  const rows = await queryRows<(RowDataPacket & CachedExam)[]>(
+    'SELECT id, min_trust_score, title FROM Exams WHERE id = ?',
+    [examId]
+  );
+  if (!rows[0]) return null;
+  examCache.set(examId, { data: rows[0], cachedAt: Date.now() });
+  return rows[0];
+}
+
 // POST /api/sessions/:sessionId/violation — rate-limited + 3s debounced + trigger-enforced + warning gated
 sessionsRouter.post(
   '/:sessionId/violation',
@@ -663,19 +701,14 @@ sessionsRouter.post(
   violationRateLimiter,
   validate({ params: sessionIdParamSchema, body: reportViolationSchema }),
   async (req: AuthenticatedRequest, res, next) => {
+    const startHr = process.hrtime.bigint();
     let connection: Awaited<ReturnType<typeof pool.getConnection>> | null = null;
     try {
       const { sessionId } = req.params as unknown as z.infer<typeof sessionIdParamSchema>;
       const body = req.body as z.infer<typeof reportViolationSchema>;
       const code = (body.code ?? body.violationCode ?? '').toUpperCase();
 
-      const session = await assertSessionAccess(sessionId, req.user);
-
-      const typeRows = await queryRows<ViolationTypeRow[]>(
-        'SELECT id, code, label, penalty_points, severity FROM Violation_Types WHERE code = ? LIMIT 1',
-        [code]
-      );
-      const vType = typeRows[0];
+      const vType = await getCachedViolationType(code);
       if (!vType) {
         throw new AppError(400, 'INVALID_VIOLATION_CODE', `Unknown violation code: ${code}`);
       }
@@ -688,78 +721,41 @@ sessionsRouter.post(
         (typeof meta?.snapshot_url === 'string' ? meta.snapshot_url : undefined) ||
         (typeof meta?.snapshotUrl === 'string' ? meta.snapshotUrl : undefined);
 
-      // QA Security Fix (Sub-Phase 11.4): Validate snapshot payload before debounce check so malformed/oversized uploads are rejected immediately (400)
+      // Validate and save snapshot if provided synchronously in request (throws 400 if invalid/oversized)
       const savedSnapshotUrl = explicitUrl
         ? saveSnapshotImage(sessionId, explicitUrl)
-        : saveSnapshotImage(sessionId, rawSnapshot);
+        : rawSnapshot
+          ? saveSnapshotImage(sessionId, rawSnapshot)
+          : null;
 
       if (shouldDebounceViolation(sessionId, code)) {
+        const rows = await queryRows<(RowDataPacket & { trust_score: number; status: SessionStatus })[]>(
+          `SELECT trust_score, status FROM Exam_Sessions WHERE id = ? LIMIT 1`,
+          [sessionId]
+        );
+        const currScore = rows[0]?.trust_score ?? 100;
+        const currStatus = rows[0]?.status ?? 'IN_PROGRESS';
         sendSuccess(res, {
           sessionId,
           code,
           debounced: true,
-          trust_score: session.trust_score,
-          status: session.status,
-          minTrustScore: session.min_trust_score ?? 50,
+          trust_score: currScore,
+          trustScore: currScore,
+          status: currStatus,
         });
         return;
       }
-
-      // Fast check 1: Warning Gate - unacknowledged warning pending
-      if (session.pending_warning_log_id !== null && session.pending_warning_log_id !== undefined) {
-        sendSuccess(res, {
-          ignored: true,
-          reason: 'WARNING_PENDING',
-          sessionId,
-          code: vType.code,
-          trust_score: session.trust_score,
-          trustScore: session.trust_score,
-          status: session.status,
-          minTrustScore: session.min_trust_score ?? 50,
-          pendingWarningLogId: session.pending_warning_log_id,
-        });
-        return;
-      }
-
-      // Fast check 2: Warning Grace Window - within WARNING_GRACE_SECONDS after ack
-      const graceSeconds = env.WARNING_GRACE_SECONDS ?? 5;
-      const secondsSinceAck =
-        session.seconds_since_ack !== null && session.seconds_since_ack !== undefined
-          ? Number(session.seconds_since_ack)
-          : session.last_warning_ack_at
-            ? (Date.now() - new Date(session.last_warning_ack_at).getTime()) / 1000
-            : null;
-
-      if (secondsSinceAck !== null && secondsSinceAck >= 0 && secondsSinceAck < graceSeconds) {
-        sendSuccess(res, {
-          ignored: true,
-          reason: 'WARNING_GRACE',
-          sessionId,
-          code: vType.code,
-          trust_score: session.trust_score,
-          trustScore: session.trust_score,
-          status: session.status,
-          minTrustScore: session.min_trust_score ?? 50,
-          graceSecondsRemaining: Math.max(0, Math.ceil(graceSeconds - secondsSinceAck)),
-        });
-        return;
-      }
-
-      const evidencePayload = JSON.stringify({
-        ...(body.evidenceMeta ?? {}),
-        ...(savedSnapshotUrl ? { snapshot_url: savedSnapshotUrl, snapshotUrl: savedSnapshotUrl } : {}),
-      });
 
       connection = await pool.getConnection();
       await connection.beginTransaction();
 
-      // Row-lock session to check status and concurrency
-      const [lockedRows] = await connection.query<ExamSessionRow[]>(
-        `SELECT es.*, e.min_trust_score, e.title AS exam_title,
-                TIMESTAMPDIFF(SECOND, es.last_warning_ack_at, NOW()) AS seconds_since_ack
-           FROM Exam_Sessions es
-           JOIN Exams e ON e.id = es.exam_id
-          WHERE es.id = ?
+      // Row-lock only the examinee's session row using primary key (no join, no cross-table lock contention)
+      const [lockedRows] = await connection.execute<ExamSessionRow[]>(
+        `SELECT id, exam_id, student_id, trust_score, status, pending_warning_log_id,
+                warning_count, last_warning_ack_at,
+                TIMESTAMPDIFF(SECOND, last_warning_ack_at, NOW()) AS seconds_since_ack
+           FROM Exam_Sessions
+          WHERE id = ?
           FOR UPDATE`,
         [sessionId]
       );
@@ -767,6 +763,11 @@ sessionsRouter.post(
       if (!lockedSession) {
         await connection.rollback();
         throw new AppError(404, 'SESSION_NOT_FOUND', 'Exam session not found.');
+      }
+
+      if (req.user!.role === 'STUDENT' && Number(lockedSession.student_id) !== Number(req.user!.sub)) {
+        await connection.rollback();
+        throw new AppError(403, 'FORBIDDEN', 'You do not have access to this exam session.');
       }
 
       if (lockedSession.status !== 'IN_PROGRESS') {
@@ -796,6 +797,7 @@ sessionsRouter.post(
         return;
       }
 
+      const graceSeconds = env.WARNING_GRACE_SECONDS ?? 5;
       const lockedSinceAck =
         lockedSession.seconds_since_ack !== null && lockedSession.seconds_since_ack !== undefined
           ? Number(lockedSession.seconds_since_ack)
@@ -817,72 +819,60 @@ sessionsRouter.post(
         return;
       }
 
-      const [insertResult] = await connection.query<ResultSetHeader>(
+      // Fetch static exam metadata from in-memory cache
+      const exam = await getCachedExam(lockedSession.exam_id);
+      const minTrustScore = exam?.min_trust_score ?? 50;
+
+      const evidencePayload = JSON.stringify({
+        ...(body.evidenceMeta ?? {}),
+        ...(savedSnapshotUrl ? { snapshot_url: savedSnapshotUrl, snapshotUrl: savedSnapshotUrl } : {}),
+      });
+
+      // Insert proctoring log (triggers ACID deduction on Exam_Sessions)
+      const [insertResult] = await connection.execute<ResultSetHeader>(
         `INSERT INTO Proctoring_Logs (session_id, violation_type_id, evidence_meta, snapshot_url)
          VALUES (?, ?, ?, ?)`,
         [sessionId, vType.id, evidencePayload, savedSnapshotUrl]
       );
       const logId = insertResult.insertId;
 
-      // Query updated session state after trigger deduction
-      const [updatedRows] = await connection.query<ExamSessionRow[]>(
-        `SELECT es.*, e.min_trust_score, e.title AS exam_title
-           FROM Exam_Sessions es
-           JOIN Exams e ON e.id = es.exam_id
-          WHERE es.id = ?`,
-        [sessionId]
-      );
-      const updated = updatedRows[0];
+      // Deterministically derive updated trust score and status without extra DB round trip
+      const newTrustScore = Math.max(0, lockedSession.trust_score - vType.penalty_points);
+      const isTerminated = newTrustScore < minTrustScore;
+      const newStatus: SessionStatus = isTerminated ? 'TERMINATED_CHEATING' : lockedSession.status;
 
-      const signedSnapshotUrl = generateSignedSnapshotUrl(savedSnapshotUrl, logId);
+      const signedSnapshotUrl = savedSnapshotUrl ? generateSignedSnapshotUrl(savedSnapshotUrl, logId) : null;
 
       const basePayload = {
         logId,
         sessionId,
-        examId: updated.exam_id,
-        studentId: updated.student_id,
+        examId: lockedSession.exam_id,
+        studentId: lockedSession.student_id,
         studentName: req.user!.fullName,
         violationCode: vType.code,
         violationLabel: vType.label,
         severity: vType.severity,
         penaltyApplied: vType.penalty_points,
-        trust_score: updated.trust_score,
-        trustScore: updated.trust_score,
-        minTrustScore: updated.min_trust_score,
-        status: updated.status,
-        sessionStatus: updated.status,
+        trust_score: newTrustScore,
+        trustScore: newTrustScore,
+        minTrustScore,
+        status: newStatus,
+        sessionStatus: newStatus,
         snapshot_url: signedSnapshotUrl ?? savedSnapshotUrl,
         snapshotUrl: signedSnapshotUrl ?? savedSnapshotUrl,
         occurredAt: new Date().toISOString(),
       };
 
-      let gradedResult = null;
-      if (updated.status === 'TERMINATED_CHEATING') {
+      if (newStatus === 'TERMINATED_CHEATING') {
         await connection.commit();
+        connection.release();
+        connection = null;
 
         const [resultSets] = await pool.query<RowDataPacket[][]>(
           'CALL sp_SubmitAndGradeExam(?, ?)',
           [sessionId, 'AUTO_TERMINATED']
         );
-        gradedResult = resultSets[0]?.[0] ?? null;
-
-        emitViolationNew(updated.student_id, sessionId, basePayload, {
-          sessionId,
-          trust_score: updated.trust_score,
-          status: updated.status,
-        });
-
-        emitSessionTerminated(
-          updated.student_id,
-          sessionId,
-          { ...basePayload, reason: vType.code, result: gradedResult },
-          {
-            sessionId,
-            trust_score: updated.trust_score,
-            status: updated.status,
-            reason: vType.code,
-          }
-        );
+        const gradedResult = resultSets[0]?.[0] ?? null;
 
         sendSuccess(
           res,
@@ -890,10 +880,10 @@ sessionsRouter.post(
             logId,
             code: vType.code,
             penaltyApplied: vType.penalty_points,
-            trust_score: updated.trust_score,
-            trustScore: updated.trust_score,
-            minTrustScore: updated.min_trust_score,
-            status: updated.status,
+            trust_score: newTrustScore,
+            trustScore: newTrustScore,
+            minTrustScore,
+            status: newStatus,
             snapshot_url: savedSnapshotUrl,
             snapshotUrl: savedSnapshotUrl,
             debounced: false,
@@ -901,6 +891,27 @@ sessionsRouter.post(
           },
           201
         );
+
+        // Async socket broadcast via setImmediate
+        setImmediate(() => {
+          emitViolationNew(lockedSession.student_id, sessionId, basePayload, {
+            sessionId,
+            trust_score: newTrustScore,
+            status: newStatus,
+          });
+
+          emitSessionTerminated(
+            lockedSession.student_id,
+            sessionId,
+            { ...basePayload, reason: vType.code, result: gradedResult },
+            {
+              sessionId,
+              trust_score: newTrustScore,
+              status: newStatus,
+              reason: vType.code,
+            }
+          );
+        });
         return;
       }
 
@@ -918,14 +929,14 @@ sessionsRouter.post(
       const warningMessage =
         warningMessages[vType.code] ?? `${vType.label}: Violation detected. Please adhere to proctoring guidelines.`;
 
-      const [warningInsert] = await connection.query<ResultSetHeader>(
+      const [warningInsert] = await connection.execute<ResultSetHeader>(
         `INSERT INTO Session_Warnings (session_id, log_id, violation_code, message, penalty_points, trust_score_after, issued_at)
          VALUES (?, ?, ?, ?, ?, ?, NOW())`,
-        [sessionId, logId, vType.code, warningMessage, vType.penalty_points, updated.trust_score]
+        [sessionId, logId, vType.code, warningMessage, vType.penalty_points, newTrustScore]
       );
       const warningId = warningInsert.insertId;
 
-      await connection.query(
+      await connection.execute(
         `UPDATE Exam_Sessions
             SET pending_warning_log_id = ?,
                 warning_count = warning_count + 1
@@ -934,6 +945,8 @@ sessionsRouter.post(
       );
 
       await connection.commit();
+      connection.release();
+      connection = null;
 
       const newWarningCount = (lockedSession.warning_count ?? 0) + 1;
       const warningPayload = {
@@ -944,38 +957,46 @@ sessionsRouter.post(
         violationLabel: vType.label,
         message: warningMessage,
         penaltyPoints: vType.penalty_points,
-        trustScoreAfter: updated.trust_score,
+        trustScoreAfter: newTrustScore,
         warningCount: newWarningCount,
         issuedAt: new Date().toISOString(),
         snapshot_url: signedSnapshotUrl ?? savedSnapshotUrl,
         snapshotUrl: signedSnapshotUrl ?? savedSnapshotUrl,
       };
 
-      emitViolationNew(updated.student_id, sessionId, basePayload, {
-        sessionId,
-        trust_score: updated.trust_score,
-        status: updated.status,
-      });
+      const elapsedMs = Number(process.hrtime.bigint() - startHr) / 1e6;
+      res.setHeader('X-Response-Time-Ms', elapsedMs.toFixed(2));
 
-      emitWarningIssued(updated.student_id, sessionId, warningPayload);
-
+      // Respond before emitting to sockets
       sendSuccess(
         res,
         {
           logId,
           code: vType.code,
           penaltyApplied: vType.penalty_points,
-          trust_score: updated.trust_score,
-          trustScore: updated.trust_score,
-          minTrustScore: updated.min_trust_score,
-          status: updated.status,
+          trust_score: newTrustScore,
+          trustScore: newTrustScore,
+          minTrustScore,
+          status: newStatus,
           snapshot_url: signedSnapshotUrl ?? savedSnapshotUrl,
           snapshotUrl: signedSnapshotUrl ?? savedSnapshotUrl,
           debounced: false,
+          serverElapsedMs: elapsedMs,
           warning: warningPayload,
         },
         201
       );
+
+      // Async broadcast via setImmediate
+      setImmediate(() => {
+        emitViolationNew(lockedSession.student_id, sessionId, basePayload, {
+          sessionId,
+          trust_score: newTrustScore,
+          status: newStatus,
+        });
+
+        emitWarningIssued(lockedSession.student_id, sessionId, warningPayload);
+      });
     } catch (err) {
       if (connection) {
         await connection.rollback().catch(() => { });

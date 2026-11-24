@@ -68,6 +68,21 @@ export async function createNotification(params: CreateNotificationParams): Prom
   }
 }
 
+let proctorAdminCache: { ids: number[]; lastFetched: number } | null = null;
+
+async function getProctorAdminIds(): Promise<number[]> {
+  const now = Date.now();
+  if (proctorAdminCache && now - proctorAdminCache.lastFetched < 30000) {
+    return proctorAdminCache.ids;
+  }
+  const rows = await queryRows<UserRow[]>(
+    "SELECT id FROM Users WHERE role IN ('PROCTOR', 'ADMIN') AND is_active = 1"
+  );
+  const ids = rows.map((r) => r.id);
+  proctorAdminCache = { ids, lastFetched: now };
+  return ids;
+}
+
 /**
  * Dispatches a notification to all active Proctors and Admins.
  */
@@ -75,15 +90,51 @@ export async function notifyProctorsAndAdmins(
   params: Omit<CreateNotificationParams, 'userId'>
 ): Promise<void> {
   try {
-    const proctorRows = await queryRows<UserRow[]>(
-      "SELECT id FROM Users WHERE role IN ('PROCTOR', 'ADMIN') AND is_active = 1"
+    const ids = await getProctorAdminIds();
+    if (ids.length === 0) return;
+
+    const payloadJson = params.payload ? JSON.stringify(params.payload) : null;
+    const placeholders = ids.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)').join(', ');
+    const values: (string | number | null)[] = [];
+    for (const uid of ids) {
+      values.push(
+        uid,
+        params.type,
+        params.severity,
+        params.title,
+        params.message,
+        params.sessionId ?? null,
+        params.studentName ?? null,
+        params.examTitle ?? null,
+        payloadJson
+      );
+    }
+
+    const res = await executeSql(
+      `INSERT INTO Notifications
+         (user_id, type, severity, title, message, session_id, student_name, exam_title, payload, created_at)
+       VALUES ${placeholders}`,
+      values
     );
 
-    for (const p of proctorRows) {
-      await createNotification({
-        ...params,
-        userId: p.id,
-      });
+    const insertedId = res.insertId;
+    const io = getIo();
+    if (io) {
+      const socketPayload = {
+        id: insertedId,
+        type: params.type,
+        severity: params.severity,
+        title: params.title,
+        message: params.message,
+        sessionId: params.sessionId,
+        studentName: params.studentName,
+        examTitle: params.examTitle,
+        isSessionLive: true,
+        createdAt: new Date().toISOString(),
+        readAt: null,
+        payload: params.payload,
+      };
+      io.to('proctors').emit('notification:new', socketPayload);
     }
   } catch (err) {
     console.error('[NotificationService] Failed to notify proctors and admins:', err);

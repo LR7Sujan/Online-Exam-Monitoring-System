@@ -106,7 +106,7 @@ export function useProctoring({
     async (
       code: ViolationCode,
       evidenceMeta?: Record<string, unknown>,
-      snapshot?: string | null
+      snapshot?: Promise<string | null> | string | null
     ) => {
       if (
         !enabled ||
@@ -120,18 +120,18 @@ export function useProctoring({
 
       const now = Date.now();
       const lastTs = lastReportedRef.current[code] ?? 0;
-      // Client-side 3-second debounce per violation code
-      if (now - lastTs < 3000) {
+      // Client-side 3-second debounce per violation code (never delays first event of a code)
+      if (lastTs > 0 && now - lastTs < 3000) {
         return;
       }
       lastReportedRef.current[code] = now;
 
       try {
+        // REPORT FIRST: send violation immediately without awaiting snapshot encode/upload
         const res = await api.post<ViolationReportResponse>(
           `/sessions/${sessionId}/violation`,
           {
             code,
-            snapshot: snapshot || undefined,
             evidenceMeta: {
               ...evidenceMeta,
               userAgent: navigator.userAgent,
@@ -152,14 +152,47 @@ export function useProctoring({
           trustScore: normalizedScore,
           status: normalizedStatus,
           isTerminated: normalizedStatus === 'TERMINATED_CHEATING' || res.isTerminated,
+          snapshotUrl: res.snapshotUrl ?? null,
+          snapshot_url: res.snapshot_url ?? null,
         };
 
+        // Render warning screen from the response at once
         setActiveWarning(normalizedRes);
         onViolationRecorded?.(normalizedRes);
 
         if (normalizedRes.isTerminated) {
           isTerminatedRef.current = true;
           onTerminated?.(normalizedRes);
+        }
+
+        // UPLOAD LATER: background upload snapshot and attach to log
+        if (res.logId && snapshot) {
+          (async () => {
+            try {
+              const snap = typeof snapshot === 'string' ? snapshot : await snapshot;
+              if (!snap) return;
+
+              const patchRes = await api.patch<{ success: boolean; snapshotUrl: string }>(
+                `/logs/${res.logId}/snapshot`,
+                { snapshot: snap }
+              );
+
+              if (patchRes?.snapshotUrl) {
+                setActiveWarning((prev) => {
+                  if (prev && (prev.logId === res.logId || prev.warning?.logId === res.logId)) {
+                    return {
+                      ...prev,
+                      snapshotUrl: patchRes.snapshotUrl,
+                      snapshot_url: patchRes.snapshotUrl,
+                    };
+                  }
+                  return prev;
+                });
+              }
+            } catch (snapErr) {
+              console.warn('[Proctoring] Background snapshot upload failed:', snapErr);
+            }
+          })();
         }
       } catch (err) {
         console.warn('[Proctoring] Failed to transmit violation:', err);

@@ -15,8 +15,8 @@ interface UseFaceDetectionOptions {
   isPaused?: boolean;
   onViolation?: (
     code: 'NO_FACE' | 'MULTIPLE_FACES',
-    snapshot: string,
-    evidenceMeta: Record<string, unknown>
+    evidenceMeta: Record<string, unknown>,
+    snapshot?: Promise<string | null> | string | null
   ) => void;
 }
 
@@ -38,8 +38,10 @@ export function useFaceDetection({
   const [consecutiveNoFaceSeconds, setConsecutiveNoFaceSeconds] = useState<number>(0);
   const [stream, setStream] = useState<MediaStream | null>(null);
 
-  // Mutable refs for tracking in the 1-second interval without closure capture issues
+  // Mutable refs for tracking in the staggered 300ms interval without closure capture issues
   const consecutiveRef = useRef<number>(0);
+  const noFaceStartRef = useRef<number | null>(null);
+  const multiFaceStartRef = useRef<number | null>(null);
   const multiFaceTrackerRef = useRef<MultiFaceTracker>(new MultiFaceTracker(5));
   const onViolationRef = useRef(onViolation);
   onViolationRef.current = onViolation;
@@ -48,6 +50,8 @@ export function useFaceDetection({
   useEffect(() => {
     if (isPaused) {
       consecutiveRef.current = 0;
+      noFaceStartRef.current = null;
+      multiFaceStartRef.current = null;
       setConsecutiveNoFaceSeconds(0);
       multiFaceTrackerRef.current.reset();
     }
@@ -221,23 +225,29 @@ export function useFaceDetection({
     };
   }, [startCamera, enabled]);
 
-  // Main Detection Loop: runs about once per second (1000ms)
+  // Main Detection Loop: staggered interval (300ms) with timestamp-based continuous observation
   useEffect(() => {
     if (!enabled || !cameraActive || cameraDenied) {
       return;
     }
 
+    let isRunning = false;
+
     const intervalId = setInterval(async () => {
       if (isPaused) {
         consecutiveRef.current = 0;
+        noFaceStartRef.current = null;
+        multiFaceStartRef.current = null;
         setConsecutiveNoFaceSeconds(0);
         multiFaceTrackerRef.current.reset();
         return;
       }
+      if (isRunning) return;
 
       const video = videoRef.current;
       if (!video || video.readyState < 2) return;
 
+      isRunning = true;
       try {
         const result: DetectionResult = await detectFacesInVideo(video);
         const count = result.faceCount;
@@ -256,68 +266,89 @@ export function useFaceDetection({
           );
         }
 
-        // Rule 1: 0 faces for 5 consecutive seconds -> report NO_FACE
+        const now = Date.now();
+
+        // Rule 1: 0 faces for 5 continuous seconds -> report NO_FACE
         if (count === 0) {
+          multiFaceStartRef.current = null;
           multiFaceTrackerRef.current.reset();
-          consecutiveRef.current += 1;
-          const currentCount = consecutiveRef.current;
+          if (!noFaceStartRef.current) {
+            noFaceStartRef.current = now;
+          }
+          const elapsedMs = now - noFaceStartRef.current;
+          const currentCount = Math.min(5, Math.floor(elapsedMs / 1000) + 1);
+          consecutiveRef.current = currentCount;
           setConsecutiveNoFaceSeconds(currentCount);
           setFaceOk(false);
           setStatusText(
             result.isCoveredOrDark
               ? 'LENS COVERED'
-              : `NO FACE (${Math.min(currentCount, 5)}/5s)`
+              : `NO FACE (${currentCount}/5s)`
           );
 
-          if (currentCount >= 5) {
-            const snapshot =
-              (await captureWebcamSnapshotAsync(video, { violationCode: 'NO_FACE' })) ||
-              captureWebcamSnapshot(video);
-            if (snapshot && onViolationRef.current) {
-              onViolationRef.current('NO_FACE', snapshot, {
-                consecutiveSeconds: currentCount,
-                reason: result.isCoveredOrDark
-                  ? 'Webcam lens obscured/covered for 5 consecutive seconds'
-                  : 'Candidate face absent from camera frame for 5 consecutive seconds',
-                averageLuminance: result.averageLuminance,
-                detector: result.detectorType,
-              });
+          if (elapsedMs >= 5000) {
+            const snapshotPromise = captureWebcamSnapshotAsync(video, { violationCode: 'NO_FACE' })
+              .then((s) => s || captureWebcamSnapshot(video));
+
+            if (onViolationRef.current) {
+              onViolationRef.current(
+                'NO_FACE',
+                {
+                  consecutiveSeconds: currentCount,
+                  reason: result.isCoveredOrDark
+                    ? 'Webcam lens obscured/covered for 5 consecutive seconds'
+                    : 'Candidate face absent from camera frame for 5 consecutive seconds',
+                  averageLuminance: result.averageLuminance,
+                  detector: result.detectorType,
+                },
+                snapshotPromise
+              );
             }
-            // Reset consecutive counter after dispatching violation
+            noFaceStartRef.current = null;
             consecutiveRef.current = 0;
             setConsecutiveNoFaceSeconds(0);
           }
         }
         // Rule 2: 2 or more faces -> 5-second continuous observation timer
         else if (count >= 2) {
+          noFaceStartRef.current = null;
           consecutiveRef.current = 0;
           setConsecutiveNoFaceSeconds(0);
           setFaceOk(false);
 
-          const observation = multiFaceTrackerRef.current.recordFrame(count);
-          if (observation.statusText) {
-            setStatusText(observation.statusText);
+          if (!multiFaceStartRef.current) {
+            multiFaceStartRef.current = now;
           }
+          const elapsedMs = now - multiFaceStartRef.current;
+          const elapsedSec = Math.min(5, Math.floor(elapsedMs / 1000) + 1);
+          setStatusText(`Checking... ${elapsedSec}s`);
 
-          if (observation.shouldReport) {
-            const snapshot =
-              (await captureWebcamSnapshotAsync(video, {
-                violationCode: 'MULTIPLE_FACES',
-                boxes: result.faces,
-              })) || captureWebcamSnapshot(video);
-            if (snapshot && onViolationRef.current) {
-              onViolationRef.current('MULTIPLE_FACES', snapshot, {
-                faceCount: count,
-                consecutiveSeconds: observation.consecutiveSeconds,
-                reason: `Multiple faces (${count}) persisted for 5 continuous seconds in optical stream`,
-                detector: result.detectorType,
-                faces: result.faces,
-              });
+          if (elapsedMs >= 5000) {
+            const snapshotPromise = captureWebcamSnapshotAsync(video, {
+              violationCode: 'MULTIPLE_FACES',
+              boxes: result.faces,
+            }).then((s) => s || captureWebcamSnapshot(video));
+
+            if (onViolationRef.current) {
+              onViolationRef.current(
+                'MULTIPLE_FACES',
+                {
+                  faceCount: count,
+                  consecutiveSeconds: 5,
+                  reason: `Multiple faces (${count}) persisted for 5 continuous seconds in optical stream`,
+                  detector: result.detectorType,
+                  faces: result.faces,
+                },
+                snapshotPromise
+              );
             }
+            multiFaceStartRef.current = null;
           }
         }
-        // Rule 3: Exactly 1 face -> Face OK, cancel any multi-face observation
+        // Rule 3: Exactly 1 face -> Face OK, cancel any observation
         else {
+          noFaceStartRef.current = null;
+          multiFaceStartRef.current = null;
           consecutiveRef.current = 0;
           setConsecutiveNoFaceSeconds(0);
           multiFaceTrackerRef.current.reset();
@@ -326,8 +357,10 @@ export function useFaceDetection({
         }
       } catch (err) {
         console.warn('[FaceDetection] Detection iteration warning:', err);
+      } finally {
+        isRunning = false;
       }
-    }, 1000);
+    }, 300);
 
     mediaSession.registerInterval(intervalId);
 

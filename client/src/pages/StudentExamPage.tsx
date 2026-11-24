@@ -305,7 +305,14 @@ export function StudentExamPage() {
     }
   }, [metaQuery.data, sessionQuery.data, numericSessionId, setActiveWarning]);
 
-  // 6. Client-Side Face Detection Hook (~1 frame/sec, 0 faces for 5s -> NO_FACE, 2+ faces -> MULTIPLE_FACES)
+  const settingsQuery = useQuery({
+    queryKey: ['system-settings'],
+    queryFn: () => api.get<Record<string, string>>('/settings'),
+    staleTime: 300000,
+  });
+  const phoneConfidenceThreshold = Number(settingsQuery.data?.phone_confidence_threshold) || 0.6;
+
+  // 6. Client-Side Face Detection Hook (staggered 300ms, off-thread reporting)
   const {
     videoRef,
     canvasRef,
@@ -319,17 +326,18 @@ export function StudentExamPage() {
   } = useFaceDetection({
     enabled: sessionStatus === 'IN_PROGRESS',
     isPaused: isDetectionPaused,
-    onViolation: (code, snapshot, meta) => {
+    onViolation: (code, meta, snapshot) => {
       reportViolation(code, meta, snapshot);
     },
   });
 
-  // 7. Client-Side Phone Detection Hook (~1 check/sec, 3 of last 5 -> PHONE_DETECTED with box)
+  // 7. Client-Side Phone Detection Hook (staggered 250ms, instant single-frame penalty)
   const { phoneStatusText } = usePhoneDetection({
     videoRef,
     enabled: sessionStatus === 'IN_PROGRESS',
     isPaused: isDetectionPaused,
-    onViolation: (code, snapshot, meta) => {
+    confidenceThreshold: phoneConfidenceThreshold,
+    onViolation: (code, meta, snapshot) => {
       reportViolation(code, meta, snapshot);
     },
   });
@@ -340,7 +348,7 @@ export function StudentExamPage() {
     videoRef,
     enabled: sessionStatus === 'IN_PROGRESS',
     isPaused: isDetectionPaused,
-    onViolation: (code, snapshot, meta) => {
+    onViolation: (code, meta, snapshot) => {
       reportViolation(code, meta, snapshot);
     },
   });
@@ -436,11 +444,26 @@ export function StudentExamPage() {
       });
     };
 
+    const onSnapshotReady = (payload: { logId: number; sessionId: number; snapshotUrl: string }) => {
+      if (payload.sessionId !== numericSessionId) return;
+      setActiveWarning((prev) => {
+        if (prev && (prev.logId === payload.logId || prev.warning?.logId === payload.logId)) {
+          return {
+            ...prev,
+            snapshotUrl: payload.snapshotUrl,
+            snapshot_url: payload.snapshotUrl,
+          };
+        }
+        return prev;
+      });
+    };
+
     socket.on('violation:new', onViolation);
     socket.on('session:update', onViolation);
     socket.on('session:terminated', onTerminated);
     socket.on('extension:decided', onExtensionDecided);
     socket.on('warning:issued', onWarningIssued);
+    socket.on('log:snapshot_ready', onSnapshotReady);
 
     return () => {
       socket.off('violation:new', onViolation);
@@ -448,6 +471,7 @@ export function StudentExamPage() {
       socket.off('session:terminated', onTerminated);
       socket.off('extension:decided', onExtensionDecided);
       socket.off('warning:issued', onWarningIssued);
+      socket.off('log:snapshot_ready', onSnapshotReady);
     };
   }, [numericSessionId, token, submitMutation, metaQuery, minTrustScore, sessionStatus, setActiveWarning]);
 

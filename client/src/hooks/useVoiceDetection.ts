@@ -9,8 +9,8 @@ interface UseVoiceDetectionOptions {
   isPaused?: boolean;
   onViolation?: (
     code: 'VOICE_DETECTED',
-    snapshot: string,
-    evidenceMeta: Record<string, unknown>
+    evidenceMeta: Record<string, unknown>,
+    snapshot?: Promise<string | null> | string | null
   ) => void;
 }
 
@@ -55,15 +55,19 @@ export function useVoiceDetection({
       },
       onViolation: async (meta) => {
         const video = videoRef.current;
-        const snapshot = video
-          ? (await captureWebcamSnapshotAsync(video, { violationCode: 'VOICE_DETECTED' })) ||
-            captureWebcamSnapshot(video)
+        const snapshotPromise = video
+          ? captureWebcamSnapshotAsync(video, { violationCode: 'VOICE_DETECTED' })
+              .then((s) => s || captureWebcamSnapshot(video))
           : null;
-        if (snapshot && onViolationRef.current) {
-          onViolationRef.current('VOICE_DETECTED', snapshot, {
-            ...meta,
-            reason: 'Sustained speech detected on microphone (>= 4s in 6s window)',
-          });
+        if (onViolationRef.current) {
+          onViolationRef.current(
+            'VOICE_DETECTED',
+            {
+              ...meta,
+              reason: 'Sustained speech detected on microphone (>= 4s in 6s window)',
+            },
+            snapshotPromise
+          );
         }
       },
     });

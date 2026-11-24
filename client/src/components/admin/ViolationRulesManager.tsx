@@ -68,6 +68,34 @@ export function ViolationRulesManager() {
     VOICE_DETECTED: 0,
   });
 
+  // Query System Settings
+  const settingsQuery = useQuery({
+    queryKey: ['system-settings'],
+    queryFn: () => api.get<Record<string, string>>('/settings'),
+  });
+
+  const [localPhoneThreshold, setLocalPhoneThreshold] = useState<number | null>(null);
+  const [saveThresholdSuccess, setSaveThresholdSuccess] = useState(false);
+
+  const phoneThreshold =
+    localPhoneThreshold ??
+    (settingsQuery.data?.phone_confidence_threshold
+      ? Number(settingsQuery.data.phone_confidence_threshold)
+      : 0.6);
+
+  const updateSettingMutation = useMutation({
+    mutationFn: (val: number) =>
+      api.patch('/settings', {
+        key: 'phone_confidence_threshold',
+        value: val.toFixed(2),
+      }),
+    onSuccess: () => {
+      setSaveThresholdSuccess(true);
+      setTimeout(() => setSaveThresholdSuccess(false), 2000);
+      queryClient.invalidateQueries({ queryKey: ['system-settings'] });
+    },
+  });
+
   // Query Violation Types from API
   const query = useQuery({
     queryKey: ['admin-violation-types'],
@@ -158,6 +186,52 @@ export function ViolationRulesManager() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* 2. EDITABLE PENALTY WEIGHTS TABLE (left 7 cols) */}
         <div className="lg:col-span-7 rounded-2xl border border-border bg-surface p-5 shadow-sm space-y-4">
+          {/* Instant Phone Detection Threshold Setting */}
+          <div className="rounded-xl border border-rose-500/20 bg-rose-500/5 p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Phone className="w-4 h-4 text-rose-400" />
+                <span className="text-xs font-bold font-mono text-foreground uppercase tracking-wide">
+                  Instant Phone Detection Threshold
+                </span>
+              </div>
+              <span className="text-xs font-mono font-bold text-rose-400 px-2 py-0.5 rounded bg-rose-500/10">
+                {(phoneThreshold * 100).toFixed(0)}% Confidence
+              </span>
+            </div>
+            <p className="text-[11px] font-mono text-muted-foreground">
+              Single-frame neural trigger threshold (0.40 - 0.90). Penalizes immediately in 1 frame without waiting when score meets or exceeds this setting.
+            </p>
+            <div className="flex items-center gap-4">
+              <input
+                type="range"
+                min="0.40"
+                max="0.90"
+                step="0.05"
+                value={phoneThreshold}
+                onChange={(e) => setLocalPhoneThreshold(parseFloat(e.target.value))}
+                className="w-full accent-rose-500 cursor-pointer"
+              />
+              <button
+                type="button"
+                onClick={() => updateSettingMutation.mutate(phoneThreshold)}
+                disabled={updateSettingMutation.isPending}
+                className="shrink-0 px-3 py-1 text-xs font-mono font-semibold rounded-lg bg-rose-500 text-white hover:bg-rose-600 disabled:opacity-50 transition-colors cursor-pointer flex items-center gap-1.5"
+              >
+                {saveThresholdSuccess ? (
+                  <>
+                    <CheckCircle2 className="w-3.5 h-3.5 text-white" />
+                    <span>Saved</span>
+                  </>
+                ) : updateSettingMutation.isPending ? (
+                  <span>Saving...</span>
+                ) : (
+                  <span>Save</span>
+                )}
+              </button>
+            </div>
+          </div>
+
           <div className="flex items-center justify-between">
             <h4 className="text-sm font-bold text-foreground flex items-center gap-2">
               <Sliders className="w-4 h-4 text-violet-500" />

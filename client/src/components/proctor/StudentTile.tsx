@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { motion } from 'framer-motion';
 import {
   ArrowUpRight,
@@ -72,7 +73,7 @@ function formatRelativeTime(dateStr: string | null): { relative: string; exact: 
   return { relative: dateFormatted, exact };
 }
 
-export function StudentTile({
+export const StudentTile = memo(function StudentTile({
   session,
   isShaking = false,
   onSelect,
@@ -273,4 +274,4 @@ export function StudentTile({
       </div>
     </motion.div>
   );
-}
+});
