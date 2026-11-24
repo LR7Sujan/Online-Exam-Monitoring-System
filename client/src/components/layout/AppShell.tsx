@@ -19,7 +19,6 @@ import {
   Menu,
   X,
   Radio,
-  Clock,
   Zap,
   Volume2,
   VolumeX,
@@ -30,9 +29,12 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { useTheme } from '../../context/ThemeContext';
-import { useSocketContext } from '../../context/useSocketContext';
-import { LiveDot } from '../ui/LiveDot';
-import { SeverityBadge } from '../ui/SeverityBadge';
+import {
+  useNotificationsStore,
+  selectUnreadCount,
+  selectLiveViolationCount,
+} from '../../store/notificationsStore';
+import { NotificationPanel } from '../notifications/NotificationPanel';
 import { ThemeToggle } from '../ui/ThemeToggle';
 import { CommandPalette } from './CommandPalette';
 import { OverlayPanel } from '../ui/OverlayPanel';
@@ -74,6 +76,7 @@ const STYLEGUIDE_NAV_CHILDREN: NavSubItem[] = [
 
 export function AppShell() {
   const user = useAuthStore((s) => s.user);
+  const token = useAuthStore((s) => s.token);
   const logout = useAuthStore((s) => s.logout);
   const location = useLocation();
   const navigate = useNavigate();
@@ -103,8 +106,14 @@ export function AppShell() {
     return () => clearTimeout(timer);
   }, [location.pathname]);
 
-  const { violationCount, recentAlerts, clearAlerts, markAlertRead } =
-    useSocketContext();
+  const unreadCount = useNotificationsStore(selectUnreadCount);
+  const liveViolationCount = useNotificationsStore(selectLiveViolationCount);
+
+  useEffect(() => {
+    if (token) {
+      void useNotificationsStore.getState().fetchNotifications();
+    }
+  }, [token]);
 
   // Collapsed state persisted in localStorage (default to false if not set)
   const [isCollapsed, setIsCollapsed] = useState<boolean>(() => {
@@ -134,8 +143,6 @@ export function AppShell() {
   const [commandPaletteOpen, setCommandPaletteOpen] = useState<boolean>(false);
   const [audioMuted, setAudioMutedState] = useState<boolean>(isAudioMuted());
   const { setTheme, resolvedTheme } = useTheme();
-  type NotifSeverityFilter = 'ALL' | 'CRITICAL' | 'HIGH' | 'MEDIUM_LOW';
-  const [notifFilter, setNotifFilter] = useState<NotifSeverityFilter>('ALL');
 
   // Sub-menu expansion states (Phase 13.6 expandable groups readiness) - default collapsed per Phase 16
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({
@@ -313,7 +320,7 @@ export function AppShell() {
       return [
         { to: '/home', label: 'Home', icon: Home, section: 'CORE' },
         { to: '/admin', label: 'Mission Overview', icon: Activity, section: 'CORE' },
-        { to: '/proctor', label: 'Live Monitor', icon: Radio, badge: violationCount > 0 ? violationCount : undefined, section: 'SURVEILLANCE' },
+        { to: '/proctor', label: 'Live Monitor', icon: Radio, badge: liveViolationCount > 0 ? (liveViolationCount > 9 ? '9+' : liveViolationCount) : undefined, section: 'SURVEILLANCE' },
         { to: '/proctor/audit', label: 'Violation Audit', icon: ShieldAlert, section: 'SURVEILLANCE' },
         { to: '/admin/exams', label: 'Exam Catalog', icon: FileText, section: 'MANAGEMENT' },
         { to: '/admin/analytics', label: 'Telemetry & Heatmap', icon: BarChart3, section: 'MANAGEMENT' },
@@ -331,7 +338,7 @@ export function AppShell() {
     if (user.role === 'PROCTOR') {
       return [
         { to: '/home', label: 'Home', icon: Home, section: 'CORE' },
-        { to: '/proctor', label: 'Live Monitor', icon: Radio, badge: violationCount > 0 ? violationCount : undefined, section: 'SURVEILLANCE' },
+        { to: '/proctor', label: 'Live Monitor', icon: Radio, badge: liveViolationCount > 0 ? (liveViolationCount > 9 ? '9+' : liveViolationCount) : undefined, section: 'SURVEILLANCE' },
         { to: '/proctor/audit', label: 'Violation Audit', icon: ShieldAlert, section: 'SURVEILLANCE' },
         {
           to: '/styleguide',
@@ -355,7 +362,7 @@ export function AppShell() {
         children: STYLEGUIDE_NAV_CHILDREN,
       },
     ];
-  }, [user, violationCount]);
+  }, [user, liveViolationCount]);
 
   // Group items by section
   const navSections = React.useMemo(() => {
@@ -372,8 +379,8 @@ export function AppShell() {
     user?.role === 'ADMIN'
       ? 'text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800/80 bg-indigo-50 dark:bg-indigo-950/40'
       : user?.role === 'PROCTOR'
-      ? 'text-sky-600 dark:text-sky-400 border-sky-200 dark:border-sky-800/80 bg-sky-50 dark:bg-sky-950/40'
-      : 'text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/80 bg-emerald-50 dark:bg-emerald-950/40';
+        ? 'text-sky-600 dark:text-sky-400 border-sky-200 dark:border-sky-800/80 bg-sky-50 dark:bg-sky-950/40'
+        : 'text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/80 bg-emerald-50 dark:bg-emerald-950/40';
 
   return (
     <div className="min-h-screen h-dvh flex bg-background text-foreground overflow-x-hidden relative">
@@ -412,9 +419,8 @@ export function AppShell() {
         <div className="h-16 flex items-center px-3.5 border-b border-border shrink-0">
           <NavLink
             to="/home"
-            className={`flex items-center gap-3 group w-full overflow-hidden ${
-              isCollapsed ? 'justify-center' : ''
-            }`}
+            className={`flex items-center gap-3 group w-full overflow-hidden ${isCollapsed ? 'justify-center' : ''
+              }`}
           >
             <div className="h-10 w-10 rounded-xl bg-gradient-to-tr from-indigo-500/20 to-fuchsia-500/20 border border-brand/40 flex items-center justify-center text-brand shadow-sm group-hover:scale-105 transition-transform shrink-0">
               <Shield className="w-5 h-5 text-brand" />
@@ -497,11 +503,10 @@ export function AppShell() {
                             setStyleguideFlyoutOpen((prev) => !prev);
                             setStyleguideSearch('');
                           }}
-                          className={`w-11 h-11 flex items-center justify-center rounded-xl relative transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-brand cursor-pointer ${
-                            isActive
-                              ? 'bg-brand/15 dark:bg-brand/20 text-brand shadow-sm font-semibold'
-                              : 'text-muted-foreground hover:text-foreground hover:bg-muted/70'
-                          }`}
+                          className={`w-11 h-11 flex items-center justify-center rounded-xl relative transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-brand cursor-pointer ${isActive
+                            ? 'bg-brand/15 dark:bg-brand/20 text-brand shadow-sm font-semibold'
+                            : 'text-muted-foreground hover:text-foreground hover:bg-muted/70'
+                            }`}
                         >
                           {isActive && (
                             <div className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-brand-gradient" />
@@ -524,11 +529,10 @@ export function AppShell() {
                             setExpandedGroups((prev) => ({ ...prev, [item.to]: true }));
                           }
                         }}
-                        className={`w-11 h-11 flex items-center justify-center rounded-xl relative transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-brand ${
-                          isActive
-                            ? 'bg-brand/15 dark:bg-brand/20 text-brand shadow-sm font-semibold'
-                            : 'text-muted-foreground hover:text-foreground hover:bg-muted/70'
-                        }`}
+                        className={`w-11 h-11 flex items-center justify-center rounded-xl relative transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-brand ${isActive
+                          ? 'bg-brand/15 dark:bg-brand/20 text-brand shadow-sm font-semibold'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-muted/70'
+                          }`}
                       >
                         {isActive && (
                           <div className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-brand-gradient" />
@@ -558,11 +562,10 @@ export function AppShell() {
                                 <NavLink
                                   key={sub.to}
                                   to={sub.to}
-                                  className={`block px-2.5 py-1.5 rounded-lg text-xs font-mono transition-colors ${
-                                    isSubActive
-                                      ? 'text-brand font-semibold bg-brand/10'
-                                      : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
-                                  }`}
+                                  className={`block px-2.5 py-1.5 rounded-lg text-xs font-mono transition-colors ${isSubActive
+                                    ? 'text-brand font-semibold bg-brand/10'
+                                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
+                                    }`}
                                 >
                                   {sub.label}
                                 </NavLink>
@@ -586,28 +589,25 @@ export function AppShell() {
                           setStyleguideFlyoutOpen((prev) => !prev);
                           setStyleguideSearch('');
                         }}
-                        className={`relative w-full flex items-center gap-3 px-3 h-10 rounded-xl text-xs font-medium transition-all select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-brand cursor-pointer ${
-                          isActive
-                            ? 'bg-brand/10 dark:bg-brand/15 text-foreground font-semibold shadow-sm'
-                            : 'text-muted-foreground hover:text-foreground hover:bg-muted/70'
-                        }`}
+                        className={`relative w-full flex items-center gap-3 px-3 h-10 rounded-xl text-xs font-medium transition-all select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-brand cursor-pointer ${isActive
+                          ? 'bg-brand/10 dark:bg-brand/15 text-foreground font-semibold shadow-sm'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-muted/70'
+                          }`}
                       >
                         {isActive && (
                           <div className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-brand-gradient" />
                         )}
                         <Icon
-                          className={`w-5 h-5 shrink-0 transition-colors ${
-                            isActive ? 'text-brand' : 'text-muted-foreground'
-                          }`}
+                          className={`w-5 h-5 shrink-0 transition-colors ${isActive ? 'text-brand' : 'text-muted-foreground'
+                            }`}
                         />
                         <span className="truncate flex-1 tracking-wide text-left">{item.label}</span>
                         <span className="px-1.5 py-0.2 rounded-full text-[9px] font-mono font-semibold bg-brand/10 text-brand border border-brand/20 mr-1">
                           13
                         </span>
                         <ChevronRight
-                          className={`w-3.5 h-3.5 text-muted-foreground transition-transform duration-200 ${
-                            styleguideFlyoutOpen ? 'rotate-90 text-brand' : ''
-                          }`}
+                          className={`w-3.5 h-3.5 text-muted-foreground transition-transform duration-200 ${styleguideFlyoutOpen ? 'rotate-90 text-brand' : ''
+                            }`}
                         />
                       </button>
                     </div>
@@ -626,11 +626,10 @@ export function AppShell() {
                             setExpandedGroups((prev) => ({ ...prev, [item.to]: true }));
                           }
                         }}
-                        className={`relative flex-1 flex items-center gap-3 px-3 h-10 rounded-xl text-xs font-medium transition-all select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 ${
-                          isActive
-                            ? 'bg-brand/10 dark:bg-brand/15 text-foreground font-semibold shadow-sm'
-                            : 'text-muted-foreground hover:text-foreground hover:bg-muted/70'
-                        }`}
+                        className={`relative flex-1 flex items-center gap-3 px-3 h-10 rounded-xl text-xs font-medium transition-all select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 ${isActive
+                          ? 'bg-brand/10 dark:bg-brand/15 text-foreground font-semibold shadow-sm'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-muted/70'
+                          }`}
                       >
                         {/* Active Gradient Left Bar */}
                         {isActive && (
@@ -638,15 +637,17 @@ export function AppShell() {
                         )}
 
                         <Icon
-                          className={`w-5 h-5 shrink-0 transition-colors ${
-                            isActive ? 'text-brand' : 'text-muted-foreground'
-                          }`}
+                          className={`w-5 h-5 shrink-0 transition-colors ${isActive ? 'text-brand' : 'text-muted-foreground'
+                            }`}
                         />
 
                         <span className="truncate flex-1 tracking-wide">{item.label}</span>
 
                         {item.badge !== undefined && (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-rose-500/15 text-rose-500 border border-rose-500/30 shrink-0">
+                          <span
+                            data-testid={`nav-badge-${item.to.replace(/\//g, '-').replace(/^-/, '')}`}
+                            className="px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-rose-500/15 text-rose-500 border border-rose-500/30 shrink-0"
+                          >
                             {item.badge}
                           </span>
                         )}
@@ -661,9 +662,8 @@ export function AppShell() {
                           title={isGroupOpen ? 'Collapse sub-menu' : 'Expand sub-menu'}
                         >
                           <ChevronDown
-                            className={`w-3.5 h-3.5 transition-transform duration-200 ${
-                              isGroupOpen ? 'rotate-180' : ''
-                            }`}
+                            className={`w-3.5 h-3.5 transition-transform duration-200 ${isGroupOpen ? 'rotate-180' : ''
+                              }`}
                           />
                         </button>
                       )}
@@ -689,11 +689,10 @@ export function AppShell() {
                               <NavLink
                                 key={sub.to}
                                 to={sub.to}
-                                className={`block px-3 py-1.5 rounded-lg text-xs font-mono transition-all relative ${
-                                  isSubActive
-                                    ? 'text-brand font-semibold bg-brand/10 shadow-xs'
-                                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-                                }`}
+                                className={`block px-3 py-1.5 rounded-lg text-xs font-mono transition-all relative ${isSubActive
+                                  ? 'text-brand font-semibold bg-brand/10 shadow-xs'
+                                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                                  }`}
                               >
                                 {isSubActive && (
                                   <div className="absolute left-0 top-1.5 bottom-1.5 w-[2px] rounded-full bg-brand-gradient" />
@@ -808,11 +807,10 @@ export function AppShell() {
                         setStyleguideFlyoutOpen(false);
                         navigate(sub.to);
                       }}
-                      className={`w-full px-3 py-2 rounded-xl text-xs font-mono relative flex items-center justify-between transition-colors text-left cursor-pointer ${
-                        isSubActive
-                          ? 'text-brand font-semibold bg-brand/10 dark:bg-brand/15'
-                          : 'text-muted-foreground hover:text-foreground hover:bg-muted/70'
-                      }`}
+                      className={`w-full px-3 py-2 rounded-xl text-xs font-mono relative flex items-center justify-between transition-colors text-left cursor-pointer ${isSubActive
+                        ? 'text-brand font-semibold bg-brand/10 dark:bg-brand/15'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-muted/70'
+                        }`}
                     >
                       {/* Requirement B.3: 2px gradient bar on the left, pill aligned to same left edge */}
                       {isSubActive && (
@@ -858,29 +856,28 @@ export function AppShell() {
                 {location.pathname === '/home'
                   ? 'Home'
                   : location.pathname === '/admin'
-                  ? 'Mission Overview'
-                  : location.pathname === '/admin/exams'
-                  ? 'Exam Catalog'
-                  : location.pathname === '/admin/analytics'
-                  ? 'Telemetry & Heatmap'
-                  : location.pathname === '/admin/simulator'
-                  ? 'Demo Simulator'
-                  : location.pathname === '/proctor'
-                  ? 'Live Monitor'
-                  : location.pathname === '/proctor/audit'
-                  ? 'Violation Audit'
-                  : location.pathname === '/student'
-                  ? 'Exams & Portal'
-                  : location.pathname.startsWith('/student/results')
-                  ? 'Exam Results'
-                  : location.pathname === '/styleguide'
-                  ? 'UI Styleguide'
-                  : location.pathname.startsWith('/styleguide/')
-                  ? `Styleguide / ${
-                      STYLEGUIDE_NAV_CHILDREN.find((c) => c.to === location.pathname)?.label ||
-                      location.pathname.split('/')[2].replace(/-/g, ' ')
-                    }`
-                  : location.pathname.replace('/', '').replace(/-/g, ' ') || 'Overview'}
+                    ? 'Mission Overview'
+                    : location.pathname === '/admin/exams'
+                      ? 'Exam Catalog'
+                      : location.pathname === '/admin/analytics'
+                        ? 'Telemetry & Heatmap'
+                        : location.pathname === '/admin/simulator'
+                          ? 'Demo Simulator'
+                          : location.pathname === '/proctor'
+                            ? 'Live Monitor'
+                            : location.pathname === '/proctor/audit'
+                              ? 'Violation Audit'
+                              : location.pathname === '/student'
+                                ? 'Exams & Portal'
+                                : location.pathname.startsWith('/student/results')
+                                  ? 'Exam Results'
+                                  : location.pathname === '/styleguide'
+                                    ? 'UI Styleguide'
+                                    : location.pathname.startsWith('/styleguide/')
+                                      ? `Styleguide / ${STYLEGUIDE_NAV_CHILDREN.find((c) => c.to === location.pathname)?.label ||
+                                      location.pathname.split('/')[2].replace(/-/g, ' ')
+                                      }`
+                                      : location.pathname.replace('/', '').replace(/-/g, ' ') || 'Overview'}
               </span>
             </div>
           </div>
@@ -909,11 +906,10 @@ export function AppShell() {
             <button
               type="button"
               onClick={handleToggleAudio}
-              className={`h-[38px] w-[38px] rounded-xl border flex items-center justify-center text-xs transition-all cursor-pointer shadow-xs ${
-                audioMuted
-                  ? 'border-border bg-surface text-muted-foreground hover:text-foreground hover:bg-muted'
-                  : 'border-brand/40 bg-brand/10 text-brand hover:bg-brand/15 shadow-sm'
-              }`}
+              className={`h-[38px] w-[38px] rounded-xl border flex items-center justify-center text-xs transition-all cursor-pointer shadow-xs ${audioMuted
+                ? 'border-border bg-surface text-muted-foreground hover:text-foreground hover:bg-muted'
+                : 'border-brand/40 bg-brand/10 text-brand hover:bg-brand/15 shadow-sm'
+                }`}
               title={audioMuted ? 'Audio alerts muted (Click to enable)' : 'Audio alerts active (Click to mute)'}
               aria-label={audioMuted ? 'Muted, click to enable sound alerts' : 'Audio On, click to mute sound alerts'}
             >
@@ -924,6 +920,7 @@ export function AppShell() {
             <div className="relative" ref={notifRef}>
               <button
                 type="button"
+                data-testid="notification-bell-btn"
                 onClick={() => {
                   setNotificationsOpen(!notificationsOpen);
                   if (userMenuOpen) setUserMenuOpen(false);
@@ -933,11 +930,14 @@ export function AppShell() {
                 title="Violation Telemetry Feed"
               >
                 <Bell className="w-4 h-4" />
-                {violationCount > 0 && (
-                  <span className="absolute -top-1 -right-1 flex h-4 w-4">
+                {unreadCount > 0 && (
+                  <span
+                    data-testid="notification-bell-badge"
+                    className="absolute -top-1 -right-1 flex h-4 w-4"
+                  >
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-500 opacity-75" />
                     <span className="relative inline-flex rounded-full h-4 w-4 bg-rose-600 text-[9px] font-mono font-bold text-white items-center justify-center">
-                      {violationCount > 9 ? '9+' : violationCount}
+                      {unreadCount > 9 ? '9+' : unreadCount}
                     </span>
                   </span>
                 )}
@@ -947,140 +947,9 @@ export function AppShell() {
                 isOpen={notificationsOpen}
                 onClose={() => setNotificationsOpen(false)}
                 ariaLabel="Violation Telemetry Feed"
-                className="fixed sm:absolute left-3 right-3 sm:left-auto sm:right-0 top-16 sm:top-full sm:mt-2 sm:w-[420px] max-h-[70vh] flex flex-col"
+                className="fixed sm:absolute left-3 right-3 sm:left-auto sm:right-0 top-16 sm:top-full sm:mt-2 sm:w-[420px] max-h-[70vh] flex flex-col p-0 overflow-hidden"
               >
-                {/* Header with Title + LiveDot + Count Chip + Close button */}
-                <div className="flex items-center justify-between p-3.5 border-b border-border bg-surface-elevated/40 shrink-0">
-                  <div className="flex items-center gap-2.5">
-                    <LiveDot
-                      color={violationCount > 0 ? 'rose' : 'emerald'}
-                      size="sm"
-                      pulse={violationCount > 0}
-                    />
-                    <span className="text-sm font-bold text-foreground tracking-tight">
-                      Violation Telemetry Feed
-                    </span>
-                    <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full bg-brand/10 text-brand border border-brand/20">
-                      {violationCount} Active
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {recentAlerts.length > 0 && (
-                      <button
-                        onClick={clearAlerts}
-                        className="text-[11px] text-muted-foreground hover:text-foreground transition-colors font-mono"
-                      >
-                        Clear
-                      </button>
-                    )}
-                    <button
-                      onClick={() => setNotificationsOpen(false)}
-                      className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors focus:outline-none focus:ring-2 focus:ring-brand"
-                      aria-label="Close notification panel"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Segmented Control Tabs */}
-                <div className="px-3 py-2 border-b border-border bg-surface dark:bg-[#12131d] flex items-center gap-1.5 overflow-x-auto no-scrollbar shrink-0">
-                  {[
-                    { key: 'ALL', label: 'All', count: recentAlerts.length },
-                    { key: 'CRITICAL', label: 'Critical', count: recentAlerts.filter((a) => a.severity === 'CRITICAL').length },
-                    { key: 'HIGH', label: 'High', count: recentAlerts.filter((a) => a.severity === 'HIGH').length },
-                    { key: 'MEDIUM_LOW', label: 'Med/Low', count: recentAlerts.filter((a) => a.severity === 'MEDIUM' || a.severity === 'LOW').length },
-                  ].map((tab) => {
-                    const isSelected = notifFilter === tab.key;
-                    return (
-                      <button
-                        key={tab.key}
-                        type="button"
-                        onClick={() => setNotifFilter(tab.key as NotifSeverityFilter)}
-                        className={`h-8 px-3 rounded-lg text-xs font-mono transition-all flex items-center gap-1.5 shrink-0 ${
-                          isSelected
-                            ? 'bg-brand-gradient text-white font-semibold shadow-sm'
-                            : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
-                        }`}
-                      >
-                        <span className="truncate max-w-[100px]">{tab.label}</span>
-                        {tab.count > 0 && (
-                          <span
-                            className={`text-[9px] font-mono px-1.5 py-0.2 rounded-full font-semibold ${
-                              isSelected
-                                ? 'bg-white/20 text-white'
-                                : 'bg-surface-elevated text-muted-foreground border border-border'
-                            }`}
-                          >
-                            {tab.count}
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* Feed Items (Scrollable internal view) */}
-                <div className="flex-1 overflow-y-auto p-3 space-y-2">
-                  {recentAlerts.filter((alert) => {
-                    if (notifFilter === 'ALL') return true;
-                    if (notifFilter === 'CRITICAL') return alert.severity === 'CRITICAL';
-                    if (notifFilter === 'HIGH') return alert.severity === 'HIGH';
-                    if (notifFilter === 'MEDIUM_LOW') return alert.severity === 'MEDIUM' || alert.severity === 'LOW';
-                    return true;
-                  }).length === 0 ? (
-                    <div className="py-12 flex flex-col items-center justify-center text-center space-y-2 my-auto">
-                      <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-500 mb-1">
-                        <Shield className="w-6 h-6 opacity-90" />
-                      </div>
-                      <p className="font-bold text-sm text-foreground">All Clear</p>
-                      <p className="text-xs text-muted-foreground max-w-[240px]">
-                        No active telemetry alerts logged in this segment. Telemetry stream is operating within clean parameters.
-                      </p>
-                    </div>
-                  ) : (
-                    recentAlerts
-                      .filter((alert) => {
-                        if (notifFilter === 'ALL') return true;
-                        if (notifFilter === 'CRITICAL') return alert.severity === 'CRITICAL';
-                        if (notifFilter === 'HIGH') return alert.severity === 'HIGH';
-                        if (notifFilter === 'MEDIUM_LOW') return alert.severity === 'MEDIUM' || alert.severity === 'LOW';
-                        return true;
-                      })
-                      .map((alert) => (
-                        <div
-                          key={alert.id}
-                          onClick={() => markAlertRead(alert.id)}
-                          className="p-3 rounded-xl border border-border bg-surface-elevated/70 dark:bg-[#181926] hover:bg-muted text-xs space-y-1.5 cursor-pointer transition-colors"
-                        >
-                          <div className="flex items-center justify-between">
-                            <SeverityBadge severity={alert.severity || 'MEDIUM'} size="sm" />
-                            <span className="text-[10px] text-muted-foreground font-mono flex items-center gap-1">
-                              <Clock className="w-3 h-3" />
-                              {new Date(alert.occurredAt).toLocaleTimeString()}
-                            </span>
-                          </div>
-                          <p className="text-foreground font-semibold text-xs">{alert.studentName}</p>
-                          <p className="text-muted-foreground text-[11px] truncate">{alert.examTitle}</p>
-                        </div>
-                      ))
-                  )}
-                </div>
-
-                {/* Footer with "View all violations" link */}
-                <div className="p-3 border-t border-border bg-surface-elevated/40 flex items-center justify-between shrink-0 text-xs">
-                  <span className="text-[11px] text-muted-foreground font-mono">
-                    WSS Live Realtime Feed
-                  </span>
-                  <NavLink
-                    to="/proctor/audit"
-                    onClick={() => setNotificationsOpen(false)}
-                    className="inline-flex items-center gap-1 text-xs font-semibold text-brand hover:underline transition-colors"
-                  >
-                    <span>View all violations</span>
-                    <ChevronRight className="w-3.5 h-3.5" />
-                  </NavLink>
-                </div>
+                <NotificationPanel onClose={() => setNotificationsOpen(false)} />
               </OverlayPanel>
             </div>
 
@@ -1292,10 +1161,9 @@ export function AppShell() {
                               if (!hasChildren) setMobileMenuOpen(false);
                             }}
                             className={({ isActive }) =>
-                              `flex-1 flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-colors ${
-                                isActive
-                                  ? 'bg-brand/10 text-brand font-semibold'
-                                  : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                              `flex-1 flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-colors ${isActive
+                                ? 'bg-brand/10 text-brand font-semibold'
+                                : 'text-muted-foreground hover:text-foreground hover:bg-muted'
                               }`
                             }
                           >
@@ -1316,9 +1184,8 @@ export function AppShell() {
                               aria-label="Toggle sub-menu"
                             >
                               <ChevronDown
-                                className={`w-4 h-4 transition-transform duration-200 ${
-                                  isGroupOpen ? 'rotate-180' : ''
-                                }`}
+                                className={`w-4 h-4 transition-transform duration-200 ${isGroupOpen ? 'rotate-180' : ''
+                                  }`}
                               />
                             </button>
                           )}
@@ -1332,10 +1199,9 @@ export function AppShell() {
                                 to={sub.to}
                                 onClick={() => setMobileMenuOpen(false)}
                                 className={({ isActive }) =>
-                                  `block px-3 py-1.5 rounded-lg text-xs font-mono relative transition-colors ${
-                                    isActive
-                                      ? 'text-brand font-semibold bg-brand/10'
-                                      : 'text-muted-foreground hover:text-foreground'
+                                  `block px-3 py-1.5 rounded-lg text-xs font-mono relative transition-colors ${isActive
+                                    ? 'text-brand font-semibold bg-brand/10'
+                                    : 'text-muted-foreground hover:text-foreground'
                                   }`
                                 }
                               >

@@ -21,6 +21,7 @@ import { examsRouter } from './routes/exams.routes.js';
 import { extensionsRouter } from './routes/extensions.routes.js';
 import { logsRouter } from './routes/logs.routes.js';
 import { monitorRouter } from './routes/monitor.routes.js';
+import { notificationsRouter } from './routes/notifications.routes.js';
 import { proctorRouter } from './routes/proctor.routes.js';
 import { sessionsRouter } from './routes/sessions.routes.js';
 import { violationsRouter } from './routes/violations.routes.js';
@@ -171,6 +172,7 @@ export function createApp() {
   app.use('/api/violations', violationsRouter);
   app.use('/api/proctor', proctorRouter);
   app.use('/api/admin', adminRouter);
+  app.use('/api/notifications', notificationsRouter);
 
   // Dedicated simulator reset endpoint
   app.post(

@@ -6,6 +6,10 @@ import { useAuthStore } from '../store/authStore';
 import { api } from '../lib/api';
 import { toast as sonnerToast } from '../components/ui/Toast';
 import {
+  useNotificationsStore,
+  type AppNotification,
+} from '../store/notificationsStore';
+import {
   SocketContext,
   type LiveViolationEvent,
   type LiveSessionEvent,
@@ -28,8 +32,35 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
   const [dbStatus, setDbStatus] = useState<'up' | 'down'>('down');
   const [mysqlVersion, setMysqlVersion] = useState<string>('8.0');
 
-  const [violationCount, setViolationCount] = useState<number>(0);
-  const [recentAlerts, setRecentAlerts] = useState<LiveViolationEvent[]>([]);
+  // Single Source of Truth: notifications derived from store
+  const notifications = useNotificationsStore((s) => s.items);
+  const violationCount = notifications.filter((i) => !i.readAt).length;
+
+  const recentAlerts: LiveViolationEvent[] = useMemo(() => {
+    return notifications
+      .filter((n) => n.type === 'VIOLATION')
+      .map((n) => ({
+        id: String(n.id),
+        logId: typeof n.payload?.logId === 'number' ? (n.payload.logId as number) : undefined,
+        sessionId: n.sessionId ?? 0,
+        studentName: n.studentName,
+        examTitle: n.examTitle,
+        violationCode: String(n.payload?.violationCode ?? 'VIOLATION'),
+        violationLabel: String(n.payload?.violationLabel ?? n.title),
+        severity: (n.severity as LiveViolationEvent['severity']) ?? 'MEDIUM',
+        penaltyApplied:
+          typeof n.payload?.penaltyApplied === 'number'
+            ? (n.payload.penaltyApplied as number)
+            : undefined,
+        newTrustScore:
+          typeof n.payload?.newTrustScore === 'number'
+            ? (n.payload.newTrustScore as number)
+            : undefined,
+        sessionStatus: n.isSessionLive ? 'IN_PROGRESS' : 'CLOSED',
+        occurredAt: n.createdAt,
+      }));
+  }, [notifications]);
+
   const [lastSessionEvent, setLastSessionEvent] = useState<LiveSessionEvent | null>(null);
 
   const hasShownDisconnectToastRef = useRef<boolean>(false);
@@ -102,6 +133,9 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       setDbStatus('up');
       measureLatency(s);
 
+      // Refetch notifications on socket connect / reconnect
+      void useNotificationsStore.getState().fetchNotifications();
+
       // If we previously lost connection, show recovery toast and refetch active queries
       if (wasEverConnectedRef.current && hasShownDisconnectToastRef.current) {
         sonnerToast.success('Back online', {
@@ -157,24 +191,14 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       pollHealth();
     };
 
-    const onViolation = (data: Record<string, unknown>) => {
-      const alert: LiveViolationEvent = {
-        id: `${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
-        logId: typeof data.logId === 'number' ? data.logId : undefined,
-        sessionId: Number(data.sessionId ?? 0),
-        studentName: typeof data.studentName === 'string' ? data.studentName : undefined,
-        examTitle: typeof data.examTitle === 'string' ? data.examTitle : undefined,
-        violationCode: String(data.violationCode ?? data.code ?? 'UNKNOWN'),
-        violationLabel: typeof data.violationLabel === 'string' ? data.violationLabel : undefined,
-        severity: (data.severity as LiveViolationEvent['severity']) ?? 'MEDIUM',
-        penaltyApplied: typeof data.penaltyApplied === 'number' ? data.penaltyApplied : undefined,
-        newTrustScore: typeof data.newTrustScore === 'number' ? data.newTrustScore : undefined,
-        sessionStatus: typeof data.sessionStatus === 'string' ? data.sessionStatus : undefined,
-        occurredAt: String(data.occurredAt ?? new Date().toISOString()),
-      };
+    const onNotificationNew = (data: AppNotification) => {
+      useNotificationsStore.getState().appendNotification(data);
+    };
 
-      setViolationCount((c) => c + 1);
-      setRecentAlerts((prev) => [alert, ...prev.slice(0, 19)]);
+    const onViolation = () => {
+      // Handled authoritatively by notification:new for store updates
+      queryClient.invalidateQueries({ queryKey: ['proctor-live-monitor'] });
+      queryClient.invalidateQueries({ queryKey: ['proctor-audit-report'] });
     };
 
     const onSessionUpdate = (data: Record<string, unknown>) => {
@@ -189,20 +213,24 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     };
 
     const onSessionTerminated = (data: Record<string, unknown>) => {
+      const sessionId = Number(data.sessionId ?? 0);
       setLastSessionEvent({
-        sessionId: Number(data.sessionId ?? 0),
+        sessionId,
         studentId: typeof data.studentId === 'number' ? data.studentId : undefined,
         studentName: typeof data.studentName === 'string' ? data.studentName : undefined,
         status: 'TERMINATED_CHEATING',
         trustScore: typeof data.trustScore === 'number' ? data.trustScore : 0,
         timestamp: new Date().toISOString(),
       });
-      setViolationCount((c) => c + 1);
+      if (sessionId > 0) {
+        useNotificationsStore.getState().updateSessionStatus(sessionId, false);
+      }
     };
 
     const onExamSubmitted = (data: Record<string, unknown>) => {
+      const sessionId = Number(data.sessionId ?? 0);
       setLastSessionEvent({
-        sessionId: Number(data.sessionId ?? 0),
+        sessionId,
         studentId: typeof data.studentId === 'number' ? data.studentId : undefined,
         studentName: typeof data.studentName === 'string' ? data.studentName : undefined,
         status: 'SUBMITTED',
@@ -212,15 +240,16 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
             : undefined,
         timestamp: new Date().toISOString(),
       });
+      if (sessionId > 0) {
+        useNotificationsStore.getState().updateSessionStatus(sessionId, false);
+      }
     };
 
     const onSimulatorReset = () => {
-      setRecentAlerts((prev) =>
-        prev.filter((a) => !a.studentName?.startsWith('Virtual Candidate'))
-      );
       setLastSessionEvent((prev) =>
         prev?.studentName?.startsWith('Virtual Candidate') ? null : prev
       );
+      void useNotificationsStore.getState().fetchNotifications();
     };
 
     s.on('connect', onConnect);
@@ -230,6 +259,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     s.io.on('reconnect', onReconnect);
     s.io.on('reconnect_failed', onReconnectFailed);
 
+    s.on('notification:new', onNotificationNew);
     s.on('violation:new', onViolation);
     s.on('session:update', onSessionUpdate);
     s.on('session:terminated', onSessionTerminated);
@@ -279,6 +309,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       s.io.off('reconnect', onReconnect);
       s.io.off('reconnect_failed', onReconnectFailed);
 
+      s.off('notification:new', onNotificationNew);
       s.off('violation:new', onViolation);
       s.off('session:update', onSessionUpdate);
       s.off('session:terminated', onSessionTerminated);
@@ -288,13 +319,11 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
   }, [token, user, queryClient, pollHealth, measureLatency]);
 
   const clearAlerts = useCallback(() => {
-    setViolationCount(0);
-    setRecentAlerts([]);
+    void useNotificationsStore.getState().clearAll();
   }, []);
 
   const markAlertRead = useCallback((id: string) => {
-    setRecentAlerts((prev) => prev.filter((a) => a.id !== id));
-    setViolationCount((c) => Math.max(0, c - 1));
+    void useNotificationsStore.getState().markAsRead(id);
   }, []);
 
   const isConnected = connectionState === 'connected';
