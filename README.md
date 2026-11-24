@@ -6,23 +6,88 @@ All core academic integrity invariants—penalty deductions, dynamic trust score
 
 ---
 
-## ⚡ Quick Start (Under 5 Commands)
+## ⚡ Quick Start & Database Setup (Zero Docker Required)
 
-Get the complete system running locally with seeded mock exams and virtual students in under 2 minutes (run all commands from the project root):
+ProctorIQ supports two database setups with zero dependency on Docker:
+1. **Option A (Free Hosted Cloud Database):** Any managed MySQL 8.0+ provider (Aiven, AWS RDS / Aurora, GCP Cloud SQL, PlanetScale with InnoDB triggers, or Railway MySQL).
+2. **Option B (Local MySQL 8 Service):** A standard local MySQL 8.0+ server installed directly on Windows, macOS (`brew services start mysql`), or Linux (`systemctl start mysql`).
+
+*(Optional: Docker is still supported for local containerization via `npm run db:up` if desired).*
+
+### 1. Configure Database Connection
+
+Create or edit `.env` in the project root:
+
+```env
+# Option A: Full Connection String (Cloud / Hosted MySQL with SSL)
+DATABASE_URL=mysql://user:password@cloud-host.com:3306/proctoriq?ssl=true
+DB_SSL=true
+
+# OR Option B: Standard Parameterized Configuration (Local / Self-Hosted)
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_USER=root
+DB_PASSWORD=proctoriq_root
+DB_NAME=proctoriq
+DB_CONNECTION_LIMIT=3
+DB_SSL=false
+```
+
+### 2. Apply Migrations & Seed Data (Docker-Free Node.js Runner)
+
+Run the automated Node.js migration runner (parses MySQL `DELIMITER` directives, creates tables, triggers, procedures, views, and tracks applied versions in `schema_migrations`):
 
 ```bash
-# 1. Install dependencies across monorepo
+# 1. Install dependencies
 npm install && npm --prefix server install && npm --prefix client install
 
-# 2. Configure environment (copy default configuration)
-cp .env.example .env
+# 2. Run pending migrations in alphanumeric order
+npm run db:migrate
 
-# 3. Start MySQL 8.0 container (runs schema, triggers & seeds automatically)
-npm run db:up
+# 3. Populate default exam and student accounts
+npm run db:seed
 
-# 4. Launch full-stack platform (API, Vite Client, Sockets & DB verify)
+# 4. Verify hosted database capabilities (ACID locks, triggers & procedures)
+npm run db:verify
+
+# 5. Start full-stack development servers
 npm run demo
 ```
+
+---
+
+## 🧪 Isolated Test Database Setup (Phase 17 Strict Guard)
+
+Automated tests and browser agents are **strictly quarantined** to a dedicated test database whose name must end with `_test`:
+
+1. **Create the test database** on your local or hosted MySQL instance:
+   ```sql
+   CREATE DATABASE exam_monitoring_test;
+   ```
+2. **Configure `.env.test`**:
+   Ensure `DB_NAME=exam_monitoring_test` in `.env.test` (and `server/.env.test`).
+3. **Reset and seed test database**:
+   ```bash
+   npm --prefix server run db:test:reset
+   ```
+4. **Strict Safety Guard**:
+   All tests and reset commands invoke `assertTestDatabaseSafety()`. If `DB_NAME` does not end with `_test` or `NODE_ENV !== 'test'`, execution is immediately aborted with a safety exception. Production data is never touched.
+
+---
+
+## 📦 Production Data Migration Utility
+
+To copy live data from an existing Docker instance or local database to your hosted database:
+
+```bash
+# 1. Dry run (compares table schemas, lists rows, triggers, procedures without writing):
+npm run db:migrate:data -- --source-db=proctoriq --target-db=proctoriq_dev --dry-run
+
+# 2. Execute migration with automated row count and trigger parity validation:
+npm run db:migrate:data -- --source-db=proctoriq --target-db=proctoriq_dev --execute
+```
+
+---
 
 Once running:
 - 🌐 **Candidate & Mission Control UI:** [http://localhost:5173](http://localhost:5173)

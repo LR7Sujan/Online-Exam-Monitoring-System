@@ -209,7 +209,7 @@ recordingsRouter.get(
       // Audit view in Recording_Access_Log
       const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.socket.remoteAddress || null;
       const ua = req.headers['user-agent'] || null;
-      void logRecordingAccess({
+      await logRecordingAccess({
         recordingId,
         userId: Number(user.sub),
         ipAddress: ip,

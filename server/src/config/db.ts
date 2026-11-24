@@ -1,18 +1,130 @@
-import mysql, { type Pool, type PoolConnection, type ResultSetHeader, type RowDataPacket } from 'mysql2/promise';
+import mysql, {
+  type Pool,
+  type PoolConnection,
+  type ResultSetHeader,
+  type RowDataPacket,
+  type SslOptions,
+} from 'mysql2/promise';
+import { existsSync, readFileSync } from 'node:fs';
 import { env } from './env.js';
 
-export const pool: Pool = mysql.createPool({
-  host: env.DB_HOST,
-  port: env.DB_PORT,
-  user: env.DB_USER,
-  password: env.DB_PASSWORD,
-  database: env.DB_NAME,
-  connectionLimit: env.DB_CONNECTION_LIMIT,
-  waitForConnections: true,
-  queueLimit: 0,
-  namedPlaceholders: false,
-  multipleStatements: false,
-  timezone: 'Z',
+declare global {
+  var __proctoriq_pool: Pool | undefined;
+}
+
+function resolveSslConfig(): SslOptions | undefined {
+  if (!env.DB_SSL) {
+    return undefined;
+  }
+
+  const ssl: SslOptions = {
+    rejectUnauthorized: true,
+  };
+
+  const caPathOrCert = env.DB_SSL_CA || env.DB_CA_CERT;
+  if (caPathOrCert) {
+    try {
+      if (existsSync(caPathOrCert)) {
+        ssl.ca = readFileSync(caPathOrCert, 'utf8');
+      } else {
+        ssl.ca = caPathOrCert;
+      }
+    } catch (err) {
+      console.warn('[DB] Failed to read CA certificate from path, using raw string:', err);
+      ssl.ca = caPathOrCert;
+    }
+  }
+
+  return ssl;
+}
+
+/**
+ * Creates a new MySQL connection pool configured for serverless-safe execution:
+ * - Low connection limit (1-3) to avoid connection exhaustion under lambda scale-out
+ * - Keepalive and connection timeouts
+ * - Explicit UTC timezone setting ('Z')
+ * - Automatic disposal on connection loss
+ */
+export function createNewPool(): Pool {
+  const ssl = resolveSslConfig();
+
+  const newPool = mysql.createPool({
+    host: env.DB_HOST,
+    port: env.DB_PORT,
+    user: env.DB_USER,
+    password: env.DB_PASSWORD,
+    database: env.DB_NAME,
+    connectionLimit: env.DB_CONNECTION_LIMIT,
+    waitForConnections: true,
+    queueLimit: 0,
+    enableKeepAlive: true,
+    keepAliveInitialDelay: 10000,
+    connectTimeout: 10000,
+    namedPlaceholders: false,
+    multipleStatements: false,
+    timezone: 'Z',
+    dateStrings: false,
+    ssl,
+  });
+
+  // Handle fatal pool/socket error events
+  (newPool as unknown as { on: (event: string, cb: (...args: unknown[]) => void) => void }).on(
+    'error',
+    (err: unknown) => {
+      console.error('[DB Pool Event Error]:', err);
+      const errCode = (err as { code?: string })?.code;
+      if (
+        errCode === 'PROTOCOL_CONNECTION_LOST' ||
+        errCode === 'ECONNRESET' ||
+        errCode === 'ETIMEDOUT' ||
+        errCode === 'EPIPE'
+      ) {
+        console.warn('[DB] Connection lost. Invalidate global pool cache for recreation...');
+        if (globalThis.__proctoriq_pool === newPool) {
+          globalThis.__proctoriq_pool = undefined;
+        }
+      }
+    }
+  );
+
+  return newPool;
+}
+
+/**
+ * Returns the cached MySQL connection pool from globalThis, lazily creating it if needed.
+ */
+export function getPool(): Pool {
+  if (!globalThis.__proctoriq_pool) {
+    globalThis.__proctoriq_pool = createNewPool();
+  }
+  return globalThis.__proctoriq_pool;
+}
+
+/**
+ * Closes the cached connection pool and resets the global reference.
+ */
+export async function resetPool(): Promise<void> {
+  if (globalThis.__proctoriq_pool) {
+    try {
+      await globalThis.__proctoriq_pool.end();
+    } catch {
+      // Ignore teardown errors
+    }
+    globalThis.__proctoriq_pool = undefined;
+  }
+}
+
+/**
+ * Transparent Proxy export for `pool`.
+ * Any call like `pool.execute(...)`, `pool.query(...)`, `pool.getConnection()`, `pool.end()`
+ * lazily accesses the active cached pool on globalThis.
+ */
+export const pool: Pool = new Proxy({} as Pool, {
+  get(_target, prop: string | symbol) {
+    const currentPool = getPool();
+    const val = (currentPool as unknown as Record<string | symbol, unknown>)[prop];
+    return typeof val === 'function' ? val.bind(currentPool) : val;
+  },
 });
 
 export type SqlParams = Parameters<Pool['execute']>[1];
@@ -21,24 +133,70 @@ export async function queryRows<T extends RowDataPacket[]>(
   sql: string,
   params: SqlParams = []
 ): Promise<T> {
-  const [rows] = await pool.execute<T>(sql, params);
-  return rows;
+  try {
+    const [rows] = await getPool().execute<T>(sql, params);
+    return rows;
+  } catch (err) {
+    const errCode = (err as { code?: string })?.code;
+    if (
+      errCode === 'PROTOCOL_CONNECTION_LOST' ||
+      errCode === 'ECONNRESET' ||
+      errCode === 'ETIMEDOUT'
+    ) {
+      console.warn('[DB] queryRows failed due to connection loss. Retrying with fresh pool...');
+      await resetPool();
+      const [rows] = await getPool().execute<T>(sql, params);
+      return rows;
+    }
+    throw err;
+  }
 }
 
 export async function executeSql(
   sql: string,
   params: SqlParams = []
 ): Promise<ResultSetHeader> {
-  const [result] = await pool.execute<ResultSetHeader>(sql, params);
-  return result;
+  try {
+    const [result] = await getPool().execute<ResultSetHeader>(sql, params);
+    return result;
+  } catch (err) {
+    const errCode = (err as { code?: string })?.code;
+    if (
+      errCode === 'PROTOCOL_CONNECTION_LOST' ||
+      errCode === 'ECONNRESET' ||
+      errCode === 'ETIMEDOUT'
+    ) {
+      console.warn('[DB] executeSql failed due to connection loss. Retrying with fresh pool...');
+      await resetPool();
+      const [result] = await getPool().execute<ResultSetHeader>(sql, params);
+      return result;
+    }
+    throw err;
+  }
 }
 
 export async function withConnection<T>(
   fn: (conn: PoolConnection) => Promise<T>
 ): Promise<T> {
-  const conn = await pool.getConnection();
+  const currentPool = getPool();
+  const conn = await currentPool.getConnection();
   try {
+    // Explicitly guarantee UTC timezone on connection session
+    await conn.query("SET time_zone = '+00:00'");
     return await fn(conn);
+  } catch (err) {
+    const errCode = (err as { code?: string })?.code;
+    if (
+      errCode === 'PROTOCOL_CONNECTION_LOST' ||
+      errCode === 'ECONNRESET' ||
+      errCode === 'ETIMEDOUT'
+    ) {
+      console.warn('[DB] Connection error encountered. Invalidating pool cache...');
+      if (globalThis.__proctoriq_pool === currentPool) {
+        globalThis.__proctoriq_pool = undefined;
+      }
+    }
+    throw err;
   } finally {
     conn.release();
   }
@@ -51,7 +209,7 @@ export interface DbHealthResult {
 
 export async function testDbConnection(): Promise<boolean> {
   try {
-    await pool.query('SELECT 1');
+    await getPool().query('SELECT 1');
     return true;
   } catch {
     return false;

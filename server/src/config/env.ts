@@ -38,16 +38,57 @@ for (const envPath of candidateEnvPaths) {
   }
 }
 
+// Parse DATABASE_URL if provided to pre-populate DB_* environment variables
+if (process.env.DATABASE_URL) {
+  try {
+    const parsedUrl = new URL(process.env.DATABASE_URL);
+    if (!process.env.DB_HOST && parsedUrl.hostname) {
+      process.env.DB_HOST = parsedUrl.hostname;
+    }
+    if (!process.env.DB_PORT && parsedUrl.port) {
+      process.env.DB_PORT = parsedUrl.port;
+    }
+    if (!process.env.DB_USER && parsedUrl.username) {
+      process.env.DB_USER = decodeURIComponent(parsedUrl.username);
+    }
+    if (!process.env.DB_PASSWORD && parsedUrl.password) {
+      process.env.DB_PASSWORD = decodeURIComponent(parsedUrl.password);
+    }
+    if (!process.env.DB_NAME && parsedUrl.pathname) {
+      const db = parsedUrl.pathname.replace(/^\//, '');
+      if (db) process.env.DB_NAME = db;
+    }
+    const sslParam = parsedUrl.searchParams.get('ssl');
+    if (process.env.DB_SSL === undefined && sslParam) {
+      const lower = sslParam.toLowerCase();
+      process.env.DB_SSL = lower === 'true' || lower === '1' || lower.includes('rejectunauthorized') ? 'true' : 'false';
+    }
+  } catch (err) {
+    console.warn('[Env] Failed to parse DATABASE_URL:', err);
+  }
+}
+
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default(isTestEnv ? 'test' : 'development'),
   PORT: z.coerce.number().int().min(1).max(65535).default(isTestEnv ? 4001 : 4000),
   CLIENT_ORIGIN: z.string().default(isTestEnv ? 'http://localhost:5174' : 'http://localhost:5173'),
+  DATABASE_URL: z.string().optional(),
   DB_HOST: z.string().min(1).default('127.0.0.1'),
   DB_PORT: z.coerce.number().int().min(1).max(65535).default(3306),
   DB_USER: z.string().min(1).default('root'),
   DB_PASSWORD: z.string().default('proctoriq_root'),
   DB_NAME: z.string().min(1).default(isTestEnv ? 'exam_monitoring_test' : 'proctoriq'),
-  DB_CONNECTION_LIMIT: z.coerce.number().int().min(1).max(100).default(10),
+  DB_CONNECTION_LIMIT: z.coerce.number().int().min(1).max(100).default(isTestEnv ? 30 : 3),
+  DB_SSL: z
+    .union([z.boolean(), z.string()])
+    .transform((val) => {
+      if (typeof val === 'boolean') return val;
+      const lower = String(val).toLowerCase().trim();
+      return lower === 'true' || lower === '1' || lower === 'yes';
+    })
+    .default(false),
+  DB_SSL_CA: z.string().optional(),
+  DB_CA_CERT: z.string().optional(),
   JWT_SECRET: z
     .string()
     .min(16, 'JWT_SECRET must be at least 16 characters')
