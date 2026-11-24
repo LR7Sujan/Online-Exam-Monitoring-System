@@ -362,4 +362,151 @@ export interface RecordingReviewDetails {
   notes: RecordingNoteItem[];
 }
 
+export interface StudentAuditItem {
+  id: number;
+  name: string;
+  email: string;
+  joinedAt: string;
+  examsAttended: number;
+  avgScore: number | null;
+  avgTrust: number | null;
+  worstIntegrityStatus: IntegrityStatus | 'NONE';
+  lastExamDate: string | null;
+  totalViolations: number;
+  totalWarnings: number;
+  isCurrentlyActive: boolean;
+  activeSessionId: number | null;
+}
+
+export interface StudentListResponse {
+  students: StudentAuditItem[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+export interface StudentProfileData {
+  student: {
+    id: number;
+    name: string;
+    email: string;
+    joinedAt: string;
+    role: 'STUDENT';
+  };
+  kpis: {
+    examsAttended: number;
+    avgScore: number | null;
+    avgTrust: number | null;
+    totalViolations: number;
+    cleanRate: number;
+  };
+  progress: Array<{
+    sessionId: number;
+    examId: number;
+    examTitle: string;
+    subjectCode: string;
+    date: string;
+    score: number | null;
+    trustScore: number;
+    status: SessionStatus;
+  }>;
+  violationsByType: Array<{
+    code: string;
+    label: string;
+    count: number;
+  }>;
+}
+
+export interface StudentAttendedExamItem {
+  sessionId: number;
+  examId: number;
+  examTitle: string;
+  subjectCode: string;
+  date: string;
+  rawScore: number | null;
+  totalMarks: number | null;
+  percentage: number | null;
+  trustScore: number;
+  minTrustScore: number;
+  integrityStatus: IntegrityStatus;
+  sessionStatus: SessionStatus;
+  violationsCount: number;
+  warningsCount: number;
+  hasRecording: boolean;
+  recordingId: number | null;
+}
+
+export interface ScorecardQuestionItem {
+  displayedNumber: number;
+  questionId: number;
+  questionText: string;
+  options: {
+    A: string;
+    B: string;
+    C: string;
+    D: string;
+  };
+  studentAnswer: AnswerOption | null;
+  studentAnswerText: string | null;
+  correctAnswer: AnswerOption;
+  correctAnswerText: string;
+  marksGained: number;
+  totalMarks: number;
+  isCorrect: boolean;
+  isUnanswered: boolean;
+}
+
+export interface ScorecardData {
+  header: {
+    studentId: number;
+    studentName: string;
+    studentEmail: string;
+    examId: number;
+    examTitle: string;
+    paperCode: string;
+    startedAt: string;
+    endedAt: string | null;
+    status: SessionStatus;
+    durationUsedMinutes: number;
+    extraMinutesGranted: number;
+  };
+  score: {
+    rawScore: number;
+    totalMarks: number;
+    percentage: number;
+    correctCount: number;
+    wrongCount: number;
+    unansweredCount: number;
+    negativeMarks: number;
+    examRank: number;
+    totalAttendees: number;
+    examAverage: number;
+  };
+  integrity: {
+    finalTrustScore: number;
+    minRequiredScore: number;
+    integrityStatus: IntegrityStatus;
+  };
+  questions: ScorecardQuestionItem[];
+  timeline: ReviewTimelineEvent[];
+  extensionHistory: Array<{
+    requestId: number;
+    requestedMinutes: number;
+    grantedMinutes?: number | null;
+    reason: string;
+    status: ExtensionRequestStatus;
+    requestedAt: string;
+    reviewedAt: string | null;
+    reviewerNotes: string | null;
+  }>;
+  recording: {
+    hasRecording: boolean;
+    recordingId: number | null;
+    status: string | null;
+    durationMs: number | null;
+    message: string;
+  };
+}
+
 

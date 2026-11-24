@@ -25,6 +25,7 @@ import { notificationsRouter } from './routes/notifications.routes.js';
 import { proctorRouter } from './routes/proctor.routes.js';
 import { sessionsRouter } from './routes/sessions.routes.js';
 import { settingsRouter } from './routes/settings.routes.js';
+import { studentsRouter } from './routes/students.routes.js';
 import { recordingsRouter } from './routes/recordings.routes.js';
 import { violationsRouter } from './routes/violations.routes.js';
 import { violationTypesRouter } from './routes/violationTypes.routes.js';
@@ -176,6 +177,7 @@ export function createApp() {
   app.use('/api/admin', adminRouter);
   app.use('/api/notifications', notificationsRouter);
   app.use('/api/settings', settingsRouter);
+  app.use('/api/students', studentsRouter);
   app.use('/api', recordingsRouter);
 
   // Dedicated simulator reset endpoint

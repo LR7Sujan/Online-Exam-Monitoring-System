@@ -690,9 +690,17 @@ export function ProctorDashboardPage({ initialTab = 'monitor' }: { initialTab?: 
                         <button
                           type="button"
                           onClick={() => setInspectedSessionId(jf.sessionId)}
-                          className="text-brand hover:underline font-semibold ml-1 cursor-pointer"
+                          className="text-muted-foreground hover:text-foreground text-[10px] underline ml-1 cursor-pointer"
                         >
-                          Inspect &rarr;
+                          Drawer
+                        </button>
+                        <button
+                          type="button"
+                          data-testid={`just-finished-scorecard-${jf.sessionId}`}
+                          onClick={() => navigate(`/proctor/students/0/exams/${jf.sessionId}`)}
+                          className="text-brand hover:underline font-bold text-[10px] ml-1 cursor-pointer"
+                        >
+                          Scorecard &rarr;
                         </button>
                       </div>
                     ))}

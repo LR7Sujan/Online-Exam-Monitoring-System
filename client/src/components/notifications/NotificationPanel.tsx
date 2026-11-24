@@ -54,7 +54,7 @@ export function NotificationPanel({ onClose }: NotificationPanelProps) {
 
     if (item.sessionId) {
       if (isProctorOrAdmin) {
-        navigate(`/proctor?inspect=${item.sessionId}`);
+        navigate(`/proctor/students/0/exams/${item.sessionId}`);
       } else {
         navigate(`/student/session/${item.sessionId}`);
       }

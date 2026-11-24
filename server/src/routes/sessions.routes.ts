@@ -27,6 +27,7 @@ import {
   violationRateLimiter,
 } from '../services/violationGuard.js';
 import { generateSignedSnapshotUrl } from '../services/snapshotSigner.js';
+import { getSessionScorecard } from '../services/studentAuditService.js';
 import type { AnswerOption, ExamSessionRow, ResultRow, SessionStatus, SessionWarningRow, TimeExtensionRequestRow, ViolationTypeRow } from '../types/api.js';
 import { AppError } from '../utils/errors.js';
 import { sendSuccess } from '../utils/response.js';
@@ -1538,6 +1539,26 @@ sessionsRouter.get(
         result: results[0],
         violations: mappedViolations,
       });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// GET /api/sessions/:sessionId/scorecard (PROCTOR | ADMIN)
+sessionsRouter.get(
+  '/:sessionId/scorecard',
+  requireAuth,
+  requireRole('PROCTOR', 'ADMIN'),
+  validate({ params: sessionIdParamSchema }),
+  async (req: AuthenticatedRequest, res, next) => {
+    try {
+      const { sessionId } = req.params as unknown as z.infer<typeof sessionIdParamSchema>;
+      const scorecard = await getSessionScorecard(sessionId);
+      if (!scorecard) {
+        throw new AppError(404, 'SESSION_NOT_FOUND', 'Exam session not found.');
+      }
+      sendSuccess(res, scorecard);
     } catch (err) {
       next(err);
     }

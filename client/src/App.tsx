@@ -38,6 +38,9 @@ const StudentDashboardPage = lazy(() => import('./pages/StudentDashboardPage').t
 const StudentExamPage = lazy(() => import('./pages/StudentExamPage').then((m) => ({ default: m.StudentExamPage })));
 const StudentResultPage = lazy(() => import('./pages/StudentResultPage').then((m) => ({ default: m.StudentResultPage })));
 const RecordingPlayerPage = lazy(() => import('./pages/RecordingPlayerPage').then((m) => ({ default: m.RecordingPlayerPage })));
+const StudentAuditListPage = lazy(() => import('./pages/StudentAuditListPage').then((m) => ({ default: m.StudentAuditListPage })));
+const StudentProfilePage = lazy(() => import('./pages/StudentProfilePage').then((m) => ({ default: m.StudentProfilePage })));
+const ExamScorecardPage = lazy(() => import('./pages/ExamScorecardPage').then((m) => ({ default: m.ExamScorecardPage })));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage').then((m) => ({ default: m.NotFoundPage })));
 
 const queryClient = new QueryClient({
@@ -159,6 +162,32 @@ export function App() {
                       }
                     />
 
+                    {/* Student Audit Routes (Proctor) */}
+                    <Route
+                      path="/proctor/students"
+                      element={
+                        <RequireRole roles={['PROCTOR', 'ADMIN']}>
+                          <StudentAuditListPage />
+                        </RequireRole>
+                      }
+                    />
+                    <Route
+                      path="/proctor/students/:id"
+                      element={
+                        <RequireRole roles={['PROCTOR', 'ADMIN']}>
+                          <StudentProfilePage />
+                        </RequireRole>
+                      }
+                    />
+                    <Route
+                      path="/proctor/students/:id/exams/:sessionId"
+                      element={
+                        <RequireRole roles={['PROCTOR', 'ADMIN']}>
+                          <ExamScorecardPage />
+                        </RequireRole>
+                      }
+                    />
+
                     {/* Recording Review Player Route (Proctor & Admin only) */}
                     <Route
                       path="/recordings/:recordingId"
@@ -207,6 +236,32 @@ export function App() {
                       element={
                         <RequireRole roles={['ADMIN']}>
                           <SimulatorPage />
+                        </RequireRole>
+                      }
+                    />
+
+                    {/* Student Audit Routes (Admin) */}
+                    <Route
+                      path="/admin/students"
+                      element={
+                        <RequireRole roles={['ADMIN']}>
+                          <StudentAuditListPage />
+                        </RequireRole>
+                      }
+                    />
+                    <Route
+                      path="/admin/students/:id"
+                      element={
+                        <RequireRole roles={['ADMIN']}>
+                          <StudentProfilePage />
+                        </RequireRole>
+                      }
+                    />
+                    <Route
+                      path="/admin/students/:id/exams/:sessionId"
+                      element={
+                        <RequireRole roles={['ADMIN']}>
+                          <ExamScorecardPage />
                         </RequireRole>
                       }
                     />
