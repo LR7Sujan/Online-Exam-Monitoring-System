@@ -45,6 +45,8 @@ export interface ExamRow extends RowDataPacket {
   max_extension_mins: number;
   shuffle_questions?: number | boolean;
   shuffle_options?: number | boolean;
+  record_video?: number | boolean;
+  record_audio?: number | boolean;
   start_window: Date;
   end_window: Date;
   is_published: number | boolean;

@@ -23,6 +23,7 @@ import { useProctoring, type ViolationReportResponse } from '../hooks/useProctor
 import { useFaceDetection } from '../hooks/useFaceDetection';
 import { usePhoneDetection } from '../hooks/usePhoneDetection';
 import { useVoiceDetection } from '../hooks/useVoiceDetection';
+import { useExamRecorder } from '../hooks/useExamRecorder';
 import { ViolationWarningOverlay } from '../components/student/ViolationWarningOverlay';
 import { WarningHistoryDrawer } from '../components/student/WarningHistoryDrawer';
 import { FullscreenExitOverlay } from '../components/student/FullscreenExitOverlay';
@@ -102,6 +103,7 @@ export function StudentExamPage() {
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'queued'>('saved');
   const [lastSavedTime, setLastSavedTime] = useState<string>('All changes synced');
   const retryQueueRef = useRef<QueuedAnswer[]>([]);
+  const flushAndFinishRef = useRef<() => Promise<boolean>>(async () => true);
 
   // Submit confirmation modal
   const [confirmSubmitOpen, setConfirmSubmitOpen] = useState<boolean>(false);
@@ -221,6 +223,7 @@ export function StudentExamPage() {
   const submitMutation = useMutation({
     mutationFn: async () => {
       await flushRetryQueue();
+      await flushAndFinishRef.current();
       return api.post<{ result: unknown }>(`/sessions/${numericSessionId}/submit`);
     },
     onSuccess: () => {
@@ -259,6 +262,7 @@ export function StudentExamPage() {
     },
     onTerminated: async () => {
       setSessionStatus('TERMINATED_CHEATING');
+      await flushAndFinishRef.current();
       mediaSession.stopAll();
       if (typeof document !== 'undefined' && document.fullscreenElement) {
         document.exitFullscreen().catch(() => {});
@@ -353,6 +357,30 @@ export function StudentExamPage() {
     },
   });
 
+  // 9. Client-Side Video Recording Hook (MediaRecorder on existing stream, 10s chunks, IndexedDB queue)
+  const isRecordVideo = metaQuery.data?.session?.record_video !== false && metaQuery.data?.session?.record_video !== 0;
+  const isRecordAudio = Boolean(metaQuery.data?.session?.record_audio);
+
+  const {
+    isRecording,
+    recordingSeconds,
+    flushAndFinish,
+  } = useExamRecorder({
+    stream,
+    sessionId: numericSessionId,
+    examId: metaQuery.data?.session?.exam_id ?? 0,
+    recordVideo: isRecordVideo,
+    recordAudio: isRecordAudio,
+    isExamRunning: sessionStatus === 'IN_PROGRESS',
+    onUploadStalled: (reason) => {
+      console.warn('[ExamRecorder] Stalled:', reason);
+    },
+  });
+
+  useEffect(() => {
+    flushAndFinishRef.current = flushAndFinish;
+  }, [flushAndFinish]);
+
   // 7. Realtime Socket Listeners for Proctor Adjustments
   useEffect(() => {
     const socket = getSocket(token);
@@ -368,10 +396,11 @@ export function StudentExamPage() {
       if (st) setSessionStatus(st);
     };
 
-    const onTerminated = (payload: { sessionId: number; trustScore?: number }) => {
+    const onTerminated = async (payload: { sessionId: number; trustScore?: number }) => {
       if (payload.sessionId !== numericSessionId) return;
       if (typeof payload.trustScore === 'number') setTrustScore(payload.trustScore);
       setSessionStatus('TERMINATED_CHEATING');
+      await flushAndFinishRef.current();
       mediaSession.stopAll();
       if (typeof document !== 'undefined' && document.fullscreenElement) {
         document.exitFullscreen().catch(() => {});
@@ -554,10 +583,12 @@ export function StudentExamPage() {
   // Stop all media when terminal status reached
   useEffect(() => {
     if (sessionStatus === 'TERMINATED_CHEATING' || sessionStatus === 'SUBMITTED') {
-      mediaSession.stopAll();
-      if (typeof document !== 'undefined' && document.fullscreenElement) {
-        document.exitFullscreen().catch(() => {});
-      }
+      void flushAndFinishRef.current().finally(() => {
+        mediaSession.stopAll();
+        if (typeof document !== 'undefined' && document.fullscreenElement) {
+          document.exitFullscreen().catch(() => {});
+        }
+      });
     }
   }, [sessionStatus]);
 
@@ -752,6 +783,24 @@ export function StudentExamPage() {
             <Mic className={`w-3.5 h-3.5 ${micOk ? 'text-emerald-500' : 'text-rose-500'}`} />
             <span className="text-[11px] font-semibold">{micOk ? 'Mic OK' : 'Mic Off'}</span>
           </div>
+
+          {/* Video Recording Status */}
+          {isRecording && (
+            <div
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-rose-500/40 bg-rose-500/10 font-mono text-xs text-rose-500 shadow-sm"
+              data-testid="hud-recording-status"
+              title="Camera feed is actively being recorded for authorized review"
+            >
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500" />
+              </span>
+              <span className="text-[11px] font-bold">REC</span>
+              <span className="text-[10px] opacity-80">
+                {Math.floor(recordingSeconds / 60)}:{String(recordingSeconds % 60).padStart(2, '0')}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Right: Autosave status & Submit Action */}

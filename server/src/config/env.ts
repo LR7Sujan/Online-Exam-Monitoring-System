@@ -6,21 +6,30 @@ import { z } from 'zod';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const isTestEnv = process.env.NODE_ENV === 'test';
+const isTestEnv =
+  process.env.NODE_ENV === 'test' ||
+  Boolean(process.env.VITEST) ||
+  Boolean(process.env.NODE_TEST_CONTEXT) ||
+  process.argv.some((arg) => arg.includes('vitest') || arg.includes('test'));
+
+if (isTestEnv && process.env.NODE_ENV !== 'test') {
+  process.env.NODE_ENV = 'test';
+}
 
 // Resolve .env candidate paths relative to script location / project root
-const candidateEnvPaths = [
-  process.env.ENV_FILE,
-  process.env.DOTENV_CONFIG_PATH,
-  ...(isTestEnv
-    ? [
-        path.resolve(__dirname, '../../.env.test'),
-        path.resolve(__dirname, '../../../.env.test'),
-      ]
-    : []),
-  path.resolve(__dirname, '../../.env'),
-  path.resolve(__dirname, '../../../.env'),
-].filter(Boolean) as string[];
+const candidateEnvPaths = isTestEnv
+  ? [
+      process.env.ENV_FILE,
+      process.env.DOTENV_CONFIG_PATH,
+      path.resolve(__dirname, '../../.env.test'),
+      path.resolve(__dirname, '../../../.env.test'),
+    ].filter(Boolean) as string[]
+  : [
+      process.env.ENV_FILE,
+      process.env.DOTENV_CONFIG_PATH,
+      path.resolve(__dirname, '../../.env'),
+      path.resolve(__dirname, '../../../.env'),
+    ].filter(Boolean) as string[];
 
 for (const envPath of candidateEnvPaths) {
   if (existsSync(envPath)) {
@@ -30,14 +39,14 @@ for (const envPath of candidateEnvPaths) {
 }
 
 const envSchema = z.object({
-  NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
-  PORT: z.coerce.number().int().min(1).max(65535).default(4000),
-  CLIENT_ORIGIN: z.string().default('http://localhost:5173'),
+  NODE_ENV: z.enum(['development', 'test', 'production']).default(isTestEnv ? 'test' : 'development'),
+  PORT: z.coerce.number().int().min(1).max(65535).default(isTestEnv ? 4001 : 4000),
+  CLIENT_ORIGIN: z.string().default(isTestEnv ? 'http://localhost:5174' : 'http://localhost:5173'),
   DB_HOST: z.string().min(1).default('127.0.0.1'),
   DB_PORT: z.coerce.number().int().min(1).max(65535).default(3306),
   DB_USER: z.string().min(1).default('root'),
   DB_PASSWORD: z.string().default('proctoriq_root'),
-  DB_NAME: z.string().min(1).default('proctoriq'),
+  DB_NAME: z.string().min(1).default(isTestEnv ? 'exam_monitoring_test' : 'proctoriq'),
   DB_CONNECTION_LIMIT: z.coerce.number().int().min(1).max(100).default(10),
   JWT_SECRET: z
     .string()
@@ -49,9 +58,11 @@ const envSchema = z.object({
   DB_SCHEMA_PATH: z.string().default('./db/schema.sql'),
   DB_MIGRATIONS_DIR: z.string().default('./db/migrations'),
   DB_SEED_PATH: z.string().default('./db/seed.sql'),
-  UPLOADS_DIR: z.string().default('./server/uploads'),
+  UPLOADS_DIR: z.string().default(isTestEnv ? './server/uploads-test' : './server/uploads'),
   EXTENSION_GRACE_SECONDS: z.coerce.number().int().min(0).default(180),
   WARNING_GRACE_SECONDS: z.coerce.number().int().min(0).default(5),
+  RECORDING_RETENTION_DAYS: z.coerce.number().int().positive().default(30),
+  RECORDING_MAX_STORAGE_GB: z.coerce.number().positive().default(5),
 });
 
 const parsed = envSchema.safeParse(process.env);

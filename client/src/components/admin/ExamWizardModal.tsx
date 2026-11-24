@@ -302,6 +302,8 @@ export function ExamWizardModal({
   const [maxExtensionMins, setMaxExtensionMins] = useState(editingExam?.max_extension_mins ?? 30);
   const [shuffleQuestions, setShuffleQuestions] = useState(editingExam?.shuffle_questions !== undefined ? Boolean(editingExam.shuffle_questions) : true);
   const [shuffleOptions, setShuffleOptions] = useState(editingExam?.shuffle_options !== undefined ? Boolean(editingExam.shuffle_options) : true);
+  const [recordVideo, setRecordVideo] = useState(editingExam?.record_video !== undefined ? Boolean(editingExam.record_video) : true);
+  const [recordAudio, setRecordAudio] = useState(editingExam?.record_audio !== undefined ? Boolean(editingExam.record_audio) : false);
 
   // Step 3: Questions
   const [questions, setQuestions] = useState<QuestionDraft[]>([]);
@@ -459,6 +461,8 @@ export function ExamWizardModal({
         maxExtensionMins: Number.isFinite(Number(maxExtensionMins)) ? Number(maxExtensionMins) : 30,
         shuffleQuestions,
         shuffleOptions,
+        recordVideo,
+        recordAudio,
         startWindow: startWindow ? new Date(startWindow).toISOString() : undefined,
         endWindow: endWindow ? new Date(endWindow).toISOString() : undefined,
         isPublished,
@@ -1248,6 +1252,34 @@ export function ExamWizardModal({
                     <div className="text-xs font-mono">
                       <span className="font-bold text-foreground block">Shuffle Options</span>
                       <span className="text-[10px] text-muted-foreground">Randomize options A, B, C, D per question</span>
+                    </div>
+                  </label>
+
+                  <label className="flex items-center gap-2 p-3 rounded-xl border border-border bg-surface-elevated cursor-pointer hover:border-brand/40 transition-colors">
+                    <input
+                      type="checkbox"
+                      data-testid="wizard-record-video"
+                      checked={recordVideo}
+                      onChange={(e) => setRecordVideo(e.target.checked)}
+                      className="w-4 h-4 rounded text-brand focus:ring-brand accent-brand cursor-pointer"
+                    />
+                    <div className="text-xs font-mono">
+                      <span className="font-bold text-foreground block">Record Video Feed</span>
+                      <span className="text-[10px] text-muted-foreground">Record candidate webcam for staff review (default ON)</span>
+                    </div>
+                  </label>
+
+                  <label className="flex items-center gap-2 p-3 rounded-xl border border-border bg-surface-elevated cursor-pointer hover:border-brand/40 transition-colors">
+                    <input
+                      type="checkbox"
+                      data-testid="wizard-record-audio"
+                      checked={recordAudio}
+                      onChange={(e) => setRecordAudio(e.target.checked)}
+                      className="w-4 h-4 rounded text-brand focus:ring-brand accent-brand cursor-pointer"
+                    />
+                    <div className="text-xs font-mono">
+                      <span className="font-bold text-foreground block">Record Audio Stream</span>
+                      <span className="text-[10px] text-muted-foreground">Include microphone audio in recording (default OFF)</span>
                     </div>
                   </label>
                 </div>

@@ -98,6 +98,8 @@ const createExamSchema = z
     isPublished: z.boolean().default(false),
     shuffleQuestions: z.boolean().default(true),
     shuffleOptions: z.boolean().default(true),
+    recordVideo: z.boolean().default(true),
+    recordAudio: z.boolean().default(false),
     questions: z.array(questionInputSchema).optional(),
   })
   .superRefine((data, ctx) => {
@@ -181,6 +183,8 @@ const updateExamSchema = z
     isPublished: z.boolean().optional(),
     shuffleQuestions: z.boolean().optional(),
     shuffleOptions: z.boolean().optional(),
+    recordVideo: z.boolean().optional(),
+    recordAudio: z.boolean().optional(),
     questions: z.array(questionInputSchema).optional(),
   });
 
@@ -221,7 +225,7 @@ export async function startOrResumeExamSession(params: {
     try {
       const [examRows] = await conn.execute<ExamRow[]>(
         `SELECT id, title, duration_minutes, min_trust_score, max_extension_mins,
-                shuffle_questions, shuffle_options,
+                shuffle_questions, shuffle_options, record_video, record_audio,
                 start_window, end_window,
                 is_published, (NOW() BETWEEN start_window AND end_window) AS window_open
            FROM Exams
@@ -361,6 +365,7 @@ examsRouter.get(
       const rows = await queryRows<RowDataPacket[]>(
         `SELECT
            e.id, e.title, e.description, e.duration_minutes, e.min_trust_score, e.max_extension_mins,
+           e.shuffle_questions, e.shuffle_options, e.record_video, e.record_audio,
            e.start_window, e.end_window, e.is_published,
            (SELECT COUNT(*) FROM Questions q WHERE q.exam_id = e.id) AS question_count,
            (SELECT COALESCE(SUM(q.marks), 0) FROM Questions q WHERE q.exam_id = e.id) AS total_marks,
@@ -391,6 +396,7 @@ examsRouter.get('/', requireAuth, async (req: AuthenticatedRequest, res, next) =
       const rows = await queryRows<RowDataPacket[]>(
         `SELECT
            e.id, e.title, e.description, e.duration_minutes, e.min_trust_score, e.max_extension_mins,
+           e.shuffle_questions, e.shuffle_options, e.record_video, e.record_audio,
            e.start_window, e.end_window, e.is_published,
            (SELECT COUNT(*) FROM Questions q WHERE q.exam_id = e.id) AS question_count,
            (SELECT COALESCE(SUM(q.marks), 0) FROM Questions q WHERE q.exam_id = e.id) AS total_marks,
@@ -413,6 +419,7 @@ examsRouter.get('/', requireAuth, async (req: AuthenticatedRequest, res, next) =
     const rows = await queryRows<RowDataPacket[]>(
       `SELECT
          e.id, e.title, e.description, e.duration_minutes, e.min_trust_score, e.max_extension_mins,
+         e.shuffle_questions, e.shuffle_options, e.record_video, e.record_audio,
          e.start_window, e.end_window, e.is_published, e.created_by, e.created_at,
          (NOW() BETWEEN e.start_window AND e.end_window) AS is_window_open,
          u.full_name AS creator_name,
@@ -440,7 +447,7 @@ examsRouter.get(
       const { examId } = req.params as unknown as z.infer<typeof examIdParamSchema>;
       const exams = await queryRows<ExamRow[]>(
         `SELECT id, title, description, duration_minutes, min_trust_score, max_extension_mins,
-                shuffle_questions, shuffle_options,
+                shuffle_questions, shuffle_options, record_video, record_audio,
                 start_window, end_window, is_published, created_by, created_at
            FROM Exams
           WHERE id = ?
@@ -544,8 +551,8 @@ examsRouter.post(
         try {
           const [result] = await conn.execute<ResultSetHeader>(
             `INSERT INTO Exams
-              (title, description, duration_minutes, min_trust_score, max_extension_mins, shuffle_questions, shuffle_options, start_window, end_window, is_published, created_by)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+              (title, description, duration_minutes, min_trust_score, max_extension_mins, shuffle_questions, shuffle_options, record_video, record_audio, start_window, end_window, is_published, created_by)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
               body.title,
               body.description ?? null,
@@ -554,6 +561,8 @@ examsRouter.post(
               body.maxExtensionMins ?? 30,
               body.shuffleQuestions !== false,
               body.shuffleOptions !== false,
+              body.recordVideo !== false,
+              Boolean(body.recordAudio),
               startWin,
               endWin,
               Boolean(body.isPublished),
@@ -717,6 +726,8 @@ async function handleUpdateExam(req: AuthenticatedRequest, res: Parameters<typeo
                   max_extension_mins = ?,
                   shuffle_questions = ?,
                   shuffle_options = ?,
+                  record_video = ?,
+                  record_audio = ?,
                   start_window = ?,
                   end_window = ?,
                   is_published = ?
@@ -729,6 +740,8 @@ async function handleUpdateExam(req: AuthenticatedRequest, res: Parameters<typeo
             body.maxExtensionMins !== undefined ? body.maxExtensionMins : existing.max_extension_mins,
             body.shuffleQuestions !== undefined ? Boolean(body.shuffleQuestions) : Boolean(existing.shuffle_questions ?? true),
             body.shuffleOptions !== undefined ? Boolean(body.shuffleOptions) : Boolean(existing.shuffle_options ?? true),
+            body.recordVideo !== undefined ? Boolean(body.recordVideo) : Boolean(existing.record_video ?? true),
+            body.recordAudio !== undefined ? Boolean(body.recordAudio) : Boolean(existing.record_audio ?? false),
             startWin,
             endWin,
             targetPublished,

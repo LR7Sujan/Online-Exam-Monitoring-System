@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { Modal } from '../ui/Modal';
 import {
   AlertTriangle,
@@ -11,10 +12,13 @@ import {
   Eye,
   FileText,
   Laptop,
+  Lock,
   RotateCcw,
   ShieldAlert,
   ShieldOff,
+  Unlock,
   User,
+  Video,
   Wifi,
   X,
 } from 'lucide-react';
@@ -35,11 +39,13 @@ import { SeverityBadge } from '../ui/SeverityBadge';
 import { ChartTooltip, useChartTheme } from '../charts/shared';
 import { api } from '../../lib/api';
 import { playPingSound } from '../../utils/audioAlert';
+import { useAuthStore } from '../../store/authStore';
 import type {
   ProctorLiveMonitorRow,
   ReviewStatus,
   ViolationAuditRow,
   SessionWarning,
+  ExamRecordingItem,
 } from '../../types/domain';
 
 interface StudentDetailDrawerProps {
@@ -128,6 +134,40 @@ export function StudentDetailDrawer({ sessionId, onClose }: StudentDetailDrawerP
     queryKey: ['proctor-session-paper', sessionId],
     queryFn: () => api.get<StudentPaperResponse>(`/proctor/sessions/${sessionId}/paper`),
     enabled: paperModalOpen && sessionId !== null && sessionId > 0,
+  });
+
+  const token = useAuthStore((s) => s.token);
+  const [playbackSpeed, setPlaybackSpeed] = useState<number>(1);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+
+  const recordingQuery = useQuery<ExamRecordingItem | null>({
+    queryKey: ['session-recording', sessionId],
+    queryFn: async () => {
+      try {
+        return await api.get<ExamRecordingItem>(`/recordings/session/${sessionId}`);
+      } catch {
+        return null;
+      }
+    },
+    enabled: sessionId !== null && sessionId > 0,
+    refetchInterval: (query) => {
+      const data = query.state.data;
+      if (data?.status === 'RECORDING') return 5000;
+      return false;
+    },
+  });
+  const recording = recordingQuery.data;
+
+  const legalHoldMutation = useMutation({
+    mutationFn: ({ recordingId, legalHold }: { recordingId: number; legalHold: boolean }) =>
+      api.patch(`/recordings/${recordingId}/legal-hold`, { legalHold }),
+    onSuccess: () => {
+      toast.success('Legal hold status updated');
+      queryClient.invalidateQueries({ queryKey: ['session-recording', sessionId] });
+    },
+    onError: () => {
+      toast.error('Failed to update legal hold');
+    },
   });
 
   // Review single log mutation
@@ -557,7 +597,145 @@ export function StudentDetailDrawer({ sessionId, onClose }: StudentDetailDrawerP
               </div>
             )}
 
-            {/* 4. Violation Incident Ledger with Lightbox Snapshots */}
+            {/* 4. Webcam Session Video Recording Player */}
+            <div className="rounded-2xl border border-border bg-surface-elevated/70 p-4 space-y-3 font-mono text-xs">
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-foreground flex items-center gap-2">
+                  <Video className="w-4 h-4 text-brand" />
+                  <span>Webcam Session Recording</span>
+                </h4>
+                {recording && (
+                  <span
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase border ${
+                      recording.status === 'READY'
+                        ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+                        : recording.status === 'RECORDING'
+                        ? 'bg-amber-500/10 border-amber-500/30 text-amber-400 animate-pulse'
+                        : 'bg-rose-500/10 border-rose-500/30 text-rose-400'
+                    }`}
+                  >
+                    {recording.status}
+                  </span>
+                )}
+              </div>
+
+              {recordingQuery.isLoading ? (
+                <div className="py-6 text-center text-muted-foreground">
+                  Loading recording telemetry...
+                </div>
+              ) : !recording ? (
+                <div className="py-5 text-center text-muted-foreground rounded-xl border border-dashed border-border/80 bg-surface/50">
+                  <Video className="w-6 h-6 mx-auto mb-1 text-muted-foreground/40" />
+                  <span>No recording stream available for this session</span>
+                </div>
+              ) : recording.status === 'RECORDING' ? (
+                <div className="p-4 rounded-xl border border-amber-500/30 bg-amber-500/5 text-amber-400 flex items-center gap-3">
+                  <span className="relative flex h-3 w-3">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+                    <span className="relative inline-flex rounded-full h-3 w-3 bg-amber-500" />
+                  </span>
+                  <div>
+                    <p className="font-bold">Live Stream Capture In Progress</p>
+                    <p className="text-[10px] text-muted-foreground">
+                      Continuous chunk recording is active. Video playback will be finalized when candidate finishes the exam.
+                    </p>
+                  </div>
+                </div>
+              ) : recording.status === 'FAILED' ? (
+                <div className="p-4 rounded-xl border border-rose-500/30 bg-rose-500/5 text-rose-400">
+                  <p className="font-bold">Recording Finalization Failed</p>
+                  <p className="text-[10px] text-muted-foreground">
+                    Unable to concatenate or finalize webcam video stream.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {/* HTML5 Video Player */}
+                  <div className="relative aspect-video w-full rounded-xl overflow-hidden border border-border bg-black shadow-inner">
+                    <video
+                      ref={videoRef}
+                      data-testid="recording-video-player"
+                      src={`${import.meta.env.VITE_API_URL ?? '/api'}/recordings/${recording.recording_id}/stream?token=${encodeURIComponent(token || '')}`}
+                      controls
+                      playsInline
+                      className="w-full h-full object-contain"
+                    />
+                  </div>
+
+                  {/* Controls & Metadata */}
+                  <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-border/60">
+                    {/* Playback speed selector */}
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] text-muted-foreground">SPEED:</span>
+                      {[1, 1.25, 1.5, 2].map((spd) => (
+                        <button
+                          key={spd}
+                          type="button"
+                          onClick={() => {
+                            setPlaybackSpeed(spd);
+                            if (videoRef.current) {
+                              videoRef.current.playbackRate = spd;
+                            }
+                          }}
+                          className={`px-2 py-0.5 rounded text-[10px] font-bold border transition-colors cursor-pointer ${
+                            playbackSpeed === spd
+                              ? 'bg-brand text-white border-brand'
+                              : 'bg-surface border-border text-muted-foreground hover:text-foreground'
+                          }`}
+                        >
+                          {spd}x
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Metadata pill details */}
+                    <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+                      <span>{(recording.size_bytes / (1024 * 1024)).toFixed(2)} MB</span>
+                      <span>
+                        {Math.floor(recording.duration_ms / 60000)}m{' '}
+                        {Math.floor((recording.duration_ms % 60000) / 1000)}s
+                      </span>
+                    </div>
+
+                    {/* Legal Hold Toggle */}
+                    <button
+                      type="button"
+                      disabled={legalHoldMutation.isPending}
+                      onClick={() =>
+                        legalHoldMutation.mutate({
+                          recordingId: recording.recording_id,
+                          legalHold: !recording.legal_hold,
+                        })
+                      }
+                      title={
+                        recording.legal_hold
+                          ? 'Recording under legal hold (exempt from retention pruning)'
+                          : 'Mark recording for legal hold'
+                      }
+                      className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-colors cursor-pointer ${
+                        recording.legal_hold
+                          ? 'bg-amber-500/20 border-amber-500/50 text-amber-400'
+                          : 'bg-surface border-border text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      {recording.legal_hold ? (
+                        <>
+                          <Lock className="w-3 h-3 text-amber-400" />
+                          <span>Legal Hold Active</span>
+                        </>
+                      ) : (
+                        <>
+                          <Unlock className="w-3 h-3" />
+                          <span>Enable Legal Hold</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* 5. Violation Incident Ledger with Lightbox Snapshots */}
             <div className="rounded-2xl border border-border bg-surface-elevated/70 p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <h4 className="text-xs font-bold uppercase tracking-wider text-foreground flex items-center gap-2">

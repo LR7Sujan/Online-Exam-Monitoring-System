@@ -41,6 +41,8 @@ export interface ExamItem {
   max_extension_mins?: number;
   shuffle_questions?: boolean | number;
   shuffle_options?: boolean | number;
+  record_video?: boolean | number;
+  record_audio?: boolean | number;
   unique_permutations?: number;
   start_window: string;
   end_window: string;
@@ -89,6 +91,8 @@ export interface ExamSession {
   duration_minutes?: number;
   min_trust_score?: number;
   max_extension_mins?: number;
+  record_video?: boolean | number;
+  record_audio?: boolean | number;
   extension_request?: TimeExtensionRequest | null;
   pending_warning_log_id?: number | null;
   warning_count?: number;
@@ -288,4 +292,31 @@ export interface DbTelemetry {
     ENGINE: string;
   }>;
 }
+
+export type RecordingStatus = 'RECORDING' | 'READY' | 'FAILED';
+
+export interface ExamRecordingItem {
+  recording_id: number;
+  session_id: number;
+  file_path: string;
+  mime_type: string;
+  size_bytes: number;
+  duration_ms: number;
+  status: RecordingStatus;
+  legal_hold: boolean;
+  created_at: string;
+  updated_at: string;
+  expires_at: string | null;
+}
+
+export interface RecordingStorageStats {
+  totalSizeBytes: number;
+  totalRecordings: number;
+  oldestRecordingAt: string | null;
+  maxStorageBytes: number;
+  usagePercentage: number;
+  isExceeded: boolean;
+  retentionDays: number;
+}
+
 

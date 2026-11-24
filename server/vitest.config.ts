@@ -17,6 +17,8 @@ export default defineConfig({
       'tests/uniquePaperVersions.api.test.ts',
       'tests/snapshotAccess.api.test.ts',
       'tests/simulatorPersonas.test.ts',
+      'tests/recording.api.test.ts',
+      '../client/tests/**/*.unit.test.ts',
     ],
     testTimeout: 25000,
     fileParallelism: false,

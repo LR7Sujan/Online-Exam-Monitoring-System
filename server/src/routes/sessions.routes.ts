@@ -168,6 +168,7 @@ async function assertSessionAccess(
 ): Promise<ExamSessionRow> {
   const rows = await queryRows<ExamSessionRow[]>(
     `SELECT es.*, e.title AS exam_title, e.duration_minutes, e.min_trust_score, e.max_extension_mins,
+            e.record_video, e.record_audio,
             GREATEST(0, TIMESTAMPDIFF(SECOND, NOW(), es.server_deadline)) AS seconds_remaining,
             TIMESTAMPDIFF(SECOND, es.server_deadline, NOW()) AS seconds_overdue,
             TIMESTAMPDIFF(SECOND, es.last_warning_ack_at, NOW()) AS seconds_since_ack

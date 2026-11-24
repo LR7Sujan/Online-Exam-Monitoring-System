@@ -25,6 +25,8 @@ import {
   Trash2,
   UploadCloud,
   Users,
+  Video,
+  Mic,
 } from 'lucide-react';
 import { api } from '../../lib/api';
 import { Modal } from '../../components/ui/Modal';
@@ -61,6 +63,8 @@ interface ExamDetailResponse {
     max_extension_mins?: number;
     shuffle_questions?: boolean | number;
     shuffle_options?: boolean | number;
+    record_video?: boolean | number;
+    record_audio?: boolean | number;
     permutationNotice?: {
       questionCount: number;
       shuffleQuestions: boolean;
@@ -120,6 +124,8 @@ export function ExamDetailPage() {
   const [maxExtensionMins, setMaxExtensionMins] = useState(30);
   const [shuffleQuestions, setShuffleQuestions] = useState(true);
   const [shuffleOptions, setShuffleOptions] = useState(true);
+  const [recordVideo, setRecordVideo] = useState(true);
+  const [recordAudio, setRecordAudio] = useState(false);
   const [startWindow, setStartWindow] = useState('');
   const [endWindow, setEndWindow] = useState('');
   const [isEditingParams, setIsEditingParams] = useState(false);
@@ -173,6 +179,8 @@ export function ExamDetailPage() {
       setMaxExtensionMins(Number(exam.max_extension_mins ?? 30));
       setShuffleQuestions(exam.shuffle_questions !== undefined ? Boolean(exam.shuffle_questions) : true);
       setShuffleOptions(exam.shuffle_options !== undefined ? Boolean(exam.shuffle_options) : true);
+      setRecordVideo(exam.record_video !== undefined ? Boolean(exam.record_video) : true);
+      setRecordAudio(exam.record_audio !== undefined ? Boolean(exam.record_audio) : false);
 
       // Format ISO string to datetime-local input format (YYYY-MM-DDTHH:mm)
       const toLocalDt = (isoStr: string) => {
@@ -632,6 +640,8 @@ export function ExamDetailPage() {
       maxExtensionMins,
       shuffleQuestions,
       shuffleOptions,
+      recordVideo,
+      recordAudio,
       startWindow: startWindow ? new Date(startWindow).toISOString() : undefined,
       endWindow: endWindow ? new Date(endWindow).toISOString() : undefined,
     });
@@ -646,6 +656,8 @@ export function ExamDetailPage() {
       setMaxExtensionMins(Number(exam.max_extension_mins ?? 30));
       setShuffleQuestions(exam.shuffle_questions !== undefined ? Boolean(exam.shuffle_questions) : true);
       setShuffleOptions(exam.shuffle_options !== undefined ? Boolean(exam.shuffle_options) : true);
+      setRecordVideo(exam.record_video !== undefined ? Boolean(exam.record_video) : true);
+      setRecordAudio(exam.record_audio !== undefined ? Boolean(exam.record_audio) : false);
       setIsEditingParams(false);
       setErrors({});
     }
@@ -1066,14 +1078,52 @@ export function ExamDetailPage() {
                   </label>
                 </div>
 
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                  <label className="flex items-center gap-2 p-3 rounded-xl border border-border bg-surface-elevated cursor-pointer hover:border-brand/40 transition-colors">
+                    <input
+                      type="checkbox"
+                      data-testid="toggle-record-video"
+                      checked={recordVideo}
+                      disabled={!isEditingParams}
+                      onChange={(e) => setRecordVideo(e.target.checked)}
+                      className="w-4 h-4 rounded text-brand focus:ring-brand accent-brand cursor-pointer"
+                    />
+                    <div className="text-xs font-mono">
+                      <span className="font-bold text-foreground flex items-center gap-1.5">
+                        <Video className="w-3.5 h-3.5 text-brand" />
+                        Record Webcam Video
+                      </span>
+                      <span className="text-[10px] text-muted-foreground">Record candidate webcam feed for proctor review (default ON)</span>
+                    </div>
+                  </label>
+
+                  <label className="flex items-center gap-2 p-3 rounded-xl border border-border bg-surface-elevated cursor-pointer hover:border-brand/40 transition-colors">
+                    <input
+                      type="checkbox"
+                      data-testid="toggle-record-audio"
+                      checked={recordAudio}
+                      disabled={!isEditingParams}
+                      onChange={(e) => setRecordAudio(e.target.checked)}
+                      className="w-4 h-4 rounded text-brand focus:ring-brand accent-brand cursor-pointer"
+                    />
+                    <div className="text-xs font-mono">
+                      <span className="font-bold text-foreground flex items-center gap-1.5">
+                        <Mic className="w-3.5 h-3.5 text-brand" />
+                        Record Audio (Optional)
+                      </span>
+                      <span className="text-[10px] text-muted-foreground">Also record microphone stream (disclosed in consent, default OFF)</span>
+                    </div>
+                  </label>
+                </div>
+
                 {/* Small Exam Permutations Notice Banner */}
-                {(exam.permutationNotice?.notice || (exam as any).notice) && (
+                {Boolean(exam.permutationNotice?.notice) && (
                   <div
                     data-testid="small-exam-notice"
                     className="mt-2 rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-xs font-mono text-amber-500 flex items-center gap-2.5 shadow-sm"
                   >
                     <AlertTriangle className="w-4 h-4 shrink-0 text-amber-500" />
-                    <span>{exam.permutationNotice?.notice || (exam as any).notice}</span>
+                    <span>{exam.permutationNotice?.notice}</span>
                   </div>
                 )}
               </div>

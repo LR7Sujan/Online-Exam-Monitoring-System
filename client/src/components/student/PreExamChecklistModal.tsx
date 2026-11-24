@@ -303,6 +303,24 @@ export function PreExamChecklistModal({
 
   if (!isOpen || !exam) return null;
 
+  const isRecordVideo = exam.record_video !== false && exam.record_video !== 0;
+  const isRecordAudio = Boolean(exam.record_audio);
+  const retentionDate = new Date(Date.now() + 30 * 86400000).toLocaleDateString(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  });
+
+  const consentText = isRecordVideo
+    ? isRecordAudio
+      ? `Your camera feed and audio are recorded during the exam and stored for review by authorized staff until ${retentionDate}.`
+      : `Your camera feed is recorded during the exam and stored for review by authorized staff until ${retentionDate}. Audio stays on device and is not recorded.`
+    : 'Your camera is monitored for faces and phones. Your microphone is analyzed on your device for speech. Audio is never recorded or uploaded.';
+
+  const checkboxConsentText = isRecordVideo
+    ? `Your camera feed is recorded during the exam and stored for review by authorized staff until ${retentionDate}. I accept recording and continuous biometric proctoring.`
+    : 'I acknowledge that all actions are recorded in an immutable audit ledger, penalties are automatically deducted, and falling below the threshold terminates my exam immediately.';
+
   const allStepsValid =
     rulesAccepted && cameraActive && fullscreenActive && systemChecks.network;
 
@@ -467,9 +485,7 @@ export function PreExamChecklistModal({
                     className="mt-0.5 accent-indigo-600 w-4 h-4 cursor-pointer"
                   />
                   <span className="text-xs text-foreground leading-relaxed select-none">
-                    I acknowledge that all actions are recorded in an immutable audit ledger,
-                    penalties are automatically deducted, and falling below the threshold terminates
-                    my exam immediately.
+                    {checkboxConsentText}
                   </span>
                 </label>
               </motion.div>
@@ -484,11 +500,10 @@ export function PreExamChecklistModal({
               >
                 <div className="space-y-1">
                   <h4 className="text-base font-semibold text-foreground">
-                    Webcam & Microphone Hardware Consent
+                    Webcam & Hardware Verification
                   </h4>
                   <p className="text-xs text-muted-foreground leading-relaxed">
-                    Your camera is monitored for faces and phones. Your microphone is analyzed on your
-                    device for speech. Audio is never recorded or uploaded.
+                    {consentText}
                   </p>
                 </div>
 

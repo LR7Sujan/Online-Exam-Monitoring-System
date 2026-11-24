@@ -2,14 +2,17 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
+  AlertTriangle,
   BarChart3,
   Database,
   GraduationCap,
   Plus,
+  RefreshCw,
   Scale,
   Shield,
   Trash2,
   Users,
+  Video,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { AdminOverviewDashboard } from '../components/admin/AdminOverviewDashboard';
@@ -26,7 +29,7 @@ import { NeonButton } from '../components/ui/NeonButton';
 import { SkeletonCard } from '../components/ui/Skeleton';
 import { EmptyState, ErrorState } from '../components/ui/EmptyState';
 import { api } from '../lib/api';
-import type { DbTelemetry, ExamItem, QuestionItem } from '../types/domain';
+import type { DbTelemetry, ExamItem, QuestionItem, RecordingStorageStats } from '../types/domain';
 
 interface ExamDetailResponse {
   exam: ExamItem;
@@ -85,6 +88,23 @@ export function AdminDashboardPage({
     queryKey: ['admin-db-telemetry'],
     queryFn: () => api.get<DbTelemetry>('/admin/db-telemetry'),
     enabled: activeTab === 'db',
+  });
+
+  const recordingStorageQuery = useQuery({
+    queryKey: ['admin-recording-storage'],
+    queryFn: () => api.get<RecordingStorageStats>('/admin/recordings/storage'),
+    enabled: activeTab === 'db' || activeTab === 'overview',
+  });
+
+  const pruneRecordingsMutation = useMutation({
+    mutationFn: () => api.post<{ prunedCount: number }>('/admin/recordings/cleanup'),
+    onSuccess: (data) => {
+      toast.success(`Retention cleanup completed: ${data.prunedCount} expired recordings removed`);
+      queryClient.invalidateQueries({ queryKey: ['admin-recording-storage'] });
+    },
+    onError: () => {
+      toast.error('Failed to run recording retention cleanup');
+    },
   });
 
   const publishExamMutation = useMutation({
@@ -472,6 +492,88 @@ export function AdminDashboardPage({
               <p className="text-[11px] text-muted-foreground mt-0.5">
                 Live introspection of triggers, stored procedures, SQL views, and physical tables
               </p>
+            </div>
+
+            {/* Webcam Video Recording Storage & Retention Card */}
+            <div className="rounded-2xl border border-border bg-surface p-5 shadow-sm space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/80 pb-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 rounded-xl bg-brand/10 text-brand">
+                    <Video className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-foreground">
+                      Webcam Recording Storage & Retention
+                    </h3>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">
+                      Retention window: {recordingStorageQuery.data?.retentionDays ?? 30} days • Cap: {((recordingStorageQuery.data?.maxStorageBytes ?? 5368709120) / (1024 ** 3)).toFixed(1)} GB
+                    </p>
+                  </div>
+                </div>
+
+                <NeonButton
+                  variant="outline"
+                  size="sm"
+                  leftIcon={<RefreshCw className={`w-3.5 h-3.5 ${pruneRecordingsMutation.isPending ? 'animate-spin' : ''}`} />}
+                  onClick={() => pruneRecordingsMutation.mutate()}
+                  isLoading={pruneRecordingsMutation.isPending}
+                >
+                  Run Retention Pruning
+                </NeonButton>
+              </div>
+
+              {recordingStorageQuery.data?.isExceeded && (
+                <div className="p-3 rounded-xl border border-rose-500/40 bg-rose-500/10 text-rose-400 text-xs flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 shrink-0" />
+                  <span>
+                    Storage quota exceeded! New exam recordings are blocked until expired sessions are purged or quota increased.
+                  </span>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                <div className="p-3 rounded-xl border border-border bg-background space-y-1">
+                  <span className="text-[10px] text-muted-foreground uppercase">Storage Utilized</span>
+                  <p className="text-base font-bold text-foreground">
+                    {((recordingStorageQuery.data?.totalSizeBytes ?? 0) / (1024 * 1024)).toFixed(2)} MB
+                  </p>
+                  <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden mt-1">
+                    <div
+                      className={`h-full rounded-full ${
+                        (recordingStorageQuery.data?.usagePercentage ?? 0) > 85 ? 'bg-rose-500' : 'bg-brand'
+                      }`}
+                      style={{ width: `${Math.min(recordingStorageQuery.data?.usagePercentage ?? 0, 100)}%` }}
+                    />
+                  </div>
+                </div>
+
+                <div className="p-3 rounded-xl border border-border bg-background space-y-1">
+                  <span className="text-[10px] text-muted-foreground uppercase">Total Recordings</span>
+                  <p className="text-base font-bold text-foreground">
+                    {recordingStorageQuery.data?.totalRecordings ?? 0}
+                  </p>
+                  <span className="text-[10px] text-muted-foreground">Captured video sessions</span>
+                </div>
+
+                <div className="p-3 rounded-xl border border-border bg-background space-y-1">
+                  <span className="text-[10px] text-muted-foreground uppercase">Oldest Active Video</span>
+                  <p className="text-xs font-bold text-foreground truncate">
+                    {recordingStorageQuery.data?.oldestRecordingAt
+                      ? new Date(recordingStorageQuery.data.oldestRecordingAt).toLocaleDateString()
+                      : 'None'}
+                  </p>
+                  <span className="text-[10px] text-muted-foreground">Earliest timestamp</span>
+                </div>
+
+                <div className="p-3 rounded-xl border border-border bg-background space-y-1">
+                  <span className="text-[10px] text-muted-foreground uppercase">Legal Hold Policy</span>
+                  <p className="text-xs font-bold text-emerald-400 flex items-center gap-1">
+                    <Shield className="w-3.5 h-3.5" />
+                    <span>Protected</span>
+                  </p>
+                  <span className="text-[10px] text-muted-foreground">Flagged sessions exempt from prune</span>
+                </div>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
