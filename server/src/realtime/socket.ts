@@ -216,7 +216,7 @@ export function emitExamSubmitted(
   studentId: number,
   sessionId: number,
   proctorPayload: Record<string, unknown>,
-  studentPayload: { sessionId: number; trust_score: number; status: string; result?: unknown }
+  studentPayload: { sessionId: number; trust_score: number; status: string; result?: unknown; examTitle?: string; studentName?: string }
 ): void {
   if (!ioInstance) return;
   emitToProctors('exam:submitted', proctorPayload);

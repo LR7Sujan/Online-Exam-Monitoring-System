@@ -451,20 +451,22 @@ export function StudentExamPage() {
     };
   }, [numericSessionId, token, submitMutation, metaQuery, minTrustScore, sessionStatus, setActiveWarning]);
 
-  // 8. Server-Authoritative Timer Sync & Countdown
+  // 8. Server-Authoritative Heartbeat & Timer Sync (every 15s)
   useEffect(() => {
     if (sessionStatus !== 'IN_PROGRESS') return;
 
-    const fetchTimeLeft = async () => {
+    const postHeartbeat = async () => {
       try {
-        const data = await api.get<
+        const data = await api.post<
           TimeLeftResponse & {
+            secondsRemaining?: number;
             maxExtensionMins?: number;
             extensionRequest?: TimeExtensionRequest | null;
             inGraceWindow?: boolean;
           }
-        >(`/sessions/${numericSessionId}/time-left`);
-        setSecondsLeft(Math.max(0, data.secondsLeft));
+        >(`/sessions/${numericSessionId}/heartbeat`);
+        const remaining = data.secondsLeft !== undefined ? data.secondsLeft : (data.secondsRemaining ?? 0);
+        setSecondsLeft(Math.max(0, remaining));
         setTrustScore(data.trustScore);
         if (data.status) setSessionStatus(data.status);
         if (data.maxExtensionMins !== undefined) setMaxExtensionMins(data.maxExtensionMins);
@@ -480,8 +482,8 @@ export function StudentExamPage() {
       }
     };
 
-    fetchTimeLeft();
-    const interval = setInterval(fetchTimeLeft, 15000);
+    postHeartbeat();
+    const interval = setInterval(postHeartbeat, 15000);
 
     return () => clearInterval(interval);
   }, [numericSessionId, sessionStatus]);

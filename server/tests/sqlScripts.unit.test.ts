@@ -47,6 +47,6 @@ test('seed.sql parses cleanly with exact seeded entity counts', () => {
   assert.equal(proctorMatches.length, 3);
   assert.equal(studentMatches.length, 60);
   assert.equal(logInserts.length, 300);
-  assert.equal(spCalls.length, 31);
+  assert.equal(spCalls.length, 40);
 });
 

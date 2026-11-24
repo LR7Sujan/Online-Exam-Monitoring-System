@@ -1289,9 +1289,18 @@ UPDATE Proctoring_Logs SET proctor_review_status = 'DISMISSED', reviewed_by = 2,
 INSERT INTO Proctoring_Logs (id, session_id, violation_type_id, occurred_at, evidence_meta, proctor_review_status) VALUES (300, 40, 1, DATE_ADD(DATE_SUB(DATE_FORMAT(NOW(), '%Y-%m-%d 00:00:00'), INTERVAL 29 DAY), INTERVAL 639 MINUTE), JSON_OBJECT('sensor', 'telemetry', 'seq', 7), 'PENDING');
 
 -- Grade all completed, timed-out, and terminated sessions via sp_SubmitAndGradeExam
+CALL sp_SubmitAndGradeExam(1, 'STUDENT_SUBMIT');
+CALL sp_SubmitAndGradeExam(2, 'STUDENT_SUBMIT');
+CALL sp_SubmitAndGradeExam(3, 'STUDENT_SUBMIT');
+CALL sp_SubmitAndGradeExam(4, 'STUDENT_SUBMIT');
+CALL sp_SubmitAndGradeExam(5, 'STUDENT_SUBMIT');
+CALL sp_SubmitAndGradeExam(6, 'AUTO_TERMINATED');
+CALL sp_SubmitAndGradeExam(7, 'STUDENT_SUBMIT');
+CALL sp_SubmitAndGradeExam(8, 'STUDENT_SUBMIT');
 CALL sp_SubmitAndGradeExam(9, 'STUDENT_SUBMIT');
 CALL sp_SubmitAndGradeExam(10, 'STUDENT_SUBMIT');
 CALL sp_SubmitAndGradeExam(11, 'AUTO_TERMINATED');
+CALL sp_SubmitAndGradeExam(12, 'TIMEOUT');
 CALL sp_SubmitAndGradeExam(13, 'STUDENT_SUBMIT');
 CALL sp_SubmitAndGradeExam(14, 'STUDENT_SUBMIT');
 CALL sp_SubmitAndGradeExam(15, 'STUDENT_SUBMIT');
@@ -1322,7 +1331,7 @@ CALL sp_SubmitAndGradeExam(39, 'TIMEOUT');
 CALL sp_SubmitAndGradeExam(40, 'TIMEOUT');
 
 -- Backdate server_deadline & ended_at on finished/expired sessions
-UPDATE Exam_Sessions SET started_at = DATE_SUB(NOW(), INTERVAL 90 MINUTE), server_deadline = DATE_SUB(NOW(), INTERVAL 30 MINUTE) WHERE id = 12;
+UPDATE Exam_Sessions SET started_at = DATE_SUB(NOW(), INTERVAL 90 MINUTE), server_deadline = DATE_SUB(NOW(), INTERVAL 30 MINUTE), ended_at = DATE_SUB(NOW(), INTERVAL 30 MINUTE) WHERE id IN (1, 2, 3, 4, 5, 6, 7, 8, 12);
 UPDATE Exam_Sessions SET server_deadline = DATE_ADD(started_at, INTERVAL 60 MINUTE), ended_at = DATE_ADD(started_at, INTERVAL 42 MINUTE) WHERE id = 13;
 UPDATE Results SET graded_at = DATE_SUB(NOW(), INTERVAL 5 DAY) WHERE session_id = 13;
 UPDATE Exam_Sessions SET server_deadline = DATE_ADD(started_at, INTERVAL 60 MINUTE), ended_at = DATE_ADD(started_at, INTERVAL 42 MINUTE) WHERE id = 14;

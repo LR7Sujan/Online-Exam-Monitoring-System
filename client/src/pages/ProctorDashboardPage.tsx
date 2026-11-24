@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -28,6 +29,7 @@ import type { ExamItem, ProctorLiveMonitorRow, SessionStatus, TimeExtensionReque
 export function ProctorDashboardPage({ initialTab = 'monitor' }: { initialTab?: string } = {}) {
   const token = useAuthStore((s) => s.token);
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   // Navigation Views: 'monitor' (Live Grid + Feed) | 'queue' (Review Queue Table)
   const [activeTab, setActiveTab] = useState<'monitor' | 'queue'>(
@@ -57,11 +59,17 @@ export function ProctorDashboardPage({ initialTab = 'monitor' }: { initialTab?: 
   const [liveFeed, setLiveFeed] = useState<LiveViolationItem[]>([]);
   const [socketConnected, setSocketConnected] = useState<boolean>(false);
 
+  // Just finished sessions strip (last 5 min, collapsed by default)
+  const [justFinished, setJustFinished] = useState<
+    { sessionId: number; studentName: string; examTitle: string; status: string; finishedAt: number }[]
+  >([]);
+  const [showJustFinished, setShowJustFinished] = useState<boolean>(false);
+
   // 1. Fetch Authoritative KPIs
   const kpiQuery = useQuery({
     queryKey: ['proctor-kpis'],
     queryFn: () => api.get<ProctorKpiData>('/proctor/kpis'),
-    refetchInterval: 15000,
+    refetchInterval: 10000,
   });
 
   // 2. Fetch Exams for Filter Dropdown
@@ -71,18 +79,18 @@ export function ProctorDashboardPage({ initialTab = 'monitor' }: { initialTab?: 
     staleTime: 60000,
   });
 
-  // 3. Fetch Live Monitor Grid Sessions from SQL View vw_ProctorLiveMonitor
+  // 3. Fetch Live Monitor Grid Sessions from SQL View vw_LiveSessions
   const monitorQuery = useQuery({
     queryKey: ['proctor-live-monitor', selectedExamId, selectedStatus],
     queryFn: () => {
       const params = new URLSearchParams();
       if (selectedExamId !== 'ALL') params.set('examId', selectedExamId);
-      if (selectedStatus !== 'ALL' && selectedStatus !== 'FLAGGED') {
+      if (selectedStatus !== 'ALL') {
         params.set('status', selectedStatus);
       }
       return api.get<ProctorLiveMonitorRow[]>(`/proctor/live-monitor?${params.toString()}`);
     },
-    refetchInterval: 12000,
+    refetchInterval: 10000,
   });
 
   // 3b. Fetch Time Extension Requests for Indicator Badge
@@ -96,6 +104,19 @@ export function ProctorDashboardPage({ initialTab = 'monitor' }: { initialTab?: 
   const rawSessions = useMemo(() => monitorQuery.data ?? [], [monitorQuery.data]);
   const exams = useMemo(() => examsQuery.data ?? [], [examsQuery.data]);
 
+  // Exam filter lists only exams that have live sessions
+  const liveExams = useMemo(() => {
+    const liveExamIds = new Set(rawSessions.map((s) => s.exam_id));
+    return exams.filter((e) => liveExamIds.has(e.id));
+  }, [rawSessions, exams]);
+
+  // Reset exam filter if current selection has no live sessions
+  useEffect(() => {
+    if (selectedExamId !== 'ALL' && !liveExams.some((e) => String(e.id) === String(selectedExamId))) {
+      setSelectedExamId('ALL');
+    }
+  }, [liveExams, selectedExamId]);
+
   // Helper to trigger a temporary tile shake animation
   const triggerTileShake = useCallback((sessionId: number) => {
     setShakingTiles((prev) => ({ ...prev, [sessionId]: true }));
@@ -103,6 +124,43 @@ export function ProctorDashboardPage({ initialTab = 'monitor' }: { initialTab?: 
       setShakingTiles((prev) => ({ ...prev, [sessionId]: false }));
     }, 1200);
   }, []);
+
+  // Helper to remove finished/terminated candidate tile with exit animation
+  const removeLiveTile = useCallback(
+    (sessionId: number, studentName?: string, examTitle?: string, status?: string) => {
+      // Resolve candidate name and exam title from query cache if missing in event payload
+      const cached = queryClient.getQueryData<ProctorLiveMonitorRow[]>(['proctor-live-monitor']);
+      const match = cached?.find((s) => s.session_id === sessionId);
+      const finalName = studentName || match?.student_name || `Candidate #${sessionId}`;
+      const finalTitle = examTitle || match?.exam_title || 'Assessment';
+
+      // 1. Optimistically filter from query cache so exit animation starts immediately
+      queryClient.setQueriesData<ProctorLiveMonitorRow[]>(
+        { queryKey: ['proctor-live-monitor'] },
+        (old) => {
+          if (!old) return old;
+          return old.filter((s) => s.session_id !== sessionId);
+        }
+      );
+
+      // 2. Add to Just Finished strip (keep last 5)
+      setJustFinished((prev) => [
+        {
+          sessionId,
+          studentName: finalName,
+          examTitle: finalTitle,
+          status: status ?? 'COMPLETED',
+          finishedAt: Date.now(),
+        },
+        ...prev.filter((p) => p.sessionId !== sessionId).slice(0, 4),
+      ]);
+
+      // 3. Invalidate queries
+      queryClient.invalidateQueries({ queryKey: ['proctor-live-monitor'] });
+      queryClient.invalidateQueries({ queryKey: ['proctor-kpis'] });
+    },
+    [queryClient]
+  );
 
   // 4. Socket.IO Realtime Telemetry Ingestion
   useEffect(() => {
@@ -186,20 +244,49 @@ export function ProctorDashboardPage({ initialTab = 'monitor' }: { initialTab?: 
     };
 
     // Session Terminated Event
-    const onSessionTerminated = (payload: { sessionId: number; reason?: string }) => {
+    const onSessionTerminated = (payload: {
+      sessionId: number;
+      studentName?: string;
+      examTitle?: string;
+      reason?: string;
+    }) => {
       playPingSound('critical');
       triggerTileShake(payload.sessionId);
-      queryClient.invalidateQueries({ queryKey: ['proctor-live-monitor'] });
-      queryClient.invalidateQueries({ queryKey: ['proctor-kpis'] });
+      removeLiveTile(payload.sessionId, payload.studentName, payload.examTitle, 'TERMINATED');
     };
 
-    // Session Update / Reinstated / Submitted
-    const onSessionUpdate = (payload: { sessionId: number }) => {
+    // Exam Submitted Event
+    const onExamSubmitted = (payload: {
+      sessionId: number;
+      studentName?: string;
+      examTitle?: string;
+      status?: string;
+    }) => {
+      removeLiveTile(payload.sessionId, payload.studentName, payload.examTitle, payload.status ?? 'SUBMITTED');
+    };
+
+    // Session Update / Reinstated / Status change
+    const onSessionUpdate = (payload: {
+      sessionId: number;
+      status?: string;
+      studentName?: string;
+      examTitle?: string;
+    }) => {
+      if (payload.status && payload.status !== 'IN_PROGRESS') {
+        removeLiveTile(payload.sessionId, payload.studentName, payload.examTitle, payload.status);
+      } else {
+        queryClient.invalidateQueries({ queryKey: ['proctor-live-monitor'] });
+        queryClient.invalidateQueries({ queryKey: ['proctor-kpis'] });
+        if (inspectedSessionId === payload.sessionId) {
+          queryClient.invalidateQueries({ queryKey: ['proctor-session-inspect', inspectedSessionId] });
+        }
+      }
+    };
+
+    // Session Started Event (New Candidate Entered)
+    const onSessionStarted = () => {
       queryClient.invalidateQueries({ queryKey: ['proctor-live-monitor'] });
       queryClient.invalidateQueries({ queryKey: ['proctor-kpis'] });
-      if (inspectedSessionId === payload.sessionId) {
-        queryClient.invalidateQueries({ queryKey: ['proctor-session-inspect', inspectedSessionId] });
-      }
     };
 
     // Simulator Reset Event
@@ -285,7 +372,8 @@ export function ProctorDashboardPage({ initialTab = 'monitor' }: { initialTab?: 
     socket.on('session:terminated', onSessionTerminated);
     socket.on('session:update', onSessionUpdate);
     socket.on('session:reinstated', onSessionUpdate);
-    socket.on('exam:submitted', onSessionUpdate);
+    socket.on('session:started', onSessionStarted);
+    socket.on('exam:submitted', onExamSubmitted);
     socket.on('violation:reviewed', onSessionUpdate);
     socket.on('simulator:reset', onSimulatorReset);
     socket.on('extension:requested', onExtensionRequested);
@@ -300,7 +388,8 @@ export function ProctorDashboardPage({ initialTab = 'monitor' }: { initialTab?: 
       socket.off('session:terminated', onSessionTerminated);
       socket.off('session:update', onSessionUpdate);
       socket.off('session:reinstated', onSessionUpdate);
-      socket.off('exam:submitted', onSessionUpdate);
+      socket.off('session:started', onSessionStarted);
+      socket.off('exam:submitted', onExamSubmitted);
       socket.off('violation:reviewed', onSessionUpdate);
       socket.off('simulator:reset', onSimulatorReset);
       socket.off('extension:requested', onExtensionRequested);
@@ -308,11 +397,16 @@ export function ProctorDashboardPage({ initialTab = 'monitor' }: { initialTab?: 
       socket.off('warning:issued', onWarningIssued);
       socket.off('warning:acked', onWarningAcked);
     };
-  }, [inspectedSessionId, queryClient, token, triggerTileShake]);
+  }, [inspectedSessionId, queryClient, removeLiveTile, token, triggerTileShake]);
 
   // Filter & Sort Sessions for Student Grid
   const displaySessions = useMemo(() => {
     let result = [...rawSessions];
+
+    // Filter by live exam
+    if (selectedExamId !== 'ALL') {
+      result = result.filter((s) => String(s.exam_id) === String(selectedExamId));
+    }
 
     // Filter by Search Query
     if (searchQuery.trim()) {
@@ -325,13 +419,17 @@ export function ProctorDashboardPage({ initialTab = 'monitor' }: { initialTab?: 
       );
     }
 
-    // Filter by Flagged Status
-    if (selectedStatus === 'FLAGGED') {
+    // Filter by Live Status: 'ALL' (All live) | 'WARNED' | 'AT_RISK'
+    if (selectedStatus === 'WARNED') {
       result = result.filter(
-        (s) =>
-          s.status === 'IN_PROGRESS' &&
-          (Number(s.trust_score) < 100 || Number(s.total_violations) > 0)
+        (s) => Number(s.warning_count ?? 0) > 0 || Boolean(s.pending_warning_log_id)
       );
+    } else if (selectedStatus === 'AT_RISK') {
+      result = result.filter((s) => {
+        const score = Number(s.trust_score);
+        const minThreshold = Number(s.min_trust_score ?? 50);
+        return score < minThreshold + 15;
+      });
     }
 
     // Filter by Severity
@@ -339,52 +437,44 @@ export function ProctorDashboardPage({ initialTab = 'monitor' }: { initialTab?: 
       result = result.filter((s) => {
         const score = Number(s.trust_score);
         const minThreshold = Number(s.min_trust_score ?? 50);
-        const isTerminated = s.status === 'TERMINATED_CHEATING';
         if (selectedSeverity === 'CRITICAL') {
-          return isTerminated || score < minThreshold;
+          return score < minThreshold;
         }
         if (selectedSeverity === 'HIGH') {
-          return !isTerminated && score >= minThreshold && score < 75;
+          return score >= minThreshold && score < 75;
         }
         if (selectedSeverity === 'MEDIUM') {
-          return !isTerminated && score >= 75 && score < 90;
+          return score >= 75 && score < 90;
         }
         if (selectedSeverity === 'LOW') {
-          return !isTerminated && score >= 90;
+          return score >= 90;
         }
         return true;
       });
     }
 
     // Sort order: risk-first
-    // 1. IN_PROGRESS sessions with lowest trust scores first
-    // 2. TERMINATED_CHEATING next
-    // 3. Higher trust scores last
+    // 1. Lower trust score first
+    // 2. Higher violations first
     result.sort((a, b) => {
       const aScore = Number(a.trust_score);
       const bScore = Number(b.trust_score);
-
-      // Priority 1: Lower trust score first
       if (aScore !== bScore) {
         return aScore - bScore;
       }
-
-      // Priority 2: In-progress over submitted
-      if (a.status === 'IN_PROGRESS' && b.status !== 'IN_PROGRESS') return -1;
-      if (b.status === 'IN_PROGRESS' && a.status !== 'IN_PROGRESS') return 1;
-
-      // Priority 3: Higher violations first
       return Number(b.total_violations) - Number(a.total_violations);
     });
 
     return result;
-  }, [rawSessions, searchQuery, selectedStatus, selectedSeverity]);
+  }, [rawSessions, searchQuery, selectedExamId, selectedStatus, selectedSeverity]);
 
   const kpis: ProctorKpiData = kpiQuery.data ?? {
-    activeSessions: rawSessions.filter((s) => s.status === 'IN_PROGRESS').length,
+    activeSessions: rawSessions.length,
     violationsLast10Min: 0,
-    flaggedStudents: rawSessions.filter((s) => s.status === 'IN_PROGRESS' && Number(s.trust_score) < 100).length,
-    terminatedToday: rawSessions.filter((s) => s.status === 'TERMINATED_CHEATING').length,
+    warningsPending: rawSessions.filter((s) => Number(s.warning_count ?? 0) > 0 || Boolean(s.pending_warning_log_id)).length,
+    timeRequestsWaiting: pendingExtensionsCount,
+    flaggedStudents: rawSessions.filter((s) => Number(s.warning_count ?? 0) > 0 || Boolean(s.pending_warning_log_id)).length,
+    terminatedToday: 0,
   };
 
   return (
@@ -494,33 +584,31 @@ export function ProctorDashboardPage({ initialTab = 'monitor' }: { initialTab?: 
             {/* Filter & Search Bar */}
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3.5 rounded-2xl border border-border bg-surface p-4 shadow-sm">
               <div className="flex items-center gap-2.5 flex-wrap">
-                {/* Exam Filter */}
+                {/* Exam Filter - Only exams with live sessions */}
                 <select
                   value={selectedExamId}
                   onChange={(e) => setSelectedExamId(e.target.value)}
                   aria-label="Filter candidates by assessment"
                   className="rounded-xl border border-border bg-background px-3.5 py-2 text-xs text-foreground focus:border-brand focus:ring-1 focus:ring-brand focus:outline-none font-mono"
                 >
-                  <option value="ALL">All Active Exams ({exams.length})</option>
-                  {exams.map((ex) => (
+                  <option value="ALL">All Active Exams ({liveExams.length})</option>
+                  {liveExams.map((ex) => (
                     <option key={ex.id} value={ex.id}>
                       {ex.title}
                     </option>
                   ))}
                 </select>
 
-                {/* Status Filter */}
+                {/* Status Filter: All live / Warned / At risk */}
                 <select
                   value={selectedStatus}
                   onChange={(e) => setSelectedStatus(e.target.value)}
                   aria-label="Filter candidates by session status"
                   className="rounded-xl border border-border bg-background px-3.5 py-2 text-xs text-foreground focus:border-brand focus:ring-1 focus:ring-brand focus:outline-none font-mono"
                 >
-                  <option value="ALL">All Statuses</option>
-                  <option value="IN_PROGRESS">In Progress (Live)</option>
-                  <option value="FLAGGED">Flagged (&lt;100% Trust)</option>
-                  <option value="TERMINATED_CHEATING">Terminated Cheating</option>
-                  <option value="SUBMITTED">Submitted</option>
+                  <option value="ALL">All live</option>
+                  <option value="WARNED">Warned</option>
+                  <option value="AT_RISK">At risk (trust below minimum + 15)</option>
                 </select>
 
                 {/* Severity Filter */}
@@ -538,7 +626,7 @@ export function ProctorDashboardPage({ initialTab = 'monitor' }: { initialTab?: 
                 </select>
 
                 <div className="text-xs font-mono text-muted-foreground pl-1">
-                  Showing <strong className="text-foreground">{displaySessions.length}</strong> candidates
+                  Showing <strong className="text-foreground">{displaySessions.length}</strong> live candidates
                 </div>
               </div>
 
@@ -554,6 +642,49 @@ export function ProctorDashboardPage({ initialTab = 'monitor' }: { initialTab?: 
                 />
               </div>
             </div>
+
+            {/* Just Finished Strip (Collapsible, last 5 minutes) */}
+            {justFinished.length > 0 && (
+              <div className="rounded-2xl border border-border/70 bg-surface/80 p-3 text-xs font-mono">
+                <button
+                  type="button"
+                  onClick={() => setShowJustFinished((prev) => !prev)}
+                  className="flex items-center justify-between w-full text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-3.5 h-3.5 text-muted-foreground" />
+                    <span className="font-semibold text-foreground">Just finished ({justFinished.length})</span>
+                    <span className="text-[11px] text-muted-foreground">Sessions ended in the last 5 minutes</span>
+                  </div>
+                  <span className="text-xs text-brand hover:underline">
+                    {showJustFinished ? 'Hide' : 'Show'}
+                  </span>
+                </button>
+                {showJustFinished && (
+                  <div className="mt-3 flex flex-wrap gap-2 pt-2 border-t border-border/50">
+                    {justFinished.map((jf) => (
+                      <div
+                        key={jf.sessionId}
+                        className="flex items-center gap-2 rounded-xl border border-border bg-background/90 px-3 py-1.5 text-[11px]"
+                      >
+                        <span className="font-medium text-foreground">{jf.studentName}</span>
+                        <span className="text-muted-foreground">({jf.examTitle})</span>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground uppercase font-bold">
+                          {jf.status}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setInspectedSessionId(jf.sessionId)}
+                          className="text-brand hover:underline font-semibold ml-1 cursor-pointer"
+                        >
+                          Inspect &rarr;
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Grid Layout: Student Tiles (left 2/3) + Live Feed (right 1/3) */}
             <div className="grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-4 gap-6 items-start">
@@ -572,11 +703,21 @@ export function ProctorDashboardPage({ initialTab = 'monitor' }: { initialTab?: 
                     description="Could not establish connection with proctor monitoring API. Please retry."
                     onRetry={() => monitorQuery.refetch()}
                   />
+                ) : rawSessions.length === 0 ? (
+                  <EmptyState
+                    icon={<Radio className="w-8 h-8 text-brand animate-pulse" />}
+                    title="No exams are running right now"
+                    description="All candidate assessments have concluded. Completed results and forensically audited logs can be reviewed in Student Audit."
+                    action={{
+                      label: 'Open Student Audit',
+                      onClick: () => navigate('/proctor/audit'),
+                    }}
+                  />
                 ) : displaySessions.length === 0 ? (
                   <EmptyState
                     icon={<Shield className="w-8 h-8" />}
                     title="No active candidate sessions match"
-                    description="No active sessions match the selected assessment, status, or severity filter. Telemetry streaming is nominal."
+                    description="No live sessions match the selected assessment, status, or severity filter. Telemetry streaming is nominal."
                     action={{
                       label: 'Reset Filters',
                       onClick: () => {

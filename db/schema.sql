@@ -118,6 +118,7 @@ CREATE TABLE Exam_Sessions (
   server_deadline DATETIME NOT NULL,
   ended_at DATETIME NULL,
   last_heartbeat_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  last_seen_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   UNIQUE KEY uq_exam_student (exam_id, student_id),
   KEY idx_sessions_status (status),

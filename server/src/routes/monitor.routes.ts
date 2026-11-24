@@ -13,7 +13,7 @@ monitorRouter.use(requireAuth, requireRole('PROCTOR', 'ADMIN'));
 const liveQuerySchema = z.object({
   examId: z.coerce.number().int().positive().optional(),
   status: z
-    .enum(['IN_PROGRESS', 'SUBMITTED', 'TERMINATED_CHEATING', 'TIMED_OUT'])
+    .enum(['ALL', 'IN_PROGRESS', 'WARNED', 'AT_RISK', 'SUBMITTED', 'TERMINATED_CHEATING', 'TIMED_OUT'])
     .optional(),
 });
 
@@ -32,47 +32,69 @@ monitorRouter.get('/kpis', async (_req, res, next) => {
     const rows = await queryRows<RowDataPacket[]>(
       `SELECT
          (SELECT COUNT(*) FROM Exam_Sessions WHERE status = 'IN_PROGRESS') AS active_sessions,
-         (SELECT COUNT(*) FROM Proctoring_Logs WHERE occurred_at >= DATE_SUB(NOW(), INTERVAL 10 MINUTE)) AS violations_last_10m,
-         (SELECT COUNT(*) FROM Exam_Sessions WHERE status = 'IN_PROGRESS' AND trust_score < 100) AS flagged_students,
-         (SELECT COUNT(*) FROM Exam_Sessions WHERE status = 'TERMINATED_CHEATING' AND DATE(ended_at) = CURDATE()) AS terminated_today`
+         (SELECT COUNT(*)
+            FROM Proctoring_Logs pl
+            JOIN Exam_Sessions es ON es.id = pl.session_id
+           WHERE es.status = 'IN_PROGRESS'
+             AND pl.occurred_at >= DATE_SUB(NOW(), INTERVAL 10 MINUTE)) AS violations_last_10m,
+         (SELECT COUNT(*)
+            FROM Exam_Sessions
+           WHERE status = 'IN_PROGRESS'
+             AND (pending_warning_log_id IS NOT NULL OR warning_count > 0)) AS warnings_pending,
+         (SELECT COUNT(*)
+            FROM Time_Extension_Requests ter
+            JOIN Exam_Sessions es ON es.id = ter.session_id
+           WHERE ter.status = 'PENDING'
+             AND es.status = 'IN_PROGRESS') AS time_requests_waiting`
     );
     const row = rows[0] || {};
     sendSuccess(res, {
       activeSessions: Number(row.active_sessions ?? 0),
       violationsLast10Min: Number(row.violations_last_10m ?? 0),
-      flaggedStudents: Number(row.flagged_students ?? 0),
-      terminatedToday: Number(row.terminated_today ?? 0),
+      warningsPending: Number(row.warnings_pending ?? 0),
+      timeRequestsWaiting: Number(row.time_requests_waiting ?? 0),
+      // Backwards compatibility with previous KPI names
+      flaggedStudents: Number(row.warnings_pending ?? 0),
+      terminatedToday: 0,
     });
   } catch (err) {
     next(err);
   }
 });
 
-// GET /api/monitor/live — queries vw_ProctorLiveMonitor
+// GET /api/monitor/live — queries vw_LiveSessions (ONLY IN_PROGRESS sessions)
 monitorRouter.get(
   '/live',
   validate({ query: liveQuerySchema }),
   async (req, res, next) => {
     try {
       const { examId, status } = req.query as unknown as z.infer<typeof liveQuerySchema>;
-      const conditions: string[] = [];
+
+      // Completed / historical statuses return empty set for live monitor
+      if (status === 'SUBMITTED' || status === 'TERMINATED_CHEATING' || status === 'TIMED_OUT') {
+        sendSuccess(res, []);
+        return;
+      }
+
+      const conditions: string[] = ["status = 'IN_PROGRESS'"];
       const params: (string | number)[] = [];
 
       if (examId !== undefined) {
         conditions.push('exam_id = ?');
         params.push(examId);
       }
-      if (status !== undefined) {
-        conditions.push('status = ?');
-        params.push(status);
+      if (status === 'WARNED') {
+        conditions.push('(warning_count > 0 OR pending_warning_log_id IS NOT NULL)');
+      } else if (status === 'AT_RISK') {
+        conditions.push('trust_score < (min_trust_score + 15)');
       }
 
-      const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+      const whereClause = `WHERE ${conditions.join(' AND ')}`;
       const rows = await queryRows<RowDataPacket[]>(
         `SELECT *
-           FROM vw_ProctorLiveMonitor
+           FROM vw_LiveSessions
            ${whereClause}
-          ORDER BY FIELD(status, 'IN_PROGRESS', 'TERMINATED_CHEATING', 'TIMED_OUT', 'SUBMITTED'),
+          ORDER BY is_disconnected ASC,
                    trust_score ASC,
                    started_at DESC`,
         params

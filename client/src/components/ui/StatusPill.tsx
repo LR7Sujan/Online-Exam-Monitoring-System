@@ -46,6 +46,13 @@ const statusConfig: Record<
     dotColor: 'rose',
     label: 'TERMINATED',
   },
+  DISCONNECTED: {
+    border: 'border-amber-400 dark:border-amber-600/80',
+    bg: 'bg-amber-500/10 dark:bg-amber-950/40',
+    text: 'text-amber-600 dark:text-amber-400',
+    dotColor: 'amber',
+    label: 'DISCONNECTED',
+  },
 
   // Integrity Statuses
   CLEAN: {

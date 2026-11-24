@@ -204,6 +204,8 @@ export interface ProctorLiveMonitorRow {
   server_deadline: string;
   ended_at: string | null;
   last_heartbeat_at: string;
+  is_disconnected?: boolean | number;
+  seconds_since_heartbeat?: number;
   seconds_remaining: number;
   total_violations: number;
   pending_violations: number;

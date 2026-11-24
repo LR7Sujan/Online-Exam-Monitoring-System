@@ -1132,7 +1132,7 @@ sessionsRouter.post(
         return;
       }
 
-      await executeSql('UPDATE Exam_Sessions SET last_heartbeat_at = NOW() WHERE id = ?', [
+      await executeSql('UPDATE Exam_Sessions SET last_heartbeat_at = NOW(), last_seen_at = NOW() WHERE id = ?', [
         sessionId,
       ]);
 
@@ -1222,6 +1222,9 @@ sessionsRouter.post(
         status: refreshed.status,
         trustScore: refreshed.trust_score,
         secondsRemaining: remaining,
+        secondsLeft: remaining,
+        maxExtensionMins: Number(refreshed.max_extension_mins ?? 0),
+        inGraceWindow: Boolean(refreshed.in_grace_window),
         extensionRequest: refreshed.extension_request ?? null,
       });
     } catch (err) {
@@ -1439,13 +1442,17 @@ sessionsRouter.post(
         {
           sessionId,
           examId: session.exam_id,
+          examTitle: session.exam_title,
           studentId: session.student_id,
+          studentName: req.user?.fullName,
           status: finalStatus,
           trust_score: finalTrust,
           result,
         },
         {
           sessionId,
+          examTitle: session.exam_title,
+          studentName: req.user?.fullName,
           trust_score: finalTrust,
           status: finalStatus,
           result,

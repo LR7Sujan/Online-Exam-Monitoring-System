@@ -81,6 +81,10 @@ export function StudentTile({
   const minThreshold = Number(session.min_trust_score ?? 50);
   const isTerminated = session.status === 'TERMINATED_CHEATING';
   const needsReinstatement = Boolean(session.needs_reinstatement);
+  const isDisconnected = Boolean(
+    session.is_disconnected ||
+    Number(session.seconds_since_heartbeat ?? 0) > 90
+  );
 
   // Risk Level Evaluation
   let riskColor: 'rose' | 'amber' | 'emerald' = 'emerald';
@@ -89,7 +93,7 @@ export function StudentTile({
   if (isTerminated || score < minThreshold) {
     riskColor = 'rose';
     glowClasses = 'border-rose-500/50 bg-rose-500/5 hover:border-rose-500 hover:bg-rose-500/10 shadow-sm hover:shadow-rose-500/10';
-  } else if (score < 85 || Number(session.total_violations) > 0) {
+  } else if (isDisconnected || score < 85 || Number(session.total_violations) > 0) {
     riskColor = 'amber';
     glowClasses = 'border-amber-500/40 bg-amber-500/5 hover:border-amber-500 hover:bg-amber-500/10 shadow-sm hover:shadow-amber-500/10';
   }
@@ -107,8 +111,10 @@ export function StudentTile({
         scale: 1,
         x: isShaking ? [-6, 6, -4, 4, -2, 2, 0] : 0,
       }}
+      exit={{ opacity: 0, scale: 0.95 }}
       transition={{
-        layout: { duration: 0.4, ease: 'easeOut' },
+        duration: 0.3,
+        layout: { duration: 0.3, ease: 'easeOut' },
         x: { duration: 0.35, ease: 'easeInOut' },
       }}
       onClick={() => onSelect(session.session_id)}
@@ -147,8 +153,8 @@ export function StudentTile({
             {getInitials(session.student_name)}
             {session.status === 'IN_PROGRESS' && (
               <span className="absolute -bottom-1 -right-1 flex h-3 w-3">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75" />
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500" />
+                <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${isDisconnected ? 'bg-amber-500' : 'bg-emerald-500'}`} />
+                <span className={`relative inline-flex rounded-full h-3 w-3 ${isDisconnected ? 'bg-amber-500' : 'bg-emerald-500'}`} />
               </span>
             )}
           </motion.div>
@@ -180,7 +186,7 @@ export function StudentTile({
 
         {/* Cell 3: Status Pill aligned right */}
         <div className="shrink-0 flex items-start justify-end min-w-0 pl-1">
-          <StatusPill status={session.status} size="sm" />
+          <StatusPill status={isDisconnected ? 'DISCONNECTED' : session.status} size="sm" />
         </div>
       </div>
 
