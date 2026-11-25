@@ -72,6 +72,7 @@ interface SampleViolation {
   penalty: string;
   time: string;
   severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
+  trustScore: number;
 }
 
 const SAMPLE_VIOLATIONS: SampleViolation[] = [
@@ -83,6 +84,7 @@ const SAMPLE_VIOLATIONS: SampleViolation[] = [
     penalty: '-15 pts',
     time: '10:42:15 AM',
     severity: 'MEDIUM',
+    trustScore: 85,
   },
   {
     id: 2,
@@ -92,6 +94,7 @@ const SAMPLE_VIOLATIONS: SampleViolation[] = [
     penalty: '-35 pts',
     time: '10:41:03 AM',
     severity: 'HIGH',
+    trustScore: 65,
   },
   {
     id: 3,
@@ -101,6 +104,7 @@ const SAMPLE_VIOLATIONS: SampleViolation[] = [
     penalty: '-50 pts',
     time: '10:39:50 AM',
     severity: 'CRITICAL',
+    trustScore: 50,
   },
   {
     id: 4,
@@ -110,6 +114,7 @@ const SAMPLE_VIOLATIONS: SampleViolation[] = [
     penalty: '-20 pts',
     time: '10:37:22 AM',
     severity: 'HIGH',
+    trustScore: 80,
   },
   {
     id: 5,
@@ -119,11 +124,24 @@ const SAMPLE_VIOLATIONS: SampleViolation[] = [
     penalty: '-10 pts',
     time: '10:35:10 AM',
     severity: 'LOW',
+    trustScore: 90,
+  },
+  {
+    id: 6,
+    name: 'Elena Rostova',
+    email: 'e.rostova@university.edu',
+    code: 'SECONDARY_DISPLAY',
+    penalty: '-30 pts',
+    time: '10:33:04 AM',
+    severity: 'HIGH',
+    trustScore: 70,
   },
 ];
 
 export function LoadingEmptySection() {
   const toast = useToast();
+  const toastRef = useRef(toast);
+  toastRef.current = toast;
 
   // 1. Interactive Demo State Machine (Default is LOADED per requirement)
   const [demoState, dispatch] = useReducer(stateReducer, {
@@ -135,13 +153,14 @@ export function LoadingEmptySection() {
 
   // Auto-resolve timer managed via state machine effect, survives StrictMode and re-renders
   useEffect(() => {
-    if (demoState.status === 'loading' && demoState.durationMs > 0) {
+    if (demoState.status === 'loading') {
+      const delay = demoState.durationMs > 0 ? demoState.durationMs : 1500;
       if (timerRef.current) clearTimeout(timerRef.current);
       timerRef.current = setTimeout(() => {
         dispatch({ type: 'AUTO_RESOLVED' });
         timerRef.current = null;
-        toast.info('Data Stream Resolved', 'Skeletons resolved to Loaded state');
-      }, demoState.durationMs);
+        toastRef.current.info('Data Stream Resolved', 'Skeletons resolved to Loaded state');
+      }, delay);
     } else {
       if (timerRef.current) {
         clearTimeout(timerRef.current);
@@ -155,7 +174,7 @@ export function LoadingEmptySection() {
         timerRef.current = null;
       }
     };
-  }, [demoState.status, demoState.durationMs, toast]);
+  }, [demoState.status, demoState.durationMs]);
 
   // 2. Standalone Skeleton Demo mode ('content' | 'skeleton')
   // Default tab: Content so users immediately see what the skeleton is replacing
@@ -263,7 +282,7 @@ type DemoStatus = 'loading' | 'loaded' | 'empty' | 'error';
                   {demoState.status === 'loading'
                     ? `Loading (auto-resolves in ${(demoState.durationMs / 1000).toFixed(1)}s)`
                     : demoState.status === 'loaded'
-                    ? 'Loaded (5 incidents visible)'
+                    ? 'Loaded (6 incidents visible)'
                     : demoState.status === 'empty'
                     ? 'Empty (Zero infractions)'
                     : 'Error (Connection lost)'}
@@ -321,7 +340,7 @@ type DemoStatus = 'loading' | 'loaded' | 'empty' | 'error';
                 {demoState.status === 'loading'
                   ? 'STREAM BUFFERING'
                   : demoState.status === 'loaded'
-                  ? '5 INCIDENTS LOGGED'
+                  ? '6 INCIDENTS LOGGED'
                   : demoState.status === 'empty'
                   ? 'ALL CLEAR'
                   : 'DISCONNECTED'}
@@ -331,7 +350,7 @@ type DemoStatus = 'loading' | 'loaded' | 'empty' | 'error';
             {/* Card Content Area */}
             <div className="p-4 sm:p-6 min-h-[360px] flex flex-col justify-center">
               <AnimatePresence mode="wait">
-                {/* 1. LOADING STATE: 5 row-shaped skeletons with visible moving shimmer */}
+                {/* 1. LOADING STATE: 6 row-shaped skeletons with visible moving shimmer */}
                 {demoState.status === 'loading' && (
                   <motion.div
                     key="loading"
@@ -341,7 +360,7 @@ type DemoStatus = 'loading' | 'loaded' | 'empty' | 'error';
                     transition={{ duration: 0.15 }}
                     className="space-y-3 w-full"
                   >
-                    {Array.from({ length: 5 }).map((_, idx) => (
+                    {Array.from({ length: 6 }).map((_, idx) => (
                       <div
                         key={idx}
                         data-testid="interactive-skeleton"
@@ -408,6 +427,12 @@ type DemoStatus = 'loading' | 'loaded' | 'empty' | 'error';
 
                           {/* Severity Badge */}
                           <SeverityBadge severity={row.severity} size="sm" />
+
+                          {/* Trust % Chip */}
+                          <div className="px-2.5 py-1 rounded-lg border border-border bg-background text-[11px] font-mono font-semibold flex items-center gap-1.5 shadow-2xs text-emerald-500">
+                            <span>{row.trustScore}%</span>
+                            <span className="text-[10px] text-muted-foreground font-normal">Trust</span>
+                          </div>
                         </div>
                       </div>
                     ))}

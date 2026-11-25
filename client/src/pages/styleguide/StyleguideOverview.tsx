@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Sparkles, Search, ArrowRight, Layers } from 'lucide-react';
 import { STYLEGUIDE_SECTIONS, StyleguideSectionMeta } from './data';
-import { SkeletonText } from '../../components/ui';
 
 export function StyleguideOverview() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -78,13 +77,12 @@ export function StyleguideOverview() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {filteredSections.map((section: StyleguideSectionMeta) => {
               const Icon = section.icon;
-              const isSkeletonSection = section.slug === 'loading-empty';
 
               return (
                 <Link
                   key={section.slug}
                   to={section.path}
-                  className="group block rounded-2xl border border-border bg-surface dark:bg-[#0f1019] hover:border-brand/40 hover:bg-surface-elevated/70 p-6 shadow-sm hover:shadow-lg transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-brand relative overflow-hidden"
+                  className="group flex flex-col justify-between h-full rounded-2xl border border-border bg-surface dark:bg-[#0f1019] hover:border-brand/40 hover:bg-surface-elevated/70 p-6 shadow-sm hover:shadow-lg transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-brand relative overflow-hidden"
                 >
                   <div className="space-y-4">
                     {/* Top Row: Icon + Section Number + Component Count */}
@@ -109,38 +107,22 @@ export function StyleguideOverview() {
                         <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-brand group-hover:translate-x-1 transition-all" />
                       </h3>
 
-                      {/* Display explicit test locator anchor for section 11 */}
-                      {isSkeletonSection ? (
-                        <div className="space-y-1">
-                          <span className="text-[11px] font-mono text-brand font-semibold block">
-                            11. Skeleton Loaders & Empty State Placeholders
-                          </span>
-                          <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">
-                            {section.description}
-                          </p>
-                          {/* Mini visual shimmer preview inside card */}
-                          <div className="pt-2" aria-hidden="true">
-                            <SkeletonText lines={2} />
-                          </div>
-                        </div>
-                      ) : (
-                        <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">
-                          {section.description}
-                        </p>
-                      )}
+                      <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">
+                        {section.description}
+                      </p>
                     </div>
+                  </div>
 
-                    {/* Tag Chips */}
-                    <div className="flex flex-wrap gap-1.5 pt-2 border-t border-border/50">
-                      {section.tags.slice(0, 3).map((tag) => (
-                        <span
-                          key={tag}
-                          className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-muted/60 text-muted-foreground"
-                        >
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
+                  {/* Tag Chips pinned to bottom */}
+                  <div className="flex flex-wrap gap-1.5 pt-4 mt-4 border-t border-border/50">
+                    {section.tags.slice(0, 3).map((tag) => (
+                      <span
+                        key={tag}
+                        className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-muted/60 text-muted-foreground"
+                      >
+                        {tag}
+                      </span>
+                    ))}
                   </div>
                 </Link>
               );
