@@ -9,6 +9,7 @@ import type { AnswerOption, ExamSessionRow, QuestionRow } from '../types/api.js'
 import { AppError } from '../utils/errors.js';
 import { sendSuccess } from '../utils/response.js';
 import { generateSignedSnapshotUrl } from '../services/snapshotSigner.js';
+import { enforceLazyTimeouts } from '../services/timeoutService.js';
 
 export const proctorRouter = Router();
 
@@ -283,6 +284,7 @@ proctorRouter.get(
   async (req, res, next) => {
     try {
       const { examId, status } = req.query as unknown as z.infer<typeof liveMonitorQuerySchema>;
+      await enforceLazyTimeouts({ examId });
 
       // Completed / historical statuses return empty set for live monitor
       if (status === 'SUBMITTED' || status === 'TERMINATED_CHEATING' || status === 'TIMED_OUT') {
@@ -338,6 +340,7 @@ proctorRouter.get(
   async (req, res, next) => {
     try {
       const { examId, status } = req.query as unknown as z.infer<typeof liveMonitorQuerySchema>;
+      await enforceLazyTimeouts({ examId });
 
       if (status === 'SUBMITTED' || status === 'TERMINATED_CHEATING' || status === 'TIMED_OUT') {
         sendSuccess(res, []);

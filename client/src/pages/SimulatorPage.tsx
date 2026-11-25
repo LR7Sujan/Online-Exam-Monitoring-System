@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -132,6 +132,53 @@ export const SimulatorPage: React.FC = () => {
   const sim = statusQuery.data;
   const isRunning = Boolean(sim?.isRunning);
   const isPaused = Boolean(sim?.isPaused);
+
+  // Browser-driven swarm engine: schedules tick calls with timers and AbortController
+  useEffect(() => {
+    if (!isRunning || isPaused) {
+      return;
+    }
+
+    const abortController = new AbortController();
+    let isCancelled = false;
+    let timerId: ReturnType<typeof setTimeout> | null = null;
+
+    const intervalMs = Math.max(100, Math.round(1500 / (sim?.speed || speed || 2.0)));
+
+    const executeTick = async () => {
+      try {
+        const response = await api.post<SimulatorStatusResponse>(
+          '/admin/simulator/tick',
+          {},
+          { signal: abortController.signal }
+        );
+        if (!isCancelled && response) {
+          queryClient.setQueryData(['simulator-status'], response);
+          if (response.isRunning && !response.isPaused) {
+            timerId = setTimeout(executeTick, intervalMs);
+          }
+        }
+      } catch (err: unknown) {
+        const error = err as { name?: string; code?: string };
+        if (
+          !isCancelled &&
+          error?.name !== 'CanceledError' &&
+          error?.name !== 'AbortError' &&
+          error?.code !== 'ERR_CANCELED'
+        ) {
+          timerId = setTimeout(executeTick, Math.max(1000, intervalMs * 2));
+        }
+      }
+    };
+
+    timerId = setTimeout(executeTick, intervalMs);
+
+    return () => {
+      isCancelled = true;
+      abortController.abort();
+      if (timerId) clearTimeout(timerId);
+    };
+  }, [isRunning, isPaused, sim?.speed, speed, queryClient]);
 
   // Determines whether the simulator has run or has any populated state to clear
   const hasRun = Boolean(
@@ -350,6 +397,10 @@ export const SimulatorPage: React.FC = () => {
           <p className="text-sm text-muted-foreground mt-1 font-sans">
             Spawn virtual examinees to simulate live exam telemetry, optical violations, and real-time Socket.IO broadcasts.
           </p>
+          <div className="flex items-center gap-2 mt-2 px-3 py-1.5 rounded-lg bg-brand/5 border border-brand/20 text-xs text-muted-foreground w-fit">
+            <Clock className="w-3.5 h-3.5 text-brand" />
+            <span>The swarm runs while this tab is open.</span>
+          </div>
         </div>
 
         {/* Live Proctor View Link */}

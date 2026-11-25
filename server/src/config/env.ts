@@ -106,6 +106,7 @@ const envSchema = z.object({
   RECORDING_MAX_STORAGE_GB: z.coerce.number().positive().default(5),
   STORAGE_PROVIDER: z.enum(['blob', 's3', 'local']).default(isTestEnv ? 'local' : 'local'),
   STORAGE_PREFIX: z.string().default(isTestEnv ? 'test/' : ''),
+  CRON_SECRET: z.string().default(isTestEnv ? 'test-cron-secret-token' : ''),
   BLOB_READ_WRITE_TOKEN: z.string().optional(),
   S3_BUCKET: z.string().optional(),
   S3_REGION: z.string().default('auto'),

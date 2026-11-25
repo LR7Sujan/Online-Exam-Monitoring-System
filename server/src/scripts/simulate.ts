@@ -64,8 +64,9 @@ async function main() {
   console.log(' Simulation running! Real-time events broadcasting over Socket.IO.\n');
 
   let secondsElapsed = 0;
-  const renderInterval = setInterval(() => {
+  const renderInterval = setInterval(async () => {
     secondsElapsed++;
+    await simulatorEngine.tick();
     const state = simulatorEngine.getState();
 
     // Print status line

@@ -312,6 +312,12 @@ describe('Sub-Phase 11.6: Realtime, Proctoring Invariants & Load Verification', 
     const durationMs = 15000;
 
     while (Date.now() - startTime < durationMs) {
+      // Step simulator tick to drive candidate actions
+      await fetch(`${serverOrigin}/api/admin/simulator/tick`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${adminToken}` },
+      });
+
       const t0 = performance.now();
       try {
         const res = await fetch(`${serverOrigin}/api/proctor/live-monitor`, {

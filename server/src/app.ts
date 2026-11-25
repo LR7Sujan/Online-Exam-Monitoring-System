@@ -31,6 +31,7 @@ import { realtimeRouter, handleGetEvents, getEventsQuerySchema } from './routes/
 import { violationsRouter } from './routes/violations.routes.js';
 import { violationTypesRouter } from './routes/violationTypes.routes.js';
 import { snapshotsRouter } from './routes/snapshots.routes.js';
+import { cronRouter } from './routes/cron.routes.js';
 import { getStorageAdapter, resolveStorageKey } from './storage/index.js';
 import { sendSuccess } from './utils/response.js';
 
@@ -210,9 +211,24 @@ export function createApp() {
   app.use('/api', recordingsRouter);
   app.use('/api/snapshots', snapshotsRouter);
   app.use('/api/realtime', realtimeRouter);
+  app.use('/api/cron', cronRouter);
   app.get('/api/events', requireAuth, validate({ query: getEventsQuerySchema }), handleGetEvents);
 
-  // Dedicated simulator reset endpoint
+  // Dedicated simulator endpoints
+  app.post(
+    '/api/simulator/tick',
+    requireAuth,
+    requireRole('ADMIN'),
+    async (_req, res, next) => {
+      try {
+        const state = await simulatorEngine.tick();
+        sendSuccess(res, state);
+      } catch (err) {
+        next(err);
+      }
+    }
+  );
+
   app.post(
     '/api/simulator/reset',
     requireAuth,

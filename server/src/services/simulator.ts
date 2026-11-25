@@ -197,7 +197,6 @@ export function allocatePersonas(
 }
 
 class SimulatorEngine {
-  private timer: NodeJS.Timeout | null = null;
   private rng: () => number = createRng();
   private state: SimulatorState = {
     isRunning: false,
@@ -457,13 +456,6 @@ class SimulatorEngine {
       ],
     };
 
-    const intervalMs = Math.round(1500 / speed);
-    this.timer = setInterval(() => {
-      this.tick().catch((err) => {
-        console.warn('[SimulatorEngine] Tick execution warning:', err);
-      });
-    }, intervalMs);
-
     return this.getState();
   }
 
@@ -484,10 +476,6 @@ class SimulatorEngine {
   }
 
   public async stop(): Promise<SimulatorState> {
-    if (this.timer) {
-      clearInterval(this.timer);
-      this.timer = null;
-    }
     this.state.isRunning = false;
     this.state.isPaused = false;
     return this.getState();
@@ -500,11 +488,6 @@ class SimulatorEngine {
     deletedSessions: number;
     deletedUsers: number;
   }> {
-    if (this.timer) {
-      clearInterval(this.timer);
-      this.timer = null;
-    }
-
     this.state = {
       isRunning: false,
       isPaused: false,
@@ -672,10 +655,6 @@ class SimulatorEngine {
     this.state.endedAt = new Date().toISOString();
     this.state.isRunning = false;
     this.state.isPaused = false;
-    if (this.timer) {
-      clearInterval(this.timer);
-      this.timer = null;
-    }
 
     this.addLog(
       'System Swarm Engine',
@@ -684,13 +663,13 @@ class SimulatorEngine {
     );
   }
 
-  private async tick(): Promise<void> {
-    if (!this.state.isRunning || this.state.isPaused) return;
+  public async tick(): Promise<SimulatorState> {
+    if (!this.state.isRunning || this.state.isPaused) return this.getState();
 
     const activeCandidates = this.state.candidates.filter((c) => c.status === 'IN_PROGRESS');
     if (activeCandidates.length === 0) {
       this.finalizeSimulation();
-      return;
+      return this.getState();
     }
 
     // Process a slice of candidates per tick for responsive, lively execution
@@ -703,6 +682,8 @@ class SimulatorEngine {
     for (const candidate of candidatesToStep) {
       await this.stepCandidate(candidate);
     }
+
+    return this.getState();
   }
 
   private async stepCandidate(candidate: SimCandidate): Promise<void> {

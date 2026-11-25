@@ -233,6 +233,16 @@ adminRouter.get('/simulator/status', (_req, res) => {
   sendSuccess(res, simulatorEngine.getState());
 });
 
+// POST /api/admin/simulator/tick
+adminRouter.post('/simulator/tick', async (_req, res, next) => {
+  try {
+    const state = await simulatorEngine.tick();
+    sendSuccess(res, state);
+  } catch (err) {
+    next(err);
+  }
+});
+
 // POST /api/admin/simulator/start
 adminRouter.post('/simulator/start', async (req, res, next) => {
   try {

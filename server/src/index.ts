@@ -2,7 +2,6 @@ import { createServer } from 'node:http';
 import { createApp } from './app.js';
 import { pool, testDbConnection } from './config/db.js';
 import { env } from './config/env.js';
-import { startAutoTimeoutCron, stopAutoTimeoutCron } from './services/timeoutCron.js';
 
 const app = createApp();
 const httpServer = createServer(app);
@@ -17,10 +16,6 @@ async function bootstrap(): Promise<void> {
     console.log(`[ProctorIQ] Connected to MySQL (${env.DB_HOST}:${env.DB_PORT}/${env.DB_NAME})`);
   }
 
-  if (env.NODE_ENV !== 'test') {
-    startAutoTimeoutCron();
-    console.log('[ProctorIQ] Auto-timeout cron active (* * * * *) -> sp_AutoTimeoutExpiredSessions');
-  }
 
   httpServer.listen(env.PORT, () => {
     console.log(`[ProctorIQ] API server listening on http://localhost:${env.PORT}`);
@@ -30,7 +25,6 @@ async function bootstrap(): Promise<void> {
 
 function shutdown(signal: string): void {
   console.log(`[ProctorIQ] Received ${signal}. Closing server gracefully...`);
-  stopAutoTimeoutCron();
   httpServer.close(async () => {
     await pool.end();
     process.exit(0);

@@ -20,6 +20,7 @@ export default defineConfig({
       'tests/recording.api.test.ts',
       'tests/realtimeProviders.test.ts',
       'tests/storageAdapter.test.ts',
+      'tests/lazyTimeoutsAndCron.test.ts',
       '../client/tests/**/*.unit.test.ts',
     ],
     testTimeout: 25000,

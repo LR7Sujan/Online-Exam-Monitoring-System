@@ -25,6 +25,7 @@ import {
 } from '../services/violationGuard.js';
 import { generateSignedSnapshotUrl } from '../services/snapshotSigner.js';
 import { getSessionScorecard } from '../services/studentAuditService.js';
+import { enforceLazyTimeouts } from '../services/timeoutService.js';
 import type { AnswerOption, ExamSessionRow, ResultRow, SessionStatus, SessionWarningRow, TimeExtensionRequestRow, ViolationTypeRow } from '../types/api.js';
 import { AppError } from '../utils/errors.js';
 import { sendSuccess } from '../utils/response.js';
@@ -275,6 +276,7 @@ sessionsRouter.get(
   async (req: AuthenticatedRequest, res, next) => {
     try {
       const { sessionId } = req.params as unknown as z.infer<typeof sessionIdParamSchema>;
+      await enforceLazyTimeouts({ sessionId });
       const session = await assertSessionAccess(sessionId, req.user);
 
       // Never expose correct_option in student exam payload
@@ -401,6 +403,7 @@ sessionsRouter.get(
   async (req: AuthenticatedRequest, res, next) => {
     try {
       const { sessionId } = req.params as unknown as z.infer<typeof sessionIdParamSchema>;
+      await enforceLazyTimeouts({ sessionId });
       const session = await assertSessionAccess(sessionId, req.user);
 
       const questions = await queryRows<RowDataPacket[]>(
@@ -506,6 +509,7 @@ sessionsRouter.get(
   async (req: AuthenticatedRequest, res, next) => {
     try {
       const { sessionId } = req.params as unknown as z.infer<typeof sessionIdParamSchema>;
+      await enforceLazyTimeouts({ sessionId });
       const session = await assertSessionAccess(sessionId, req.user);
 
       const rows = await queryRows<RowDataPacket[]>(
@@ -1135,6 +1139,7 @@ sessionsRouter.post(
   async (req: AuthenticatedRequest, res, next) => {
     try {
       const { sessionId } = req.params as unknown as z.infer<typeof sessionIdParamSchema>;
+      await enforceLazyTimeouts({ sessionId });
       const session = await assertSessionAccess(sessionId, req.user);
 
       if (session.status !== 'IN_PROGRESS') {
@@ -1436,6 +1441,7 @@ sessionsRouter.post(
   async (req: AuthenticatedRequest, res, next) => {
     try {
       const { sessionId } = req.params as unknown as z.infer<typeof sessionIdParamSchema>;
+      await enforceLazyTimeouts({ sessionId });
       const session = await assertSessionAccess(sessionId, req.user);
 
       // Expire pending extension request if submitting
@@ -1491,6 +1497,7 @@ sessionsRouter.get(
   async (req: AuthenticatedRequest, res, next) => {
     try {
       const { sessionId } = req.params as unknown as z.infer<typeof sessionIdParamSchema>;
+      await enforceLazyTimeouts({ sessionId });
       const session = await assertSessionAccess(sessionId, req.user);
 
       const results = await queryRows<ResultRow[]>(

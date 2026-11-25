@@ -1,0 +1,16 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/timeouts",
+      "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/cron/retention",
+      "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/cron/events-cleanup",
+      "schedule": "0 4 * * *"
+    }
+  ]
+}

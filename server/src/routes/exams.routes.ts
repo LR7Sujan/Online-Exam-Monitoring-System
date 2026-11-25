@@ -13,6 +13,7 @@ import {
 import type { ExamRow, ExamSessionRow, QuestionRow } from '../types/api.js';
 import { AppError } from '../utils/errors.js';
 import { sendError, sendSuccess } from '../utils/response.js';
+import { enforceLazyTimeouts } from '../services/timeoutService.js';
 
 export const examsRouter = Router();
 
@@ -362,6 +363,7 @@ examsRouter.get(
   requireRole('STUDENT'),
   async (req: AuthenticatedRequest, res, next) => {
     try {
+      await enforceLazyTimeouts({ studentId: req.user!.sub });
       const rows = await queryRows<RowDataPacket[]>(
         `SELECT
            e.id, e.title, e.description, e.duration_minutes, e.min_trust_score, e.max_extension_mins,
@@ -393,6 +395,7 @@ examsRouter.get('/', requireAuth, async (req: AuthenticatedRequest, res, next) =
   try {
     const user = req.user!;
     if (user.role === 'STUDENT') {
+      await enforceLazyTimeouts({ studentId: user.sub });
       const rows = await queryRows<RowDataPacket[]>(
         `SELECT
            e.id, e.title, e.description, e.duration_minutes, e.min_trust_score, e.max_extension_mins,

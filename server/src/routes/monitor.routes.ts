@@ -5,6 +5,7 @@ import { executeSql, queryRows } from '../config/db.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 import { sendSuccess } from '../utils/response.js';
+import { enforceLazyTimeouts } from '../services/timeoutService.js';
 
 export const monitorRouter = Router();
 
@@ -69,6 +70,7 @@ monitorRouter.get(
   async (req, res, next) => {
     try {
       const { examId, status } = req.query as unknown as z.infer<typeof liveQuerySchema>;
+      await enforceLazyTimeouts({ examId });
 
       // Completed / historical statuses return empty set for live monitor
       if (status === 'SUBMITTED' || status === 'TERMINATED_CHEATING' || status === 'TIMED_OUT') {
