@@ -1,5 +1,6 @@
 import { executeSql, queryRows } from '../config/db.js';
-import { getIo } from '../realtime/socket.js';
+import { getRealtimeAdapter } from '../realtime/adapter.js';
+import { CHANNELS } from '../realtime/channels.js';
 import type { RowDataPacket } from 'mysql2';
 
 export interface CreateNotificationParams {
@@ -42,24 +43,22 @@ export async function createNotification(params: CreateNotificationParams): Prom
     );
 
     const insertedId = res.insertId;
-    const io = getIo();
-    if (io) {
-      const socketPayload = {
-        id: insertedId,
-        type: params.type,
-        severity: params.severity,
-        title: params.title,
-        message: params.message,
-        sessionId: params.sessionId,
-        studentName: params.studentName,
-        examTitle: params.examTitle,
-        isSessionLive: true,
-        createdAt: new Date().toISOString(),
-        readAt: null,
-        payload: params.payload,
-      };
-      io.to(`user:${params.userId}`).emit('notification:new', socketPayload);
-    }
+    const adapter = getRealtimeAdapter();
+    const socketPayload = {
+      id: insertedId,
+      type: params.type,
+      severity: params.severity,
+      title: params.title,
+      message: params.message,
+      sessionId: params.sessionId,
+      studentName: params.studentName,
+      examTitle: params.examTitle,
+      isSessionLive: true,
+      createdAt: new Date().toISOString(),
+      readAt: null,
+      payload: params.payload,
+    };
+    void adapter.publish(CHANNELS.user(params.userId), 'notification:new', socketPayload);
 
     return insertedId;
   } catch (err) {
@@ -118,24 +117,22 @@ export async function notifyProctorsAndAdmins(
     );
 
     const insertedId = res.insertId;
-    const io = getIo();
-    if (io) {
-      const socketPayload = {
-        id: insertedId,
-        type: params.type,
-        severity: params.severity,
-        title: params.title,
-        message: params.message,
-        sessionId: params.sessionId,
-        studentName: params.studentName,
-        examTitle: params.examTitle,
-        isSessionLive: true,
-        createdAt: new Date().toISOString(),
-        readAt: null,
-        payload: params.payload,
-      };
-      io.to('proctors').emit('notification:new', socketPayload);
-    }
+    const adapter = getRealtimeAdapter();
+    const socketPayload = {
+      id: insertedId,
+      type: params.type,
+      severity: params.severity,
+      title: params.title,
+      message: params.message,
+      sessionId: params.sessionId,
+      studentName: params.studentName,
+      examTitle: params.examTitle,
+      isSessionLive: true,
+      createdAt: new Date().toISOString(),
+      readAt: null,
+      payload: params.payload,
+    };
+    void adapter.publish(CHANNELS.PROCTORS, 'notification:new', socketPayload);
   } catch (err) {
     console.error('[NotificationService] Failed to notify proctors and admins:', err);
   }

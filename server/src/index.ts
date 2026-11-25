@@ -2,12 +2,10 @@ import { createServer } from 'node:http';
 import { createApp } from './app.js';
 import { pool, testDbConnection } from './config/db.js';
 import { env } from './config/env.js';
-import { initSocketServer } from './realtime/socket.js';
 import { startAutoTimeoutCron, stopAutoTimeoutCron } from './services/timeoutCron.js';
 
 const app = createApp();
 const httpServer = createServer(app);
-initSocketServer(httpServer);
 
 async function bootstrap(): Promise<void> {
   const dbReady = await testDbConnection();
@@ -25,7 +23,7 @@ async function bootstrap(): Promise<void> {
   }
 
   httpServer.listen(env.PORT, () => {
-    console.log(`[ProctorIQ] API + Socket.IO server listening on http://localhost:${env.PORT}`);
+    console.log(`[ProctorIQ] API server listening on http://localhost:${env.PORT}`);
     console.log(`[ProctorIQ] Swagger docs available at http://localhost:${env.PORT}/api/docs`);
   });
 }

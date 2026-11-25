@@ -21,10 +21,6 @@ export default defineConfig(function (_a) {
                     target: backendTarget,
                     changeOrigin: true,
                 },
-                '/socket.io': {
-                    target: backendTarget,
-                    ws: true,
-                },
             },
         },
         preview: {
@@ -38,10 +34,6 @@ export default defineConfig(function (_a) {
                     target: backendTarget,
                     changeOrigin: true,
                 },
-                '/socket.io': {
-                    target: backendTarget,
-                    ws: true,
-                },
             },
         },
         build: {
@@ -51,7 +43,7 @@ export default defineConfig(function (_a) {
                         'vendor-react': ['react', 'react-dom', 'react-router-dom'],
                         'vendor-charts': ['recharts'],
                         'vendor-motion': ['framer-motion'],
-                        'vendor-utils': ['@tanstack/react-query', 'zustand', 'axios', 'socket.io-client', 'lucide-react'],
+                        'vendor-utils': ['@tanstack/react-query', 'zustand', 'axios', 'pusher-js', 'lucide-react'],
                     },
                 },
             },

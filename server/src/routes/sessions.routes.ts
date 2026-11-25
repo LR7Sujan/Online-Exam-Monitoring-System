@@ -16,7 +16,7 @@ import {
   emitViolationNew,
   emitWarningAcked,
   emitWarningIssued,
-} from '../realtime/socket.js';
+} from '../realtime/index.js';
 import {
   mapDisplayedToOriginalAnswer,
   mapOriginalToDisplayedAnswer,

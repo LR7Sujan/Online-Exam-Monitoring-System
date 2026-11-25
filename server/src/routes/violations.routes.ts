@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { executeSql, pool, queryRows } from '../config/db.js';
 import { requireAuth, requireRole, type AuthenticatedRequest } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
-import { emitSessionTerminated, emitViolationNew } from '../realtime/socket.js';
+import { emitSessionTerminated, emitViolationNew } from '../realtime/index.js';
 import { shouldDebounceViolation, violationRateLimiter } from '../services/violationGuard.js';
 import type { ExamSessionRow, ViolationTypeRow } from '../types/api.js';
 import { AppError } from '../utils/errors.js';

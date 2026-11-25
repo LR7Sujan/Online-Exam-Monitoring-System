@@ -165,6 +165,7 @@ async function backfillExistingMigrationsIfNeeded(
     else if (file === '014_perf_indexes_and_settings.sql') isApplied = await hasTableOrView('System_Settings');
     else if (file === '015_exam_recordings.sql') isApplied = await hasTableOrView('Exam_Recordings');
     else if (file === '016_recording_notes.sql') isApplied = await hasTableOrView('Recording_Notes');
+    else if (file === '017_realtime_events.sql') isApplied = await hasTableOrView('Events');
 
     if (isApplied) {
       await conn.query(

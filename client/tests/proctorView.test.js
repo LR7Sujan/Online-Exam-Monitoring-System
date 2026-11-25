@@ -13,7 +13,6 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import path, { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { io as ClientIO } from 'socket.io-client';
 import { executeSql } from '../../server/dist/config/db.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -117,20 +116,36 @@ async function testProctorMissionControl() {
   const testSessionId = startExamData.data.id;
   console.log(`  ✓ Candidate session initialized: Session #${testSessionId} (Exam #1 - ${studentEmail})`);
 
-  // Connect Proctor Socket
-  const proctorSocket = ClientIO(SOCKET_URL, {
-    auth: { token: proctorToken },
-    transports: ['websocket'],
-  });
+  // Connect Proctor Event Poller
+  let eventCursor = 0;
+  const handlers = new Map();
+  const pollTimer = setInterval(async () => {
+    try {
+      const evRes = await fetch(`${API_URL}/events?since=${eventCursor}`, {
+        headers: { Authorization: `Bearer ${proctorToken}` },
+      });
+      const evJson = await evRes.json();
+      if (evJson.data?.cursor) eventCursor = evJson.data.cursor;
+      for (const ev of evJson.data?.events || []) {
+        const list = handlers.get(ev.type) || [];
+        list.forEach((fn) => fn(ev.payload));
+      }
+    } catch {
+      // ignore
+    }
+  }, 100);
 
-  await new Promise((resolve, reject) => {
-    proctorSocket.on('connect', resolve);
-    proctorSocket.on('connect_error', reject);
-    setTimeout(() => reject(new Error('Proctor socket connection timeout')), 4000);
-  });
-  console.log('  ✓ Proctor Socket.IO client joined room "role:PROCTOR" & "proctors"');
+  const proctorSocket = {
+    on: (evt, fn) => {
+      const list = handlers.get(evt) || [];
+      list.push(fn);
+      handlers.set(evt, list);
+    },
+    disconnect: () => clearInterval(pollTimer),
+  };
+  console.log('  ✓ Proctor Realtime client listening on channel "private-role-proctor"');
 
-  // Set up expectation on Proctor Socket for incoming violation
+  // Set up expectation on Proctor Realtime stream for incoming violation
   const startTime = Date.now();
   const violationPromise = new Promise((resolve) => {
     proctorSocket.on('violation:new', (payload) => {

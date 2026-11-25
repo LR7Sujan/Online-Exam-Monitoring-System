@@ -13,6 +13,7 @@ import { openApiSpec } from './docs/openapi.js';
 import { corsMiddleware } from './middleware/cors.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 import { requireAuth, requireRole } from './middleware/auth.js';
+import { validate } from './middleware/validate.js';
 import { simulatorEngine } from './services/simulator.js';
 import { adminRouter } from './routes/admin.routes.js';
 import { analyticsRouter } from './routes/analytics.routes.js';
@@ -27,6 +28,7 @@ import { sessionsRouter } from './routes/sessions.routes.js';
 import { settingsRouter } from './routes/settings.routes.js';
 import { studentsRouter } from './routes/students.routes.js';
 import { recordingsRouter } from './routes/recordings.routes.js';
+import { realtimeRouter, handleGetEvents, getEventsQuerySchema } from './routes/realtime.routes.js';
 import { violationsRouter } from './routes/violations.routes.js';
 import { violationTypesRouter } from './routes/violationTypes.routes.js';
 import { sendSuccess } from './utils/response.js';
@@ -179,6 +181,8 @@ export function createApp() {
   app.use('/api/settings', settingsRouter);
   app.use('/api/students', studentsRouter);
   app.use('/api', recordingsRouter);
+  app.use('/api/realtime', realtimeRouter);
+  app.get('/api/events', requireAuth, validate({ query: getEventsQuerySchema }), handleGetEvents);
 
   // Dedicated simulator reset endpoint
   app.post(

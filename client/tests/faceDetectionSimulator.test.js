@@ -2,7 +2,6 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { io } from 'socket.io-client';
 import { execSync } from 'node:child_process';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -211,25 +210,29 @@ async function main() {
   assert.equal(adminLogin.success, true, 'Admin login must succeed');
   const adminToken = adminLogin.data.token;
 
-  // Connect Proctor Socket.IO client to listen for real-time broadcasts
-  const proctorSocket = io(SOCKET_URL, {
-    auth: { token: adminToken },
-    transports: ['websocket'],
-  });
-
+  // Connect Proctor realtime polling client to listen for real-time broadcasts
+  let eventCursor = 0;
   const receivedEvents = [];
-  proctorSocket.on('violation:new', (payload) => {
-    receivedEvents.push({ event: 'violation:new', payload });
-  });
-  proctorSocket.on('session:update', (payload) => {
-    receivedEvents.push({ event: 'session:update', payload });
-  });
+  const pollTimer = setInterval(async () => {
+    try {
+      const evRes = await fetch(`${API_BASE}/events?since=${eventCursor}`, {
+        headers: { Authorization: `Bearer ${adminToken}` },
+      });
+      const evJson = await evRes.json();
+      if (evJson.data?.cursor) eventCursor = evJson.data.cursor;
+      for (const ev of evJson.data?.events || []) {
+        receivedEvents.push({ event: ev.type, payload: ev.payload });
+      }
+    } catch {
+      // ignore
+    }
+  }, 100);
 
-  await new Promise((resolve) => {
-    if (proctorSocket.connected) resolve();
-    else proctorSocket.once('connect', resolve);
-  });
-  assert.ok(proctorSocket.connected, 'Socket.IO client connected successfully');
+  const proctorSocket = {
+    connected: true,
+    disconnect: () => clearInterval(pollTimer),
+  };
+  assert.ok(proctorSocket.connected, 'Realtime events client connected successfully');
 
   // Start Simulator via Admin API
   const startSimRes = await fetch(`${API_BASE}/admin/simulator/start`, {

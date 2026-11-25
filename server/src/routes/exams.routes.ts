@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { executeSql, queryRows, withConnection } from '../config/db.js';
 import { requireAuth, requireRole, type AuthenticatedRequest } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
-import { emitSessionUpdate } from '../realtime/socket.js';
+import { emitSessionUpdate } from '../realtime/index.js';
 import {
   calculateExamPermutations,
   generateUniquePaperForExam,

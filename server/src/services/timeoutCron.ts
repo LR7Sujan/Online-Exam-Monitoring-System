@@ -2,7 +2,7 @@ import type { RowDataPacket } from 'mysql2/promise';
 import cron, { type ScheduledTask } from 'node-cron';
 import { pool, queryRows } from '../config/db.js';
 import { env } from '../config/env.js';
-import { emitExamSubmitted } from '../realtime/socket.js';
+import { emitExamSubmitted } from '../realtime/index.js';
 
 let task: ScheduledTask | null = null;
 

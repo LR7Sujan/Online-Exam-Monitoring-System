@@ -1,5 +1,4 @@
 import { test, expect } from '@playwright/test';
-import { io } from 'socket.io-client';
 
 test.describe('Phase 20 Step 4: Live Exam Proctoring Performance & Instant Phone Penalty', () => {
   test.setTimeout(120000);
@@ -118,19 +117,35 @@ test.describe('Phase 20 Step 4: Live Exam Proctoring Performance & Instant Phone
     expect(proctorAuthRes.status()).toBe(200);
     const proctorToken = (await proctorAuthRes.json()).data.token;
 
-    // 2. Connect Proctor socket to listen for events
-    const socket = io(BACKEND_URL, {
-      auth: { token: proctorToken },
-      transports: ['websocket'],
-    });
+    // 2. Connect Proctor event poller to listen for events
+    let eventCursor = 0;
+    const eventHandlers = new Map<string, ((data: any) => void)[]>();
+    const pollInterval = setInterval(async () => {
+      try {
+        const evRes = await request.get(`${BACKEND_URL}/api/events?since=${eventCursor}`, {
+          headers: { Authorization: `Bearer ${proctorToken}` },
+        });
+        if (evRes.ok()) {
+          const json = await evRes.json();
+          if (json.data?.cursor) eventCursor = json.data.cursor;
+          for (const ev of json.data?.events || []) {
+            const list = eventHandlers.get(ev.type) || [];
+            list.forEach((fn) => fn(ev.payload));
+          }
+        }
+      } catch {
+        // ignore poll errors
+      }
+    }, 50);
 
-    await new Promise<void>((resolve, reject) => {
-      socket.on('connect', () => {
-        socket.emit('proctor:join');
-        resolve();
-      });
-      socket.on('connect_error', reject);
-    });
+    const socket = {
+      on: (event: string, fn: (data: any) => void) => {
+        const list = eventHandlers.get(event) || [];
+        list.push(fn);
+        eventHandlers.set(event, list);
+      },
+      disconnect: () => clearInterval(pollInterval),
+    };
 
     // 3. Provision 50 candidate sessions
     const numSessions = 50;

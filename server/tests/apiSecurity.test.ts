@@ -2,7 +2,6 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import type { Server } from 'node:http';
 import { createServer } from 'node:http';
 import { createApp } from '../src/app.js';
-import { initSocketServer } from '../src/realtime/socket.js';
 
 describe('API Security & Forensic Access Enforcement', () => {
   let studentToken: string;
@@ -15,7 +14,6 @@ describe('API Security & Forensic Access Enforcement', () => {
   beforeAll(async () => {
     const app = createApp();
     serverInstance = createServer(app);
-    initSocketServer(serverInstance);
     await new Promise<void>((resolve) => serverInstance!.listen(0, '127.0.0.1', () => resolve()));
     const address = serverInstance.address();
     const port = typeof address === 'object' && address ? address.port : 4001;

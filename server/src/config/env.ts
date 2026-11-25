@@ -104,6 +104,19 @@ const envSchema = z.object({
   WARNING_GRACE_SECONDS: z.coerce.number().int().min(0).default(5),
   RECORDING_RETENTION_DAYS: z.coerce.number().int().positive().default(30),
   RECORDING_MAX_STORAGE_GB: z.coerce.number().positive().default(5),
+  REALTIME_PROVIDER: z.enum(['pusher', 'polling']).default('polling'),
+  PUSHER_APP_ID: z.string().optional(),
+  PUSHER_KEY: z.string().optional(),
+  PUSHER_SECRET: z.string().optional(),
+  PUSHER_CLUSTER: z.string().default('mt1'),
+  PUSHER_USE_TLS: z
+    .union([z.boolean(), z.string()])
+    .transform((val) => {
+      if (typeof val === 'boolean') return val;
+      const lower = String(val).toLowerCase().trim();
+      return lower === 'true' || lower === '1' || lower === 'yes';
+    })
+    .default(true),
 });
 
 const parsed = envSchema.safeParse(process.env);

@@ -13,7 +13,7 @@ import {
   emitViolationNew,
   emitWarningIssued,
   emitWarningAcked,
-} from '../realtime/socket.js';
+} from '../realtime/index.js';
 import type { AnswerOption, ExamSessionRow, ViolationTypeRow } from '../types/api.js';
 import { AppError } from '../utils/errors.js';
 

@@ -1,10 +1,8 @@
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import test from 'node:test';
-import { io as ioClient } from '../../client/node_modules/socket.io-client/build/esm/index.js';
 import { createApp } from '../src/app.js';
 import { pool, testDbConnection } from '../src/config/db.js';
-import { initSocketServer } from '../src/realtime/socket.js';
 
 async function apiFetch<T>(
   baseUrl: string,
@@ -34,7 +32,6 @@ test('All Admin, Student, Proctor endpoints and Socket.IO events work end-to-end
 
   const app = createApp();
   const httpServer = createServer(app);
-  initSocketServer(httpServer);
   await new Promise<void>((resolve) => httpServer.listen(0, '127.0.0.1', resolve));
   const address = httpServer.address();
   assert.ok(address && typeof address === 'object');
@@ -44,7 +41,6 @@ test('All Admin, Student, Proctor endpoints and Socket.IO events work end-to-end
   let createdExamId: number | null = null;
   let createdVtId: number | null = null;
   let studentSessionId: number | null = null;
-  let proctorSocket: ReturnType<typeof ioClient> | null = null;
 
   try {
     // Login Admin, Proctor, Student
@@ -68,14 +64,6 @@ test('All Admin, Student, Proctor endpoints and Socket.IO events work end-to-end
     });
     assert.equal(studentLogin.status, 200);
     const studentToken = studentLogin.json.data.token;
-
-    // Connect Proctor Socket.IO listener
-    proctorSocket = ioClient(origin, { auth: { token: proctorToken }, transports: ['websocket'] });
-    const receivedEvents: string[] = [];
-    proctorSocket.on('violation:new', () => receivedEvents.push('violation:new'));
-    proctorSocket.on('session:update', () => receivedEvents.push('session:update'));
-    proctorSocket.on('session:terminated', () => receivedEvents.push('session:terminated'));
-    await new Promise<void>((resolve) => proctorSocket.on('connect', () => resolve()));
 
     // Admin: CRUD Exam + Question + Violation Type + Analytics
     const createExam = await apiFetch<{ id: number }>(baseUrl, '/exams', {
@@ -304,15 +292,17 @@ test('All Admin, Student, Proctor endpoints and Socket.IO events work end-to-end
     assert.equal(resultRes.status, 200);
     assert.equal(resultRes.json.data.result.integrity_status, 'DISQUALIFIED');
 
-    // Allow Socket.IO ticks to flush
+    // Allow Realtime ticks to flush and verify events via polling fallback
     await new Promise((r) => setTimeout(r, 150));
-    assert.ok(receivedEvents.includes('violation:new'));
-    assert.ok(receivedEvents.includes('session:update'));
-    assert.ok(receivedEvents.includes('session:terminated'));
+    const eventsRes = await apiFetch<{ events: { type: string }[] }>(baseUrl, '/events?since=0', {
+      token: proctorToken,
+    });
+    assert.equal(eventsRes.status, 200);
+    const eventTypes = eventsRes.json.data.events.map((e) => e.type);
+    assert.ok(eventTypes.includes('violation:new'));
+    assert.ok(eventTypes.includes('session:update'));
+    assert.ok(eventTypes.includes('session:terminated'));
   } finally {
-    if (proctorSocket) {
-      proctorSocket.disconnect();
-    }
     if (createdExamId !== null) {
       await pool.execute('DELETE FROM Exams WHERE id = ?', [createdExamId]);
     }

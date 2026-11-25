@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
-import type { Socket } from 'socket.io-client';
 import { useQueryClient } from '@tanstack/react-query';
-import { getSocket, disconnectSocket, reconnectSocket } from '../lib/socket';
+import { getSocket, disconnectSocket, reconnectSocket, type SocketLike } from '../lib/socket';
+import { getRealtimeAdapter } from '../lib/realtime';
 import { useAuthStore } from '../store/authStore';
 import { api } from '../lib/api';
 import { toast as sonnerToast } from '../components/ui/Toast';
@@ -23,10 +23,12 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
   const token = useAuthStore((s) => s.token);
   const user = useAuthStore((s) => s.user);
 
-  const [socket, setSocket] = useState<Socket | null>(null);
+  const [socket, setSocket] = useState<SocketLike | null>(null);
   const [connectionState, setConnectionState] = useState<ConnectionState>('disconnected');
   const [latencyMs, setLatencyMs] = useState<number | null>(null);
-  const [transport, setTransport] = useState<string>('websocket');
+  const [transport, setTransport] = useState<string>(
+    import.meta.env.VITE_REALTIME_PROVIDER === 'pusher' ? 'pusher' : 'polling'
+  );
   const [lastConnectedAt, setLastConnectedAt] = useState<Date | null>(null);
   const [apiStatus, setApiStatus] = useState<'up' | 'down'>('down');
   const [dbStatus, setDbStatus] = useState<'up' | 'down'>('down');
@@ -92,7 +94,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
   }, [pollHealth]);
 
   // Measure latency
-  const measureLatency = useCallback((s: Socket) => {
+  const measureLatency = useCallback((s: SocketLike) => {
     if (!s.connected) return;
     const start = Date.now();
     s.emit('ping:latency', start, (clientTs: unknown) => {
@@ -100,7 +102,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       const diff = Math.max(1, Date.now() - ts);
       setLatencyMs(diff);
       const currentTransport =
-        (s.io?.engine as { transport?: { name?: string } })?.transport?.name ?? 'websocket';
+        import.meta.env.VITE_REALTIME_PROVIDER === 'pusher' ? 'pusher' : 'polling';
       setTransport(currentTransport);
     });
   }, []);
@@ -125,6 +127,14 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     setSocket(s);
 
     if (!s) return;
+
+    const adapter = getRealtimeAdapter(token);
+    let resumeUnsub: (() => void) | undefined;
+    if ('onResume' in adapter && typeof (adapter as { onResume?: unknown }).onResume === 'function') {
+      resumeUnsub = (adapter as { onResume: (cb: () => void) => () => void }).onResume(() => {
+        queryClient.refetchQueries({ type: 'active' });
+      });
+    }
 
     const onConnect = () => {
       setConnectionState('connected');
@@ -255,9 +265,9 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     s.on('connect', onConnect);
     s.on('disconnect', onDisconnect);
     s.on('connect_error', onConnectError);
-    s.io.on('reconnect_attempt', onReconnectAttempt);
-    s.io.on('reconnect', onReconnect);
-    s.io.on('reconnect_failed', onReconnectFailed);
+    s.io?.on('reconnect_attempt', onReconnectAttempt);
+    s.io?.on('reconnect', onReconnect);
+    s.io?.on('reconnect_failed', onReconnectFailed);
 
     s.on('notification:new', onNotificationNew);
     s.on('violation:new', onViolation);
@@ -305,9 +315,9 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       s.off('connect', onConnect);
       s.off('disconnect', onDisconnect);
       s.off('connect_error', onConnectError);
-      s.io.off('reconnect_attempt', onReconnectAttempt);
-      s.io.off('reconnect', onReconnect);
-      s.io.off('reconnect_failed', onReconnectFailed);
+      s.io?.off('reconnect_attempt', onReconnectAttempt);
+      s.io?.off('reconnect', onReconnect);
+      s.io?.off('reconnect_failed', onReconnectFailed);
 
       s.off('notification:new', onNotificationNew);
       s.off('violation:new', onViolation);
@@ -315,6 +325,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       s.off('session:terminated', onSessionTerminated);
       s.off('exam:submitted', onExamSubmitted);
       s.off('simulator:reset', onSimulatorReset);
+      if (resumeUnsub) resumeUnsub();
     };
   }, [token, user, queryClient, pollHealth, measureLatency]);
 

@@ -18,6 +18,7 @@ export default defineConfig({
       'tests/snapshotAccess.api.test.ts',
       'tests/simulatorPersonas.test.ts',
       'tests/recording.api.test.ts',
+      'tests/realtimeProviders.test.ts',
       '../client/tests/**/*.unit.test.ts',
     ],
     testTimeout: 25000,

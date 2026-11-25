@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { executeSql, pool, queryRows } from '../config/db.js';
 import { requireAuth, requireRole, type AuthenticatedRequest } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
-import { emitSessionTerminated, emitSessionUpdate, emitToProctors, emitToStudent } from '../realtime/socket.js';
+import { emitSessionTerminated, emitSessionUpdate, emitToProctors, emitToStudent } from '../realtime/index.js';
 import type { AnswerOption, ExamSessionRow, QuestionRow } from '../types/api.js';
 import { AppError } from '../utils/errors.js';
 import { sendSuccess } from '../utils/response.js';

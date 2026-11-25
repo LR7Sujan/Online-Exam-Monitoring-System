@@ -1,11 +1,9 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import type { Server as HttpServer } from 'node:http';
 import jwt from 'jsonwebtoken';
-import { io as ioClient, type Socket } from '../../client/node_modules/socket.io-client/build/esm/index.js';
 import { createApp } from '../src/app.js';
 import { pool, executeSql } from '../src/config/db.js';
 import { env } from '../src/config/env.js';
-import { initSocketServer, getIo } from '../src/realtime/socket.js';
 import { simulatorEngine } from '../src/services/simulator.js';
 import type { RowDataPacket } from 'mysql2/promise';
 
@@ -25,7 +23,6 @@ describe('Sub-Phase 11.6: Realtime, Proctoring Invariants & Load Verification', 
   beforeAll(async () => {
     const app = createApp();
     server = app.listen(0);
-    initSocketServer(server);
 
     const address = server.address();
     serverPort = typeof address === 'object' && address ? address.port : 4001;
@@ -178,64 +175,17 @@ describe('Sub-Phase 11.6: Realtime, Proctoring Invariants & Load Verification', 
   // ==========================================================================
   // 3. REALTIME MULTI-CLIENT SOCKET.IO ROOM ISOLATION & DEDUPLICATION
   // ==========================================================================
-  it('Realtime: 2 proctors & 3 students receive Socket.IO events once, no duplicates, strict room isolation', async () => {
+  it('Realtime: 2 proctors & 3 students receive events with strict tenant and channel isolation', async () => {
     // Provision 3 dedicated test students and active sessions
     const s1 = await provisionTestStudent('rt1');
     const s2 = await provisionTestStudent('rt2');
     const s3 = await provisionTestStudent('rt3');
 
-    // Connect 2 proctor sockets
-    const proctor1Socket: Socket = ioClient(serverOrigin, {
-      auth: { token: proctor1Token },
-      transports: ['websocket'],
-    });
-    const proctor2Socket: Socket = ioClient(serverOrigin, {
-      auth: { token: proctor2Token },
-      transports: ['websocket'],
-    });
-
-    // Connect 3 student sockets
-    const student1Socket: Socket = ioClient(serverOrigin, {
-      auth: { token: s1.token },
-      transports: ['websocket'],
-    });
-    const student2Socket: Socket = ioClient(serverOrigin, {
-      auth: { token: s2.token },
-      transports: ['websocket'],
-    });
-    const student3Socket: Socket = ioClient(serverOrigin, {
-      auth: { token: s3.token },
-      transports: ['websocket'],
-    });
-
-    // Wait for all 5 to connect
-    await Promise.all([
-      new Promise<void>((resolve) => proctor1Socket.on('connect', resolve)),
-      new Promise<void>((resolve) => proctor2Socket.on('connect', resolve)),
-      new Promise<void>((resolve) => student1Socket.on('connect', resolve)),
-      new Promise<void>((resolve) => student2Socket.on('connect', resolve)),
-      new Promise<void>((resolve) => student3Socket.on('connect', resolve)),
-    ]);
-
-    student1Socket.emit('session:join', s1.sessionId);
-    student2Socket.emit('session:join', s2.sessionId);
-    student3Socket.emit('session:join', s3.sessionId);
-
-    await new Promise((r) => setTimeout(r, 100));
-
-    // Setup event tracking counters
-    const p1Violations: unknown[] = [];
-    const p2Violations: unknown[] = [];
-    const s1Events: unknown[] = [];
-    const s2Events: unknown[] = [];
-    const s3Events: unknown[] = [];
-
-    proctor1Socket.on('violation:new', (d) => p1Violations.push(d));
-    proctor2Socket.on('violation:new', (d) => p2Violations.push(d));
-
-    student1Socket.on('violation:logged', (d) => s1Events.push(d));
-    student2Socket.on('violation:logged', (d) => s2Events.push(d));
-    student3Socket.on('violation:logged', (d) => s3Events.push(d));
+    // Get baseline cursors before triggering violation
+    const p1Base = await fetch(`${serverOrigin}/api/events?since=0`, {
+      headers: { Authorization: `Bearer ${proctor1Token}` },
+    }).then((r) => r.json());
+    const cursorBefore = p1Base.data?.cursor ?? 0;
 
     // Trigger violation on Session 1 (Student 1) via API
     const viRes = await fetch(`${serverOrigin}/api/sessions/${s1.sessionId}/violation`, {
@@ -249,26 +199,38 @@ describe('Sub-Phase 11.6: Realtime, Proctoring Invariants & Load Verification', 
 
     expect(viRes.success).toBe(true);
 
-    // Wait 250ms for websocket delivery
-    await new Promise((r) => setTimeout(r, 250));
-
-    // 1. Proctor 1 received event EXACTLY ONCE
+    // Proctor 1 fetches events since baseline
+    const p1Events = await fetch(`${serverOrigin}/api/events?since=${cursorBefore}`, {
+      headers: { Authorization: `Bearer ${proctor1Token}` },
+    }).then((r) => r.json());
+    const p1Violations = (p1Events.data?.events ?? []).filter((e: { type: string }) => e.type === 'violation:new');
     expect(p1Violations.length).toBe(1);
-    // 2. Proctor 2 received event EXACTLY ONCE
-    expect(p2Violations.length).toBe(1);
-    // 3. Student 1 received their update
-    expect(s1Events.length).toBe(1);
-    // 4. Student 2 received ZERO events (strictly isolated)
-    expect(s2Events.length).toBe(0);
-    // 5. Student 3 received ZERO events (strictly isolated)
-    expect(s3Events.length).toBe(0);
 
-    // Disconnect all sockets
-    proctor1Socket.disconnect();
-    proctor2Socket.disconnect();
-    student1Socket.disconnect();
-    student2Socket.disconnect();
-    student3Socket.disconnect();
+    // Proctor 2 fetches events since baseline
+    const p2Events = await fetch(`${serverOrigin}/api/events?since=${cursorBefore}`, {
+      headers: { Authorization: `Bearer ${proctor2Token}` },
+    }).then((r) => r.json());
+    const p2Violations = (p2Events.data?.events ?? []).filter((e: { type: string }) => e.type === 'violation:new');
+    expect(p2Violations.length).toBe(1);
+
+    // Student 1 fetches events for their user/session
+    const s1EventsRes = await fetch(`${serverOrigin}/api/events?since=${cursorBefore}&channels=private-user-${s1.studentId}`, {
+      headers: { Authorization: `Bearer ${s1.token}` },
+    }).then((r) => r.json());
+    const s1Violations = (s1EventsRes.data?.events ?? []).filter((e: { type: string }) => e.type === 'violation:logged');
+    expect(s1Violations.length).toBe(1);
+
+    // Student 2 fetches events for their own channel: receives ZERO events (strictly isolated)
+    const s2EventsRes = await fetch(`${serverOrigin}/api/events?since=${cursorBefore}&channels=private-user-${s2.studentId}`, {
+      headers: { Authorization: `Bearer ${s2.token}` },
+    }).then((r) => r.json());
+    expect(s2EventsRes.data?.events?.length ?? 0).toBe(0);
+
+    // Student 3 fetches events for their own channel: receives ZERO events (strictly isolated)
+    const s3EventsRes = await fetch(`${serverOrigin}/api/events?since=${cursorBefore}&channels=private-user-${s3.studentId}`, {
+      headers: { Authorization: `Bearer ${s3.token}` },
+    }).then((r) => r.json());
+    expect(s3EventsRes.data?.events?.length ?? 0).toBe(0);
   });
 
   // ==========================================================================

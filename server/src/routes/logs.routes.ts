@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { executeSql, queryRows } from '../config/db.js';
 import { requireAuth, requireRole, type AuthenticatedRequest } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
-import { emitSessionUpdate, emitSnapshotReady } from '../realtime/socket.js';
+import { emitSessionUpdate, emitSnapshotReady } from '../realtime/index.js';
 import { generateSignedSnapshotUrl } from '../services/snapshotSigner.js';
 import { saveSnapshotImage } from './sessions.routes.js';
 import { AppError } from '../utils/errors.js';

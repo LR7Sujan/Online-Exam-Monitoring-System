@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { pool, queryRows } from '../config/db.js';
 import { requireAuth, requireRole, type AuthenticatedRequest } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
-import { emitExtensionDecided } from '../realtime/socket.js';
+import { emitExtensionDecided } from '../realtime/index.js';
 import { AppError } from '../utils/errors.js';
 import { sendSuccess } from '../utils/response.js';
 

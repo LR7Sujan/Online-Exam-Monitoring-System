@@ -1,5 +1,5 @@
 import { createContext } from 'react';
-import type { Socket } from 'socket.io-client';
+import type { SocketLike } from '../lib/socket';
 
 export interface LiveViolationEvent {
   id: string;
@@ -29,7 +29,7 @@ export interface LiveSessionEvent {
 export type ConnectionState = 'connected' | 'reconnecting' | 'disconnected';
 
 export interface SocketContextValue {
-  socket: Socket | null;
+  socket: SocketLike | null;
   connectionState: ConnectionState;
   isConnected: boolean;
   latencyMs: number | null;
