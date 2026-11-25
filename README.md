@@ -56,7 +56,7 @@ npm run demo
 
 ---
 
-## 🧪 Isolated Test Database Setup (Phase 17 Strict Guard)
+## 🧪 Isolated Test Database Setup
 
 Automated tests and browser agents are **strictly quarantined** to a dedicated test database whose name must end with `_test`:
 
