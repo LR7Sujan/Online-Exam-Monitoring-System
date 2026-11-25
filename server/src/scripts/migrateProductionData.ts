@@ -1,7 +1,7 @@
 /**
  * Production Data Migration & Verification Script
  *
- * Exports data and schema objects from source MySQL (e.g. Docker container or local MySQL)
+ * Exports data and schema objects from source MySQL (e.g. local MySQL or staging DB)
  * and imports them into the hosted/target MySQL database.
  *
  * Capabilities:

@@ -1,14 +1,44 @@
+# Environment variables & local secrets
+.env*
+!.env.example
+!.env.test.example
+
+# Dependencies
 node_modules/
 */node_modules/
+
+# Production build outputs
 dist/
 */dist/
-.env
-*.local
-.DS_Store
-coverage/
-test-results/
-playwright-report/
+.vercel/
+
+# Storage, uploads & temporary media
+uploads/
+*/uploads/
+uploads-test/
+*/uploads-test/
+recordings/
+*/recordings/
 server/uploads/*.jpg
 !server/uploads/.gitkeep
-server/uploads-test/
-server/server/
+
+# Testing artifacts, logs, and coverage reports
+test-results/
+playwright-report/
+coverage/
+*/coverage/
+*.log
+npm-debug.log*
+
+# Database dumps, backups, and exports (MUST NEVER BE COMMITTED)
+*.dump
+*.dump.sql
+*.sql.gz
+*.sql.tar
+*.sql.zip
+*backup*.sql
+*dump*.sql
+
+# System & OS metadata
+.DS_Store
+Thumbs.db

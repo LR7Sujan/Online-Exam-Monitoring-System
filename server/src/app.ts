@@ -108,12 +108,16 @@ export function createApp() {
             const match = req.path.match(/^\/(?:snapshot|sim-[a-z_]+)-(\d+)-/);
             if (match) {
               const snapshotSessionId = Number(match[1]);
-              const rows = await queryRows<RowDataPacket[]>(
-                'SELECT student_id FROM Exam_Sessions WHERE id = ? LIMIT 1',
-                [snapshotSessionId]
-              );
-              if (rows[0] && Number(rows[0].student_id) === Number(decoded.sub)) {
-                allowed = true;
+              try {
+                const rows = await queryRows<RowDataPacket[]>(
+                  'SELECT student_id FROM Exam_Sessions WHERE id = ? LIMIT 1',
+                  [snapshotSessionId]
+                );
+                if (rows[0] && Number(rows[0].student_id) === Number(decoded.sub)) {
+                  allowed = true;
+                }
+              } catch (dbErr) {
+                console.warn('[Snapshot] DB lookup error during student IDOR check:', dbErr);
               }
             }
           }

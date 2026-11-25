@@ -1,0 +1,67 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    name: Lint, Typecheck, Test & Build
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: proctoriq_root
+          MYSQL_DATABASE: exam_monitoring_test
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping -pproctoriq_root" --health-interval=10s --health-timeout=5s --health-retries=5
+
+    env:
+      NODE_ENV: test
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_USER: root
+      DB_PASSWORD: proctoriq_root
+      DB_NAME: exam_monitoring_test
+      DB_SSL: false
+      JWT_SECRET: ci_test_random_jwt_secret_token_0123456789abcdefghijklmnopqrstuvwxyz
+      STORAGE_PROVIDER: local
+      STORAGE_PREFIX: test/
+      REALTIME_PROVIDER: polling
+      CRON_SECRET: ci_test_cron_secret_token
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: |
+          npm ci
+          npm --prefix server ci
+          npm --prefix client ci
+
+      - name: Run Linters
+        run: npm run lint
+
+      - name: Run TypeScript Verification (tsc --noEmit)
+        run: npm run typecheck
+
+      - name: Apply Migrations & Seed to Test Database
+        run: npm --prefix server run db:test:reset
+
+      - name: Run Unit & API Test Suites
+        run: npm --prefix server run test:vitest
+
+      - name: Verify Production Build
+        run: npm run build

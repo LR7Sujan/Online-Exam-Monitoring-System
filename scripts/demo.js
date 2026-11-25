@@ -49,19 +49,10 @@ async function main() {
 
   if (!dbUp) {
     console.log(' -> MySQL not detected on 127.0.0.1:3306.');
-    console.log(' -> Attempting Docker container start (proctoriq-mysql)...');
-    try {
-      execSync('docker compose -f db/docker-compose.yml up -d', { stdio: 'inherit' });
-    } catch {
-      try {
-        execSync('docker start proctoriq-mysql', { stdio: 'inherit' });
-      } catch (e) {
-        console.warn(' -> Docker command failed. Please ensure MySQL is listening on 3306.', e.message);
-      }
-    }
-
+    console.log(' -> Please ensure your local or hosted MySQL instance is running and reachable.');
+    console.log(' -> If using a hosted database, ensure DATABASE_URL or DB_* are set in .env.');
     console.log(' -> Waiting for MySQL port 3306 to accept connections...');
-    dbUp = await waitForPort(3306, '127.0.0.1', 20, 1000);
+    dbUp = await waitForPort(3306, '127.0.0.1', 3, 1000);
   }
 
   if (dbUp) {

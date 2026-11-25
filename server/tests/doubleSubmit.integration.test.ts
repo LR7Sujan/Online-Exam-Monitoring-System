@@ -16,7 +16,7 @@ import { pool, queryRows, testDbConnection } from '../src/config/db.js';
 test('Concurrent double-submit produces exactly one Results row against seeded MySQL', async (t) => {
   const dbReady = await testDbConnection();
   if (!dbReady) {
-    t.skip('MySQL 8.0+ is not running locally; start Docker/MySQL and run npm --prefix server test.');
+    t.skip('MySQL 8.0+ is not running locally; start MySQL and run npm --prefix server test.');
     await pool.end();
     return;
   }
