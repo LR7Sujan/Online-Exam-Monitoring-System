@@ -9,10 +9,86 @@ All core academic integrity invariants—penalty deductions, dynamic trust score
 ## ⚡ Quick Start & Database Setup (Zero Docker Required)
 
 ProctorIQ supports two database setups with zero dependency on Docker:
-1. **Option A (Free Hosted Cloud Database):** Any managed MySQL 8.0+ provider (Aiven, AWS RDS / Aurora, GCP Cloud SQL, PlanetScale with InnoDB triggers, or Railway MySQL).
-2. **Option B (Local MySQL 8 Service):** A standard local MySQL 8.0+ server installed directly on Windows, macOS (`brew services start mysql`), or Linux (`systemctl start mysql`).
+1. **Option A (Local MySQL 8 as a Windows Service):** Standard local MySQL 8.0+ service running natively on your OS.
+2. **Option B (Use a Hosted MySQL 8):** Any managed cloud MySQL 8.0+ provider (Aiven, AWS RDS, GCP Cloud SQL, or DigitalOcean).
 
-### 1. Configure Database Connection
+---
+
+### 1. Install MySQL 8 as a Windows Service
+
+If you are developing locally on Windows, install and run MySQL natively without Docker:
+
+1. **Install MySQL Community Server 8.0+**:
+   - Run via Windows Package Manager:
+     ```powershell
+     winget install Oracle.MySQL
+     ```
+   - *Or* download the [MySQL Installer for Windows](https://dev.mysql.com/downloads/installer/) and choose **Server Only (8.0+)**.
+2. **Configure & Start as Windows Service**:
+   - The installer configures a Windows Service named `MySQL80` (or `MySQL`).
+   - Start or check the service from PowerShell (Run as Administrator):
+     ```powershell
+     # Check service status
+     Get-Service MySQL80
+
+     # Start the service
+     Start-Service MySQL80
+     # Or via cmd: net start MySQL80
+     ```
+3. **Create Required Databases**:
+   ```powershell
+   mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS proctoriq; CREATE DATABASE IF NOT EXISTS exam_monitoring_test;"
+   ```
+
+---
+
+### 2. Use a Hosted MySQL 8 Cloud Database
+
+ProctorIQ works out-of-the-box with any managed cloud MySQL 8.0+ instance:
+
+1. **Provision Instance**:
+   Create a database on [AWS RDS](https://aws.amazon.com/rds), [Aiven](https://aiven.io), [DigitalOcean Managed Databases](https://www.digitalocean.com/products/managed-databases), or [PlanetScale](https://planetscale.com) with foreign keys and triggers enabled.
+2. **Configure `.env`**:
+   ```env
+   DATABASE_URL=mysql://dbuser:StrongPass123@db-host.provider.com:3306/proctoriq?ssl=true
+   DB_SSL=true
+   DB_CONNECTION_LIMIT=3
+   ```
+3. If your provider requires a custom CA certificate, place it in `db/ca.pem` and configure `DB_SSL_CA=./db/ca.pem`.
+
+---
+
+### 3. Import Steps from a `mysqldump` File
+
+If you have an existing SQL dump or wish to import an exam schema snapshot:
+
+```bash
+# 1. Export database from existing instance:
+mysqldump -h $DB_HOST -P $DB_PORT -u $DB_USER -p$DB_PASSWORD \
+  --single-transaction --routines --triggers proctoriq > proctoriq_backup.sql
+
+# 2. Import into target database:
+mysql -h $TARGET_HOST -P $TARGET_PORT -u $TARGET_USER -p$TARGET_PASSWORD proctoriq < proctoriq_backup.sql
+
+# 3. Alternatively, apply all migrations and seed fresh using the Node.js runner:
+npm run db:migrate
+npm run db:seed
+```
+
+---
+
+### 4. Database Troubleshooting Reference
+
+| Error Code / Symptom | Root Cause | Actionable Solution |
+| :--- | :--- | :--- |
+| `connect ECONNREFUSED 127.0.0.1:3306` | MySQL service is not running or blocked on port 3306. | **Windows**: Run `Start-Service MySQL80` or `net start MySQL80` in admin PowerShell.<br>**macOS**: Run `brew services start mysql`.<br>**Linux**: Run `sudo systemctl start mysql`. |
+| `ER_ACCESS_DENIED_ERROR` (1045) | Incorrect `DB_USER` or `DB_PASSWORD` in `.env`. | Verify credentials in `.env`. Reset root password in MySQL shell: `ALTER USER 'root'@'localhost' IDENTIFIED BY 'proctoriq_root'; FLUSH PRIVILEGES;`. |
+| `ER_BAD_DB_ERROR` (1049) / Unknown database | Database `proctoriq` or `exam_monitoring_test` does not exist. | Create missing databases: `mysql -u root -p -e "CREATE DATABASE proctoriq; CREATE DATABASE exam_monitoring_test;"` then run `npm run db:migrate`. |
+| `DB_UNAVAILABLE` Banner on Login | Backend API cannot establish connection with MySQL. | Check backend terminal for `MySQL is not reachable at host:port`. Start MySQL service and click **Retry** on the login page banner. |
+
+---
+
+### 5. Configure Database Connection
 
 Create or edit `.env` in the project root:
 
@@ -31,7 +107,7 @@ DB_CONNECTION_LIMIT=3
 DB_SSL=false
 ```
 
-### 2. Apply Migrations & Seed Data (Docker-Free Node.js Runner)
+### 6. Apply Migrations & Seed Data (Docker-Free Node.js Runner)
 
 Run the automated Node.js migration runner (parses MySQL `DELIMITER` directives, creates tables, triggers, procedures, views, and tracks applied versions in `schema_migrations`):
 

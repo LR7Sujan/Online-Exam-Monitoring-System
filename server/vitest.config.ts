@@ -21,6 +21,7 @@ export default defineConfig({
       'tests/realtimeProviders.test.ts',
       'tests/storageAdapter.test.ts',
       'tests/lazyTimeoutsAndCron.test.ts',
+      'tests/dbUnavailableAndHealth.test.ts',
       '../client/tests/**/*.unit.test.ts',
     ],
     testTimeout: 45000,

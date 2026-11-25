@@ -22,8 +22,8 @@ describe('Connection Status Derivation Unit Tests', () => {
   it('derives Reconnecting state when socket is reconnecting', () => {
     const res = deriveConnectionStatus({
       connectionState: 'reconnecting',
-      apiStatus: 'down',
-      dbStatus: 'down',
+      apiStatus: 'up',
+      dbStatus: 'up',
       mysqlVersion: '8.0.46',
       latencyMs: null,
     });
@@ -53,7 +53,7 @@ describe('Connection Status Derivation Unit Tests', () => {
     expect(res.isFullyOperational).toBe(false);
   });
 
-  it('downgrades connected socket to reconnecting if backend DB drops', () => {
+  it('downgrades connected socket to disconnected if backend DB drops', () => {
     const res = deriveConnectionStatus({
       connectionState: 'connected',
       apiStatus: 'up',
@@ -62,10 +62,10 @@ describe('Connection Status Derivation Unit Tests', () => {
       latencyMs: 5,
     });
 
-    expect(res.state).toBe('reconnecting');
-    expect(res.dotColor).toBe('amber');
-    expect(res.pulse).toBe(true);
-    expect(res.statusLabel).toBe('RECONNECTING...');
+    expect(res.state).toBe('disconnected');
+    expect(res.dotColor).toBe('rose');
+    expect(res.pulse).toBe(false);
+    expect(res.statusLabel).toBe('DISCONNECTED');
     expect(res.isFullyOperational).toBe(false);
   });
 });

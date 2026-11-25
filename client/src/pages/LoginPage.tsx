@@ -14,6 +14,7 @@ import {
   Lock,
   UserPlus,
   CheckCircle,
+  RefreshCw,
 } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { AuthLayout } from '../components/layout/AuthLayout';
@@ -200,9 +201,37 @@ export function LoginPage({ initialTab }: { initialTab?: AuthTab }) {
     return valid;
   };
 
+  const [dbUnavailable, setDbUnavailable] = useState(false);
+
+  const handleAuthError = (err: unknown, defaultFallback: string) => {
+    console.error('[LoginPage Auth Error]:', err);
+    const apiErr = err as { code?: string; status?: number; message?: string };
+    const rawMsg = apiErr?.message ?? (err instanceof Error ? err.message : '');
+
+    const isDbDown =
+      apiErr?.code === 'DB_UNAVAILABLE' ||
+      apiErr?.status === 503 ||
+      /ECONNREFUSED|ETIMEDOUT|ENOTFOUND|EHOSTUNREACH|closed state|Network Error|failed to fetch|database|connect/i.test(
+        rawMsg
+      );
+
+    if (isDbDown) {
+      setDbUnavailable(true);
+      setGeneralError('The service is starting or temporarily unavailable. Please try again.');
+    } else {
+      setDbUnavailable(false);
+      // Clean user message: prevent any raw tech strings leaking
+      const sanitized = /ECONNREFUSED|127\.0\.0\.1|3306|sqlstate|mysql/i.test(rawMsg)
+        ? 'The service is starting or temporarily unavailable. Please try again.'
+        : rawMsg || defaultFallback;
+      setGeneralError(sanitized);
+    }
+  };
+
   const handleSignInSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setGeneralError(null);
+    setDbUnavailable(false);
 
     if (!validateSignIn()) return;
 
@@ -215,7 +244,7 @@ export function LoginPage({ initialTab }: { initialTab?: AuthTab }) {
       setAuth(data.token, data.user);
       navigate('/home');
     } catch (err) {
-      setGeneralError(err instanceof Error ? err.message : 'Authentication failed.');
+      handleAuthError(err, 'Authentication failed.');
     } finally {
       setLoading(false);
     }
@@ -224,6 +253,7 @@ export function LoginPage({ initialTab }: { initialTab?: AuthTab }) {
   const handleRegisterSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setGeneralError(null);
+    setDbUnavailable(false);
 
     if (!validateRegister()) return;
 
@@ -237,7 +267,7 @@ export function LoginPage({ initialTab }: { initialTab?: AuthTab }) {
       setAuth(data.token, data.user);
       navigate('/home');
     } catch (err) {
-      setGeneralError(err instanceof Error ? err.message : 'Registration failed.');
+      handleAuthError(err, 'Registration failed.');
     } finally {
       setLoading(false);
     }
@@ -338,11 +368,29 @@ export function LoginPage({ initialTab }: { initialTab?: AuthTab }) {
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              className="flex items-start gap-2 rounded-xl border border-rose-500/30 bg-rose-500/10 p-2.5 text-xs text-rose-600 dark:text-rose-200"
+              className="flex items-center justify-between gap-2.5 rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-600 dark:text-rose-200"
               role="alert"
             >
-              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-500" />
-              <span>{generalError}</span>
+              <div className="flex items-start gap-2 min-w-0">
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-500" />
+                <span className="leading-relaxed">{generalError}</span>
+              </div>
+              {dbUnavailable && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    if (activeTab === 'signin') {
+                      handleSignInSubmit(e as unknown as FormEvent);
+                    } else {
+                      handleRegisterSubmit(e as unknown as FormEvent);
+                    }
+                  }}
+                  className="shrink-0 px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-600 dark:text-rose-200 border border-rose-500/30 transition-colors flex items-center gap-1 cursor-pointer"
+                >
+                  <RefreshCw className="w-3 h-3" />
+                  Retry
+                </button>
+              )}
             </motion.div>
           )}
         </AnimatePresence>

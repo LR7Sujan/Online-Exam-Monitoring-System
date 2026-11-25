@@ -214,6 +214,9 @@ export async function withConnection<T>(
 export interface DbHealthResult {
   connected: boolean;
   version?: string;
+  triggersCount?: number;
+  proceduresCount?: number;
+  error?: string;
 }
 
 export async function testDbConnection(): Promise<boolean> {
@@ -227,11 +230,38 @@ export async function testDbConnection(): Promise<boolean> {
 
 export async function getDbHealth(): Promise<DbHealthResult> {
   try {
-    const rows = await queryRows<RowDataPacket[]>('SELECT VERSION() as version');
-    const versionRow = rows[0] as { version?: string } | undefined;
+    const currentPool = getPool();
+    await currentPool.query('SELECT 1');
+    const [versionRows] = await currentPool.query<RowDataPacket[]>('SELECT VERSION() as version');
+    const versionRow = versionRows[0] as { version?: string } | undefined;
     const version = versionRow?.version ? String(versionRow.version).split('-')[0] : '8.0';
-    return { connected: true, version };
-  } catch {
-    return { connected: false };
+
+    const [triggerRows] = await currentPool.query<RowDataPacket[]>(
+      `SELECT COUNT(*) as cnt FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = ?`,
+      [env.DB_NAME]
+    );
+    const triggersCount = Number(triggerRows[0]?.cnt ?? 0);
+
+    const [procRows] = await currentPool.query<RowDataPacket[]>(
+      `SELECT COUNT(*) as cnt FROM information_schema.ROUTINES WHERE ROUTINE_SCHEMA = ? AND ROUTINE_TYPE = 'PROCEDURE'`,
+      [env.DB_NAME]
+    );
+    const proceduresCount = Number(procRows[0]?.cnt ?? 0);
+
+    return {
+      connected: true,
+      version,
+      triggersCount,
+      proceduresCount,
+    };
+  } catch (err: unknown) {
+    const errorMsg = (err as Error)?.message || 'Database connection failed';
+    console.error(
+      `MySQL is not reachable at ${env.DB_HOST}:${env.DB_PORT}. Start your MySQL service or check .env`
+    );
+    return {
+      connected: false,
+      error: errorMsg,
+    };
   }
 }

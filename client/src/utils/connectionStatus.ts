@@ -23,9 +23,9 @@ export function deriveConnectionStatus(input: ConnectionStatusInput): DerivedCon
 
   let state: SocketConnectionState = connectionState;
 
-  // If socket is disconnected, but API/DB are down, definitely disconnected
-  if (connectionState === 'connected' && (apiStatus === 'down' || dbStatus === 'down')) {
-    state = 'reconnecting';
+  // If API or DB is down, sidebar status card derives disconnected state
+  if (apiStatus === 'down' || dbStatus === 'down') {
+    state = 'disconnected';
   }
 
   const dotColor: 'emerald' | 'amber' | 'rose' =

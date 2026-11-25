@@ -1,7 +1,7 @@
 import type { NextFunction, Request, Response } from 'express';
 import { ZodError } from 'zod';
 import { env } from '../config/env.js';
-import { AppError, isMysqlError, mapMysqlError } from '../utils/errors.js';
+import { AppError, isDbConnectionError, isMysqlError, mapMysqlError } from '../utils/errors.js';
 import { sendError } from '../utils/response.js';
 
 export function notFoundHandler(req: Request, res: Response): void {
@@ -21,6 +21,19 @@ export function errorHandler(
 
   if (err instanceof AppError) {
     sendError(res, err.statusCode, err.code, err.message, err.details);
+    return;
+  }
+
+  if (isDbConnectionError(err)) {
+    console.error(
+      `MySQL is not reachable at ${env.DB_HOST}:${env.DB_PORT}. Start your MySQL service or check .env`
+    );
+    sendError(
+      res,
+      503,
+      'DB_UNAVAILABLE',
+      `MySQL is not reachable at ${env.DB_HOST}:${env.DB_PORT}. Start your MySQL service or check .env`
+    );
     return;
   }
 

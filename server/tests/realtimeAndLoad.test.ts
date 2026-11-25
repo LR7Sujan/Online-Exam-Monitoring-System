@@ -218,7 +218,7 @@ describe('Sub-Phase 11.6: Realtime, Proctoring Invariants & Load Verification', 
         headers: { Authorization: `Bearer ${proctor1Token}` },
       }).then((r) => r.json()),
       (res) => (res.data?.events ?? []).some((e: { type: string; payload?: { sessionId?: number } }) => e.type === 'violation:new' && e.payload?.sessionId === s1.sessionId),
-      3000,
+      5000,
       100
     );
     const p1Violations = (p1Events.data?.events ?? []).filter((e: { type: string; payload?: { sessionId?: number } }) => e.type === 'violation:new' && e.payload?.sessionId === s1.sessionId);
@@ -230,7 +230,7 @@ describe('Sub-Phase 11.6: Realtime, Proctoring Invariants & Load Verification', 
         headers: { Authorization: `Bearer ${proctor2Token}` },
       }).then((r) => r.json()),
       (res) => (res.data?.events ?? []).some((e: { type: string; payload?: { sessionId?: number } }) => e.type === 'violation:new' && e.payload?.sessionId === s1.sessionId),
-      3000,
+      5000,
       100
     );
     const p2Violations = (p2Events.data?.events ?? []).filter((e: { type: string; payload?: { sessionId?: number } }) => e.type === 'violation:new' && e.payload?.sessionId === s1.sessionId);

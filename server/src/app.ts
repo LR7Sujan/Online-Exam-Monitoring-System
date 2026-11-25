@@ -34,7 +34,7 @@ import { violationTypesRouter } from './routes/violationTypes.routes.js';
 import { snapshotsRouter } from './routes/snapshots.routes.js';
 import { cronRouter } from './routes/cron.routes.js';
 import { getStorageAdapter, resolveStorageKey } from './storage/index.js';
-import { sendSuccess } from './utils/response.js';
+import { sendSuccess, sendError } from './utils/response.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -190,12 +190,24 @@ export function createApp() {
 
   app.get('/api/health', async (_req, res) => {
     const dbHealth = await getDbHealth();
+    if (!dbHealth.connected) {
+      sendError(
+        res,
+        503,
+        'DB_UNAVAILABLE',
+        `MySQL is not reachable at ${env.DB_HOST}:${env.DB_PORT}. Start your MySQL service or check .env`
+      );
+      return;
+    }
+
     sendSuccess(res, {
       service: 'proctoriq-api',
       api: 'up',
-      db: dbHealth.connected ? 'up' : 'down',
-      status: dbHealth.connected ? 'ok' : 'degraded',
+      db: 'up',
+      status: 'ok',
       mysqlVersion: dbHealth.version ?? '8.0',
+      triggersCount: dbHealth.triggersCount ?? 0,
+      proceduresCount: dbHealth.proceduresCount ?? 0,
       uptime: process.uptime(),
       timestamp: new Date().toISOString(),
     });

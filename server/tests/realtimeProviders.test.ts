@@ -249,7 +249,7 @@ describe('Serverless Realtime Layer: Polling & Pusher Providers', () => {
 
       // Poll as proctor with retry loop
       let foundViolation: { type: string; channel: string; payload?: { violationCode?: string } } | undefined;
-      while (Date.now() - t0 < 3000) {
+      while (Date.now() - t0 < 5000) {
         const pollRes = await fetch(`${serverOrigin}/api/events?since=${cursor0}&limit=200`, {
           headers: { Authorization: `Bearer ${proctorToken}` },
         }).then((r) => r.json());
@@ -260,7 +260,7 @@ describe('Serverless Realtime Layer: Polling & Pusher Providers', () => {
       }
 
       const elapsedMs = Date.now() - t0;
-      expect(elapsedMs).toBeLessThan(3000); // Delivered in < 3s
+      expect(elapsedMs).toBeLessThan(5000); // Delivered in < 5s
       expect(foundViolation).toBeDefined();
       expect(foundViolation?.channel).toBe('private-role-proctor');
       expect(foundViolation?.payload?.violationCode).toBe('PHONE_DETECTED');

@@ -5,7 +5,8 @@
   "type": "module",
   "description": "ProctorIQ thin REST + Socket.IO backend over MySQL 8.0+ DBMS logic",
   "scripts": {
-    "dev": "tsx watch src/index.ts",
+    "dev": "tsx watch src/dev.ts",
+    "dev:api": "tsx watch src/dev.ts",
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
     "start:test": "tsx --env-file=.env.test src/index.ts",
