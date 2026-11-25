@@ -48,8 +48,8 @@ function stateReducer(state: StateMachineState, action: StateMachineAction): Sta
           action.durationMs !== undefined
             ? action.durationMs
             : action.status === 'loading'
-            ? 1500
-            : 0,
+              ? 1500
+              : 0,
       };
     case 'AUTO_RESOLVED':
       if (state.status === 'loading') {
@@ -259,11 +259,10 @@ type DemoStatus = 'loading' | 'loaded' | 'empty' | 'error';
                       type="button"
                       data-testid={`btn-state-${st}`}
                       onClick={() => dispatch({ type: 'SELECT_STATUS', status: st })}
-                      className={`h-8 px-3.5 rounded-lg text-xs font-mono font-medium transition-all cursor-pointer flex items-center gap-1.5 ${
-                        isSelected
-                          ? 'bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 text-white font-semibold shadow-sm'
-                          : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
-                      }`}
+                      className={`h-8 px-3.5 rounded-lg text-xs font-mono font-medium transition-all cursor-pointer flex items-center gap-1.5 ${isSelected
+                        ? 'bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 text-white font-semibold shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
+                        }`}
                     >
                       {st === 'loading' && <Radio className={`w-3 h-3 ${demoState.status === 'loading' ? 'animate-pulse' : ''}`} />}
                       {st === 'loaded' && <CheckCircle2 className="w-3 h-3" />}
@@ -282,10 +281,10 @@ type DemoStatus = 'loading' | 'loaded' | 'empty' | 'error';
                   {demoState.status === 'loading'
                     ? `Loading (auto-resolves in ${(demoState.durationMs / 1000).toFixed(1)}s)`
                     : demoState.status === 'loaded'
-                    ? 'Loaded (6 incidents visible)'
-                    : demoState.status === 'empty'
-                    ? 'Empty (Zero infractions)'
-                    : 'Error (Connection lost)'}
+                      ? 'Loaded (6 incidents visible)'
+                      : demoState.status === 'empty'
+                        ? 'Empty (Zero infractions)'
+                        : 'Error (Connection lost)'}
                 </span>
               </div>
             </div>
@@ -296,11 +295,10 @@ type DemoStatus = 'loading' | 'loaded' | 'empty' | 'error';
               data-testid="btn-auto-cycle"
               onClick={() => dispatch({ type: 'SELECT_STATUS', status: 'loading', durationMs: 1500 })}
               disabled={demoState.status === 'loading'}
-              className={`h-9 px-4 rounded-xl text-xs font-semibold font-mono transition-all flex items-center gap-2 cursor-pointer border ${
-                demoState.status === 'loading'
-                  ? 'border-brand/40 bg-brand/10 text-brand shadow-sm animate-pulse cursor-wait'
-                  : 'border-border bg-surface hover:bg-muted text-foreground hover:border-brand/30 shadow-xs'
-              }`}
+              className={`h-9 px-4 rounded-xl text-xs font-semibold font-mono transition-all flex items-center gap-2 cursor-pointer border ${demoState.status === 'loading'
+                ? 'border-brand/40 bg-brand/10 text-brand shadow-sm animate-pulse cursor-wait'
+                : 'border-border bg-surface hover:bg-muted text-foreground hover:border-brand/30 shadow-xs'
+                }`}
             >
               <Play className={`w-3.5 h-3.5 ${demoState.status === 'loading' ? 'animate-spin' : 'text-brand'}`} />
               <span>{demoState.status === 'loading' ? 'Cycling (1.5s)...' : 'Auto cycle'}</span>
@@ -327,23 +325,22 @@ type DemoStatus = 'loading' | 'loaded' | 'empty' | 'error';
 
               {/* Status Chip */}
               <span
-                className={`text-[10px] font-mono font-semibold px-2.5 py-1 rounded-full border ${
-                  demoState.status === 'loading'
-                    ? 'bg-amber-500/10 text-amber-500 border-amber-500/30 animate-pulse'
-                    : demoState.status === 'loaded'
+                className={`text-[10px] font-mono font-semibold px-2.5 py-1 rounded-full border ${demoState.status === 'loading'
+                  ? 'bg-amber-500/10 text-amber-500 border-amber-500/30 animate-pulse'
+                  : demoState.status === 'loaded'
                     ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30'
                     : demoState.status === 'empty'
-                    ? 'bg-muted text-muted-foreground border-border'
-                    : 'bg-rose-500/10 text-rose-500 border-rose-500/30'
-                }`}
+                      ? 'bg-muted text-muted-foreground border-border'
+                      : 'bg-rose-500/10 text-rose-500 border-rose-500/30'
+                  }`}
               >
                 {demoState.status === 'loading'
                   ? 'STREAM BUFFERING'
                   : demoState.status === 'loaded'
-                  ? '6 INCIDENTS LOGGED'
-                  : demoState.status === 'empty'
-                  ? 'ALL CLEAR'
-                  : 'DISCONNECTED'}
+                    ? '6 INCIDENTS LOGGED'
+                    : demoState.status === 'empty'
+                      ? 'ALL CLEAR'
+                      : 'DISCONNECTED'}
               </span>
             </div>
 
@@ -506,11 +503,10 @@ type DemoStatus = 'loading' | 'loaded' | 'empty' | 'error';
                 type="button"
                 data-testid="tab-skeleton"
                 onClick={() => setStandaloneMode('skeleton')}
-                className={`h-7 px-3 rounded-lg text-xs font-mono font-medium transition-all cursor-pointer ${
-                  standaloneMode === 'skeleton'
-                    ? 'bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 text-white font-semibold shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
+                className={`h-7 px-3 rounded-lg text-xs font-mono font-medium transition-all cursor-pointer ${standaloneMode === 'skeleton'
+                  ? 'bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 text-white font-semibold shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+                  }`}
               >
                 Skeleton
               </button>
@@ -518,11 +514,10 @@ type DemoStatus = 'loading' | 'loaded' | 'empty' | 'error';
                 type="button"
                 data-testid="tab-content"
                 onClick={() => setStandaloneMode('content')}
-                className={`h-7 px-3 rounded-lg text-xs font-mono font-medium transition-all cursor-pointer ${
-                  standaloneMode === 'content'
-                    ? 'bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 text-white font-semibold shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
+                className={`h-7 px-3 rounded-lg text-xs font-mono font-medium transition-all cursor-pointer ${standaloneMode === 'content'
+                  ? 'bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 text-white font-semibold shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+                  }`}
               >
                 Content
               </button>
