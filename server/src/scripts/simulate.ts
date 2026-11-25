@@ -61,7 +61,7 @@ async function main() {
     chaos,
   });
 
-  console.log(' Simulation running! Real-time events broadcasting over Socket.IO.\n');
+  console.log(' Simulation running! Real-time events broadcasting over serverless realtime layer.\n');
 
   let secondsElapsed = 0;
   const renderInterval = setInterval(async () => {

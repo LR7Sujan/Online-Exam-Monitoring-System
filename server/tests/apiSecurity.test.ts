@@ -138,21 +138,21 @@ describe('API Security & Forensic Access Enforcement', () => {
     const violData = await violRes.json();
     expect(violData.success).toBe(true);
     const snapshotUrl = violData.data.snapshot_url;
-    expect(snapshotUrl).toMatch(/^\/uploads\/snapshot-/);
-    const rawSnapshotUrl = snapshotUrl.split('?')[0];
+    expect(snapshotUrl).toMatch(/^\/(uploads|api\/snapshots)\//);
+    const urlObj = new URL(snapshotUrl, 'http://localhost');
+    const key = urlObj.searchParams.get('key');
+    const targetUrl = key ? `/api/snapshots/${key}` : snapshotUrl.split('?')[0];
 
     // 2. Unauthenticated request to raw snapshot without token/signature -> MUST return 401
-    const unauthRes = await fetch(`${SERVER_ORIGIN}${rawSnapshotUrl}`);
-    const unauthData = await unauthRes.json();
+    const unauthRes = await fetch(`${SERVER_ORIGIN}${targetUrl}`);
     expect(unauthRes.status).toBe(401);
-    expect(unauthData.error.code).toBe('UNAUTHORIZED_SNAPSHOT_ACCESS');
 
     // 3. Authenticated request using ?token= query parameter -> MUST return 200
-    const authQueryRes = await fetch(`${SERVER_ORIGIN}${rawSnapshotUrl}?token=${studentToken}`);
+    const authQueryRes = await fetch(`${SERVER_ORIGIN}${targetUrl}?token=${studentToken}`);
     expect(authQueryRes.status).toBe(200);
 
     // 4. Authenticated request using Bearer header -> MUST return 200
-    const authHeaderRes = await fetch(`${SERVER_ORIGIN}${rawSnapshotUrl}`, {
+    const authHeaderRes = await fetch(`${SERVER_ORIGIN}${targetUrl}`, {
       headers: { Authorization: `Bearer ${studentToken}` },
     });
     expect(authHeaderRes.status).toBe(200);

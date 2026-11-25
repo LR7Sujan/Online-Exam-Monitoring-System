@@ -51,7 +51,7 @@ describe('StorageAdapter: Object Storage, Snapshots & Recordings', () => {
           [student2Id, 's2_store@proctoriq.io', 'hash', 'Bob Examinee', 'STUDENT']
         );
         await executeSql(
-          'INSERT IGNORE INTO Exams (id, title, duration_minutes, min_trust_score, created_by) VALUES (?, ?, ?, ?, ?)',
+          'INSERT IGNORE INTO Exams (id, title, duration_minutes, min_trust_score, created_by, start_window, end_window) VALUES (?, ?, ?, ?, ?, NOW(), DATE_ADD(NOW(), INTERVAL 24 HOUR))',
           [testExamId, 'Storage Adapter Test Exam', 60, 50, 1]
         );
         await executeSql(
@@ -289,7 +289,7 @@ describe('StorageAdapter: Object Storage, Snapshots & Recordings', () => {
     it('records view action in Recording_Access_Log during streaming', async () => {
       if (!dbAvailable) return;
       const logs = await pool.query(
-        'SELECT * FROM Recording_Access_Log WHERE recording_id = ? ORDER BY log_id DESC LIMIT 1',
+        'SELECT * FROM Recording_Access_Log WHERE recording_id = ? ORDER BY id DESC LIMIT 1',
         [recordingId]
       );
       const rows = (logs[0] as unknown[]) ?? [];

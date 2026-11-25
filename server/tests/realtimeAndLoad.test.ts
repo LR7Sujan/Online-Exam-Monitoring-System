@@ -5,6 +5,7 @@ import { createApp } from '../src/app.js';
 import { pool, executeSql } from '../src/config/db.js';
 import { env } from '../src/config/env.js';
 import { simulatorEngine } from '../src/services/simulator.js';
+import { setRealtimeAdapter, PollingRealtimeAdapter } from '../src/realtime/adapter.js';
 import type { RowDataPacket } from 'mysql2/promise';
 
 function makeToken(payload: { sub: number; email: string; role: 'STUDENT' | 'PROCTOR' | 'ADMIN'; fullName: string }) {
@@ -21,6 +22,7 @@ describe('Sub-Phase 11.6: Realtime, Proctoring Invariants & Load Verification', 
   let proctor2Token: string;
 
   beforeAll(async () => {
+    setRealtimeAdapter(new PollingRealtimeAdapter());
     const app = createApp();
     server = app.listen(0);
 
@@ -34,12 +36,9 @@ describe('Sub-Phase 11.6: Realtime, Proctoring Invariants & Load Verification', 
   });
 
   afterAll(async () => {
+    setRealtimeAdapter(null);
     if (simulatorEngine.getState().isRunning) {
       await simulatorEngine.stop();
-    }
-    const io = getIo();
-    if (io) {
-      io.close();
     }
     await new Promise<void>((resolve) => server.close(() => resolve()));
   });
@@ -181,11 +180,9 @@ describe('Sub-Phase 11.6: Realtime, Proctoring Invariants & Load Verification', 
     const s2 = await provisionTestStudent('rt2');
     const s3 = await provisionTestStudent('rt3');
 
-    // Get baseline cursors before triggering violation
-    const p1Base = await fetch(`${serverOrigin}/api/events?since=0`, {
-      headers: { Authorization: `Bearer ${proctor1Token}` },
-    }).then((r) => r.json());
-    const cursorBefore = p1Base.data?.cursor ?? 0;
+    // Get baseline cursor before triggering violation
+    const [rows] = await executeSql<RowDataPacket[]>('SELECT COALESCE(MAX(event_id), 0) AS maxCursor FROM Events');
+    const cursorBefore = Number(rows[0]?.maxCursor ?? 0);
 
     // Trigger violation on Session 1 (Student 1) via API
     const viRes = await fetch(`${serverOrigin}/api/sessions/${s1.sessionId}/violation`, {
@@ -199,24 +196,55 @@ describe('Sub-Phase 11.6: Realtime, Proctoring Invariants & Load Verification', 
 
     expect(viRes.success).toBe(true);
 
+    // Helper to poll until condition is met or timeout
+    const pollUntil = async <T>(
+      fn: () => Promise<T>,
+      predicate: (val: T) => boolean,
+      timeoutMs = 3000,
+      intervalMs = 100
+    ): Promise<T> => {
+      const start = Date.now();
+      while (Date.now() - start < timeoutMs) {
+        const val = await fn();
+        if (predicate(val)) return val;
+        await new Promise((r) => setTimeout(r, intervalMs));
+      }
+      return fn();
+    };
+
     // Proctor 1 fetches events since baseline
-    const p1Events = await fetch(`${serverOrigin}/api/events?since=${cursorBefore}`, {
-      headers: { Authorization: `Bearer ${proctor1Token}` },
-    }).then((r) => r.json());
-    const p1Violations = (p1Events.data?.events ?? []).filter((e: { type: string }) => e.type === 'violation:new');
+    const p1Events = await pollUntil(
+      () => fetch(`${serverOrigin}/api/events?since=${cursorBefore}&limit=200`, {
+        headers: { Authorization: `Bearer ${proctor1Token}` },
+      }).then((r) => r.json()),
+      (res) => (res.data?.events ?? []).some((e: { type: string; payload?: { sessionId?: number } }) => e.type === 'violation:new' && e.payload?.sessionId === s1.sessionId),
+      3000,
+      100
+    );
+    const p1Violations = (p1Events.data?.events ?? []).filter((e: { type: string; payload?: { sessionId?: number } }) => e.type === 'violation:new' && e.payload?.sessionId === s1.sessionId);
     expect(p1Violations.length).toBe(1);
 
     // Proctor 2 fetches events since baseline
-    const p2Events = await fetch(`${serverOrigin}/api/events?since=${cursorBefore}`, {
-      headers: { Authorization: `Bearer ${proctor2Token}` },
-    }).then((r) => r.json());
-    const p2Violations = (p2Events.data?.events ?? []).filter((e: { type: string }) => e.type === 'violation:new');
+    const p2Events = await pollUntil(
+      () => fetch(`${serverOrigin}/api/events?since=${cursorBefore}&limit=200`, {
+        headers: { Authorization: `Bearer ${proctor2Token}` },
+      }).then((r) => r.json()),
+      (res) => (res.data?.events ?? []).some((e: { type: string; payload?: { sessionId?: number } }) => e.type === 'violation:new' && e.payload?.sessionId === s1.sessionId),
+      3000,
+      100
+    );
+    const p2Violations = (p2Events.data?.events ?? []).filter((e: { type: string; payload?: { sessionId?: number } }) => e.type === 'violation:new' && e.payload?.sessionId === s1.sessionId);
     expect(p2Violations.length).toBe(1);
 
     // Student 1 fetches events for their user/session
-    const s1EventsRes = await fetch(`${serverOrigin}/api/events?since=${cursorBefore}&channels=private-user-${s1.studentId}`, {
-      headers: { Authorization: `Bearer ${s1.token}` },
-    }).then((r) => r.json());
+    const s1EventsRes = await pollUntil(
+      () => fetch(`${serverOrigin}/api/events?since=${cursorBefore}&channels=private-user-${s1.studentId}&limit=200`, {
+        headers: { Authorization: `Bearer ${s1.token}` },
+      }).then((r) => r.json()),
+      (res) => (res.data?.events ?? []).some((e: { type: string }) => e.type === 'violation:logged'),
+      3000,
+      100
+    );
     const s1Violations = (s1EventsRes.data?.events ?? []).filter((e: { type: string }) => e.type === 'violation:logged');
     expect(s1Violations.length).toBe(1);
 

@@ -33,8 +33,13 @@ export async function runAutoTimeoutSweep(): Promise<number> {
     'CALL sp_AutoTimeoutExpiredSessionsWithGrace(?)',
     [graceSeconds]
   );
-  const lastSet = resultSets[resultSets.length - 1];
-  const processed = Number(lastSet?.[0]?.timed_out_sessions_processed ?? 0);
+  let processed = 0;
+  for (const set of resultSets) {
+    if (Array.isArray(set) && set[0] && 'timed_out_sessions_processed' in set[0]) {
+      processed = Number((set[0] as { timed_out_sessions_processed: number | string }).timed_out_sessions_processed);
+      break;
+    }
+  }
 
   if (processed > 0 && beforeRows.length > 0) {
     for (const row of beforeRows) {

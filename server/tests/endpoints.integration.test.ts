@@ -65,6 +65,9 @@ test('All Admin, Student, Proctor endpoints and Socket.IO events work end-to-end
     assert.equal(studentLogin.status, 200);
     const studentToken = studentLogin.json.data.token;
 
+    const [maxEventRow] = await pool.query<RowDataPacket[]>('SELECT COALESCE(MAX(event_id), 0) as max_id FROM Events');
+    const baselineCursor = Number(maxEventRow[0]?.max_id ?? 0);
+
     // Admin: CRUD Exam + Question + Violation Type + Analytics
     const createExam = await apiFetch<{ id: number }>(baseUrl, '/exams', {
       method: 'POST',
@@ -293,12 +296,22 @@ test('All Admin, Student, Proctor endpoints and Socket.IO events work end-to-end
     assert.equal(resultRes.json.data.result.integrity_status, 'DISQUALIFIED');
 
     // Allow Realtime ticks to flush and verify events via polling fallback
-    await new Promise((r) => setTimeout(r, 150));
-    const eventsRes = await apiFetch<{ events: { type: string }[] }>(baseUrl, '/events?since=0', {
-      token: proctorToken,
-    });
-    assert.equal(eventsRes.status, 200);
-    const eventTypes = eventsRes.json.data.events.map((e) => e.type);
+    let eventTypes: string[] = [];
+    for (let i = 0; i < 20; i++) {
+      const eventsRes = await apiFetch<{ events: { type: string }[] }>(baseUrl, `/events?since=${baselineCursor}&limit=200`, {
+        token: proctorToken,
+      });
+      assert.equal(eventsRes.status, 200);
+      eventTypes = eventsRes.json.data.events.map((e) => e.type);
+      if (
+        eventTypes.includes('violation:new') &&
+        eventTypes.includes('session:update') &&
+        eventTypes.includes('session:terminated')
+      ) {
+        break;
+      }
+      await new Promise((r) => setTimeout(r, 100));
+    }
     assert.ok(eventTypes.includes('violation:new'));
     assert.ok(eventTypes.includes('session:update'));
     assert.ok(eventTypes.includes('session:terminated'));

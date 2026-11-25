@@ -1,4 +1,5 @@
 import path from 'path';
+import fs from 'node:fs';
 import { fileURLToPath } from 'url';
 import express from 'express';
 import helmet from 'helmet';
@@ -166,6 +167,14 @@ export function createApp() {
           res.setHeader('Cache-Control', 'private, max-age=300');
           rawResult.stream.pipe(res);
         } catch {
+          if (env.NODE_ENV !== 'production') {
+            const diskPath = path.resolve(serverUploadsDir, relativePath);
+            if (fs.existsSync(diskPath)) {
+              res.setHeader('Content-Type', 'image/jpeg');
+              fs.createReadStream(diskPath).pipe(res);
+              return;
+            }
+          }
           res.status(404).json({
             success: false,
             data: null,

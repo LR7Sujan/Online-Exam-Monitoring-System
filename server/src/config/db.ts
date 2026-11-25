@@ -121,6 +121,11 @@ export async function resetPool(): Promise<void> {
  */
 export const pool: Pool = new Proxy({} as Pool, {
   get(_target, prop: string | symbol) {
+    if (prop === 'end') {
+      return async () => {
+        await resetPool();
+      };
+    }
     const currentPool = getPool();
     const val = (currentPool as unknown as Record<string | symbol, unknown>)[prop];
     return typeof val === 'function' ? val.bind(currentPool) : val;
@@ -138,10 +143,12 @@ export async function queryRows<T extends RowDataPacket[]>(
     return rows;
   } catch (err) {
     const errCode = (err as { code?: string })?.code;
+    const errMsg = (err as Error)?.message || '';
     if (
       errCode === 'PROTOCOL_CONNECTION_LOST' ||
       errCode === 'ECONNRESET' ||
-      errCode === 'ETIMEDOUT'
+      errCode === 'ETIMEDOUT' ||
+      errMsg.includes('closed state')
     ) {
       console.warn('[DB] queryRows failed due to connection loss. Retrying with fresh pool...');
       await resetPool();
@@ -161,10 +168,12 @@ export async function executeSql(
     return result;
   } catch (err) {
     const errCode = (err as { code?: string })?.code;
+    const errMsg = (err as Error)?.message || '';
     if (
       errCode === 'PROTOCOL_CONNECTION_LOST' ||
       errCode === 'ECONNRESET' ||
-      errCode === 'ETIMEDOUT'
+      errCode === 'ETIMEDOUT' ||
+      errMsg.includes('closed state')
     ) {
       console.warn('[DB] executeSql failed due to connection loss. Retrying with fresh pool...');
       await resetPool();

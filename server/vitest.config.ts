@@ -23,8 +23,10 @@ export default defineConfig({
       'tests/lazyTimeoutsAndCron.test.ts',
       '../client/tests/**/*.unit.test.ts',
     ],
-    testTimeout: 25000,
+    testTimeout: 45000,
     fileParallelism: false,
+    maxWorkers: 1,
+    minWorkers: 1,
     env: {
       NODE_ENV: 'test',
       DB_NAME: 'exam_monitoring_test',

@@ -395,7 +395,7 @@ export const SimulatorPage: React.FC = () => {
             )}
           </div>
           <p className="text-sm text-muted-foreground mt-1 font-sans">
-            Spawn virtual examinees to simulate live exam telemetry, optical violations, and real-time Socket.IO broadcasts.
+            Spawn virtual examinees to simulate live exam telemetry, optical violations, and real-time broadcasts.
           </p>
           <div className="flex items-center gap-2 mt-2 px-3 py-1.5 rounded-lg bg-brand/5 border border-brand/20 text-xs text-muted-foreground w-fit">
             <Clock className="w-3.5 h-3.5 text-brand" />

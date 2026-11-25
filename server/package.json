@@ -21,9 +21,9 @@
     "db:test:create": "tsx --env-file=.env.test src/scripts/initTestDb.ts --create",
     "db:test:reset": "tsx --env-file=.env.test src/scripts/initTestDb.ts --reset",
     "simulate": "tsx src/scripts/simulate.ts",
-    "test:vitest": "node --env-file=.env.test ./node_modules/vitest/vitest.mjs run",
+    "test:vitest": "node --env-file=.env.test ./node_modules/vitest/vitest.mjs run --no-file-parallelism",
     "test:db": "tsx --env-file=.env.test ../db/tests/run_all_tests.ts",
-    "test": "tsx --env-file=.env.test --test \"tests/*.unit.test.ts\" \"tests/*.integration.test.ts\" && node --env-file=.env.test ./node_modules/vitest/vitest.mjs run"
+    "test": "tsx --env-file=.env.test --test \"tests/*.unit.test.ts\" \"tests/*.integration.test.ts\" && node --env-file=.env.test ./node_modules/vitest/vitest.mjs run --no-file-parallelism"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1177.0",

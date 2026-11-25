@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import request from 'supertest';
 import jwt from 'jsonwebtoken';
 import type { RowDataPacket } from 'mysql2/promise';
@@ -40,6 +40,19 @@ describe('Phase 21: Lazy Enforcement, Vercel Cron & Zero Server Timers', () => {
   });
 
   describe('1. Lazy Enforcement of Session Timeouts', () => {
+    beforeEach(async () => {
+      if (!dbAvailable) return;
+      await pool.query(
+        `INSERT INTO Users (id, full_name, email, password_hash, role)
+         VALUES (101, 'Lazy Student', 'lazy.student@test.local', 'hash', 'STUDENT'),
+                (102, 'Lazy Proctor', 'lazy.proctor@test.local', 'hash', 'PROCTOR')
+         ON DUPLICATE KEY UPDATE full_name = VALUES(full_name)`
+      );
+      await pool.query('DELETE FROM Time_Extension_Requests WHERE session_id IN (SELECT id FROM Exam_Sessions WHERE student_id = 101)');
+      await pool.query('DELETE FROM Session_Warnings WHERE session_id IN (SELECT id FROM Exam_Sessions WHERE student_id = 101)');
+      await pool.query('DELETE FROM Results WHERE session_id IN (SELECT id FROM Exam_Sessions WHERE student_id = 101)');
+      await pool.query('DELETE FROM Exam_Sessions WHERE student_id = 101');
+    });
     it('times out an expired session on GET /api/sessions/:id/time-left', async () => {
       if (!dbAvailable) return;
 

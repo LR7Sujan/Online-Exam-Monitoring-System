@@ -181,7 +181,7 @@ export function ProctorDashboardPage({ initialTab = 'monitor' }: { initialTab?: 
     [queryClient]
   );
 
-  // 4. Socket.IO Realtime Telemetry Ingestion
+  // 4. Serverless Realtime Telemetry Ingestion
   useEffect(() => {
     const socket = getSocket(token);
     if (!socket) return;
