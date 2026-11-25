@@ -67,7 +67,7 @@ const handleViolationReport = async (req: AuthenticatedRequest, res: Parameters<
 
     // QA Security Fix (Sub-Phase 11.4): Validate snapshot image format and file size before debounce check
     const rawSnapshot = req.body.snapshot || (evidenceMeta?.snapshot as string | undefined);
-    const savedSnapshotUrl = saveSnapshotImage(sessionId, rawSnapshot);
+    const savedSnapshotUrl = await saveSnapshotImage(sessionId, rawSnapshot);
 
     if (shouldDebounceViolation(sessionId, code)) {
       sendSuccess(res, {

@@ -1,10 +1,5 @@
 import mysql, { type RowDataPacket } from 'mysql2/promise';
-import fs from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+import { getStorageAdapter } from '../storage/index.js';
 
 async function main() {
   const connection = await mysql.createConnection({
@@ -26,26 +21,19 @@ async function main() {
     console.log(`  ${t.padEnd(25)}: ${rows[0].cnt}`);
   }
 
-  // Uploads folder audit
-  const uploadsDir = path.resolve(__dirname, '../../../server/uploads');
+  // Storage audit
   let uploadFilesCount = 0;
   let uploadTotalBytes = 0;
-  if (fs.existsSync(uploadsDir)) {
-    const files = fs.readdirSync(uploadsDir);
-    uploadFilesCount = files.length;
-    for (const f of files) {
-      try {
-        const stat = fs.statSync(path.join(uploadsDir, f));
-        if (stat.isFile()) uploadTotalBytes += stat.size;
-      } catch {
-        // Ignored
-      }
-    }
+  try {
+    const items = await getStorageAdapter().list();
+    uploadFilesCount = items.length;
+    uploadTotalBytes = items.reduce((acc, curr) => acc + curr.size, 0);
+  } catch {
+    // Ignored
   }
 
-  console.log('\n=== REAL UPLOADS DIRECTORY (server/uploads) ===');
-  console.log(`  Path: ${uploadsDir}`);
-  console.log(`  Files count: ${uploadFilesCount}`);
+  console.log('\n=== OBJECT STORAGE EVIDENCE INVENTORY ===');
+  console.log(`  Items count: ${uploadFilesCount}`);
   console.log(`  Total bytes: ${uploadTotalBytes}`);
 
   await connection.end();

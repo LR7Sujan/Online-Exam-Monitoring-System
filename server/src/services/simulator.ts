@@ -1,10 +1,7 @@
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
 import type { RowDataPacket, ResultSetHeader } from 'mysql2/promise';
 import { executeSql, pool, queryRows } from '../config/db.js';
-import { env } from '../config/env.js';
 import { startOrResumeExamSession } from '../routes/exams.routes.js';
+import { getStorageAdapter, resolveStorageKey } from '../storage/index.js';
 import {
   emitExamSubmitted,
   emitSessionTerminated,
@@ -16,13 +13,6 @@ import {
 } from '../realtime/index.js';
 import type { AnswerOption, ExamSessionRow, ViolationTypeRow } from '../types/api.js';
 import { AppError } from '../utils/errors.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const projectRootDir = path.resolve(__dirname, '../../../');
-const uploadsDir = env.UPLOADS_DIR
-  ? path.resolve(projectRootDir, env.UPLOADS_DIR)
-  : path.resolve(__dirname, '../../uploads');
 
 export type ChaosLevel = 'low' | 'medium' | 'high';
 export type ScenarioType = 'realistic' | 'strict' | 'stress_test';
@@ -536,22 +526,12 @@ class SimulatorEngine {
       activityLogs: [],
     };
 
-    // Remove any generated simulated snapshots from uploads directory
-    if (fs.existsSync(uploadsDir)) {
-      try {
-        const files = fs.readdirSync(uploadsDir);
-        for (const file of files) {
-          if (file.startsWith('sim-') && file.endsWith('.jpg')) {
-            try {
-              fs.unlinkSync(path.join(uploadsDir, file));
-            } catch (err) {
-              console.warn('[SimulatorEngine] Failed to delete simulated snapshot file:', file, err);
-            }
-          }
-        }
-      } catch (err) {
-        console.warn('[SimulatorEngine] Error reading uploads dir for cleanup:', err);
-      }
+    // Remove any generated simulated snapshots from storage
+    try {
+      const adapter = getStorageAdapter();
+      await adapter.deletePrefix(resolveStorageKey('snapshots/sim-'));
+    } catch (err) {
+      console.warn('[SimulatorEngine] Error cleaning simulated snapshots from storage:', err);
     }
 
     let deletedCounts = {
@@ -931,20 +911,16 @@ class SimulatorEngine {
     };
 
     try {
-      if (!fs.existsSync(uploadsDir)) {
-        fs.mkdirSync(uploadsDir, { recursive: true });
-      }
-
-      const filename = `sim-${chosenCode.toLowerCase()}-${candidate.sessionId}-${Date.now()}.jpg`;
-      const filePath = path.join(uploadsDir, filename);
-
+      const filename = `snapshots/sim-${chosenCode.toLowerCase()}-${candidate.sessionId}-${Date.now()}.jpg`;
       const tinyJpeg = Buffer.from(
         '/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA=',
         'base64'
       );
-      fs.writeFileSync(filePath, tinyJpeg);
+      const adapter = getStorageAdapter();
+      const storageKey = resolveStorageKey(filename);
+      await adapter.put(storageKey, tinyJpeg, { contentType: 'image/jpeg' });
 
-      const snapshotUrl = `/uploads/${filename}`;
+      const snapshotUrl = storageKey;
       const evidencePayload = JSON.stringify({
         simulated: true,
         violationCode: chosenCode,

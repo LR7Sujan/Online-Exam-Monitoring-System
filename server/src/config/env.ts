@@ -104,6 +104,22 @@ const envSchema = z.object({
   WARNING_GRACE_SECONDS: z.coerce.number().int().min(0).default(5),
   RECORDING_RETENTION_DAYS: z.coerce.number().int().positive().default(30),
   RECORDING_MAX_STORAGE_GB: z.coerce.number().positive().default(5),
+  STORAGE_PROVIDER: z.enum(['blob', 's3', 'local']).default(isTestEnv ? 'local' : 'local'),
+  STORAGE_PREFIX: z.string().default(isTestEnv ? 'test/' : ''),
+  BLOB_READ_WRITE_TOKEN: z.string().optional(),
+  S3_BUCKET: z.string().optional(),
+  S3_REGION: z.string().default('auto'),
+  S3_ENDPOINT: z.string().optional(),
+  S3_ACCESS_KEY_ID: z.string().optional(),
+  S3_SECRET_ACCESS_KEY: z.string().optional(),
+  S3_FORCE_PATH_STYLE: z
+    .union([z.boolean(), z.string()])
+    .transform((val) => {
+      if (typeof val === 'boolean') return val;
+      const lower = String(val).toLowerCase().trim();
+      return lower === 'true' || lower === '1' || lower === 'yes';
+    })
+    .default(true),
   REALTIME_PROVIDER: z.enum(['pusher', 'polling']).default('polling'),
   PUSHER_APP_ID: z.string().optional(),
   PUSHER_KEY: z.string().optional(),

@@ -1,12 +1,10 @@
-import fs from 'fs';
-import path from 'path';
-import { spawn } from 'child_process';
-import ffmpegStatic from 'ffmpeg-static';
+import path from 'node:path';
 import type { RowDataPacket } from 'mysql2/promise';
 import { executeSql, queryRows } from '../config/db.js';
 import { env } from '../config/env.js';
 import { AppError } from '../utils/errors.js';
 import { generateSignedSnapshotUrl } from './snapshotSigner.js';
+import { getStorageAdapter, resolveStorageKey } from '../storage/index.js';
 
 export interface ExamRecordingRow extends RowDataPacket {
   recording_id: number;
@@ -85,30 +83,21 @@ export interface StorageStats {
 }
 
 /**
- * Returns root directory for recordings in current environment.
+ * Returns logical root path for recordings in current environment.
  */
 export function getRecordingsBaseDir(): string {
-  const base = path.resolve(process.cwd(), env.UPLOADS_DIR, 'recordings');
-  if (!fs.existsSync(base)) {
-    fs.mkdirSync(base, { recursive: true });
-  }
-  return base;
+  return path.resolve(process.cwd(), env.UPLOADS_DIR, 'recordings');
 }
 
 /**
- * Returns directory for specific session recording and its chunks.
+ * Returns logical path for specific session recording and its chunks.
  */
 export function getSessionRecordingDir(examId: number, sessionId: number): string {
-  const sessionDir = path.join(getRecordingsBaseDir(), String(examId), String(sessionId));
-  const chunksDir = path.join(sessionDir, 'chunks');
-  if (!fs.existsSync(chunksDir)) {
-    fs.mkdirSync(chunksDir, { recursive: true });
-  }
-  return sessionDir;
+  return path.join(getRecordingsBaseDir(), String(examId), String(sessionId));
 }
 
 /**
- * Computes disk usage and storage statistics.
+ * Computes storage statistics from DBMS records.
  */
 export async function getRecordingStorageStats(): Promise<StorageStats> {
   const rows = await queryRows<RowDataPacket[]>(
@@ -155,7 +144,7 @@ export async function getRecordingStorageStats(): Promise<StorageStats> {
 }
 
 /**
- * Checks if new recording can start (disk safety limit check).
+ * Checks if new recording can start (storage safety limit check).
  */
 export async function canStartRecording(): Promise<{ allowed: boolean; reason?: string }> {
   const stats = await getRecordingStorageStats();
@@ -169,7 +158,7 @@ export async function canStartRecording(): Promise<{ allowed: boolean; reason?: 
 }
 
 /**
- * Saves a chunk uploaded by student client.
+ * Saves a chunk uploaded by student client to object storage (crash-recovery buffer).
  */
 export async function saveRecordingChunk(params: {
   sessionId: number;
@@ -188,14 +177,15 @@ export async function saveRecordingChunk(params: {
     throw new AppError(413, 'CHUNK_TOO_LARGE', 'Recording chunk exceeds maximum 25MB limit');
   }
 
-  const sessionDir = getSessionRecordingDir(examId, sessionId);
-  const chunkPath = path.join(sessionDir, 'chunks', `chunk_${String(chunkIndex).padStart(6, '0')}.webm`);
-
-  await fs.promises.writeFile(chunkPath, buffer);
+  const chunkKey = resolveStorageKey(
+    `recordings/${examId}/${sessionId}/chunks/chunk_${String(chunkIndex).padStart(6, '0')}.webm`
+  );
+  const adapter = getStorageAdapter();
+  await adapter.put(chunkKey, buffer, { contentType: 'video/webm' });
 
   // Ensure Exam_Recordings row exists
   const retentionDays = env.RECORDING_RETENTION_DAYS ?? 30;
-  const relativeFinalPath = path.join('recordings', String(examId), String(sessionId), 'recording.webm').replace(/\\/g, '/');
+  const relativeFinalPath = resolveStorageKey(`recordings/${examId}/${sessionId}/recording.webm`);
 
   await executeSql(
     `INSERT INTO Exam_Recordings (session_id, file_path, status, expires_at)
@@ -208,61 +198,54 @@ export async function saveRecordingChunk(params: {
 }
 
 /**
- * Remuxes concatenated WebM using ffmpeg-static to inject EBML duration & cue points.
+ * Option (b): Saves a single complete video file directly into object storage.
+ * Direct client-to-storage completion without requiring ffmpeg.
  */
-async function remuxWithFfmpeg(inputPath: string, outputPath: string): Promise<number | null> {
-  const binaryPath = typeof ffmpegStatic === 'string'
-    ? ffmpegStatic
-    : (ffmpegStatic as { default?: string } | undefined)?.default;
-  if (!binaryPath || !fs.existsSync(binaryPath)) {
-    console.warn('[RecordingService] ffmpeg-static binary not found, skipping remux');
-    return null;
+export async function saveCompleteRecording(params: {
+  sessionId: number;
+  examId: number;
+  buffer: Buffer;
+  durationMs: number;
+}): Promise<ExamRecordingRow> {
+  const { sessionId, examId, buffer, durationMs } = params;
+
+  if (buffer.length === 0) {
+    throw new AppError(400, 'EMPTY_RECORDING', 'Recording buffer is empty');
   }
 
-  return new Promise<number | null>((resolve) => {
-    // -c copy: remux without re-encoding (instant fast copy)
-    const proc = spawn(binaryPath, [
-      '-y',
-      '-i',
-      inputPath,
-      '-c',
-      'copy',
-      outputPath,
-    ]);
+  const relativeFinalPath = resolveStorageKey(`recordings/${examId}/${sessionId}/recording.webm`);
+  const adapter = getStorageAdapter();
+  await adapter.put(relativeFinalPath, buffer, { contentType: 'video/webm' });
 
-    let stderr = '';
-    proc.stderr?.on('data', (d: Buffer) => {
-      stderr += d.toString();
-    });
+  // Clean up any temporary chunks from storage
+  const chunksPrefix = resolveStorageKey(`recordings/${examId}/${sessionId}/chunks/`);
+  await adapter.deletePrefix(chunksPrefix).catch(() => {});
 
-    proc.on('close', (code: number | null) => {
-      if (code === 0 && fs.existsSync(outputPath)) {
-        // Try to parse duration from ffmpeg output: Duration: 00:00:10.50
-        const match = stderr.match(/Duration:\s*(\d+):(\d+):(\d+\.?\d*)/);
-        if (match) {
-          const hours = Number(match[1]);
-          const mins = Number(match[2]);
-          const secs = Number(match[3]);
-          const ms = Math.round((hours * 3600 + mins * 60 + secs) * 1000);
-          resolve(ms);
-          return;
-        }
-        resolve(null);
-      } else {
-        console.warn('[RecordingService] ffmpeg remux exited with code', code, stderr);
-        resolve(null);
-      }
-    });
+  const retentionDays = env.RECORDING_RETENTION_DAYS ?? 30;
+  await executeSql(
+    `INSERT INTO Exam_Recordings (session_id, file_path, mime_type, size_bytes, duration_ms, status, finished_at, expires_at)
+     VALUES (?, ?, 'video/webm', ?, ?, 'READY', NOW(), DATE_ADD(NOW(), INTERVAL ? DAY))
+     ON DUPLICATE KEY UPDATE
+       file_path = VALUES(file_path),
+       mime_type = VALUES(mime_type),
+       size_bytes = VALUES(size_bytes),
+       duration_ms = VALUES(duration_ms),
+       status = 'READY',
+       finished_at = NOW(),
+       expires_at = VALUES(expires_at),
+       updated_at = NOW()`,
+    [sessionId, relativeFinalPath, buffer.length, durationMs, retentionDays]
+  );
 
-    proc.on('error', (err: Error) => {
-      console.warn('[RecordingService] ffmpeg process error:', err.message);
-      resolve(null);
-    });
-  });
+  const rows = await queryRows<ExamRecordingRow[]>(
+    'SELECT * FROM Exam_Recordings WHERE session_id = ?',
+    [sessionId]
+  );
+  return rows[0];
 }
 
 /**
- * Concatenates all uploaded chunks and finalizes the recording.
+ * Finalizes the recording: verifies complete video or stitches uploaded chunks as fallback.
  */
 export async function finishRecording(params: {
   sessionId: number;
@@ -270,19 +253,48 @@ export async function finishRecording(params: {
   clientDurationMs?: number;
 }): Promise<ExamRecordingRow> {
   const { sessionId, examId, clientDurationMs = 0 } = params;
-  const sessionDir = getSessionRecordingDir(examId, sessionId);
-  const chunksDir = path.join(sessionDir, 'chunks');
+  const adapter = getStorageAdapter();
+  const relativeFinalPath = resolveStorageKey(`recordings/${examId}/${sessionId}/recording.webm`);
 
-  if (!fs.existsSync(chunksDir)) {
-    throw new AppError(404, 'RECORDING_NOT_FOUND', 'No recording chunks found for this session');
+  // Check if complete recording is already stored and READY
+  const existingRows = await queryRows<ExamRecordingRow[]>(
+    'SELECT * FROM Exam_Recordings WHERE session_id = ?',
+    [sessionId]
+  );
+  if (existingRows[0] && existingRows[0].status === 'READY') {
+    return existingRows[0];
   }
 
-  const chunkFiles = (await fs.promises.readdir(chunksDir))
-    .filter((f) => f.startsWith('chunk_') && f.endsWith('.webm'))
-    .sort();
+  // Crash-recovery fallback: check if chunks exist in storage
+  const chunksPrefix = resolveStorageKey(`recordings/${examId}/${sessionId}/chunks/`);
+  const chunkItems = (await adapter.list(chunksPrefix))
+    .filter((item) => item.key.endsWith('.webm'))
+    .sort((a, b) => a.key.localeCompare(b.key));
 
-  if (chunkFiles.length === 0) {
-    // If no chunks recorded, mark as FAILED
+  if (chunkItems.length === 0) {
+    const fileExists = await adapter.exists(relativeFinalPath);
+    if (fileExists) {
+      const stats = await adapter.get(relativeFinalPath);
+      const retentionDays = env.RECORDING_RETENTION_DAYS ?? 30;
+      await executeSql(
+        `UPDATE Exam_Recordings
+            SET file_path = ?,
+                mime_type = 'video/webm',
+                size_bytes = ?,
+                duration_ms = ?,
+                status = 'READY',
+                finished_at = NOW(),
+                expires_at = DATE_ADD(NOW(), INTERVAL ? DAY)
+          WHERE session_id = ?`,
+        [relativeFinalPath, stats.size, clientDurationMs, retentionDays, sessionId]
+      );
+      const rows = await queryRows<ExamRecordingRow[]>(
+        'SELECT * FROM Exam_Recordings WHERE session_id = ?',
+        [sessionId]
+      );
+      if (rows[0]) return rows[0];
+    }
+
     await executeSql(
       `UPDATE Exam_Recordings SET status = 'FAILED', finished_at = NOW() WHERE session_id = ?`,
       [sessionId]
@@ -290,48 +302,26 @@ export async function finishRecording(params: {
     throw new AppError(400, 'NO_RECORDING_CHUNKS', 'Cannot finish recording: no video chunks received');
   }
 
-  const rawConcatenatedPath = path.join(sessionDir, 'raw_concat.webm');
-  const finalWebmPath = path.join(sessionDir, 'recording.webm');
-
-  // Concatenate all chunks into raw file
-  const writeStream = fs.createWriteStream(rawConcatenatedPath);
-  for (const file of chunkFiles) {
-    const chunkFilePath = path.join(chunksDir, file);
-    const chunkBuffer = await fs.promises.readFile(chunkFilePath);
-    writeStream.write(chunkBuffer);
-  }
-  await new Promise<void>((resolve, reject) => {
-    writeStream.end();
-    writeStream.on('finish', resolve);
-    writeStream.on('error', reject);
-  });
-
-  // Remux with ffmpeg to ensure valid duration and seekable WebM cues
-  let remuxedDurationMs: number | null = null;
-  try {
-    remuxedDurationMs = await remuxWithFfmpeg(rawConcatenatedPath, finalWebmPath);
-  } catch (err) {
-    console.warn('[RecordingService] ffmpeg remux error:', err);
+  // Stream-stitch chunks directly into single object buffer
+  const chunkBuffers: Buffer[] = [];
+  for (const item of chunkItems) {
+    const res = await adapter.get(item.key);
+    const parts: Buffer[] = [];
+    for await (const chunk of res.stream) {
+      parts.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+    }
+    chunkBuffers.push(Buffer.concat(parts));
   }
 
-  // If remux did not produce file, fallback to raw concatenated file
-  if (!fs.existsSync(finalWebmPath)) {
-    await fs.promises.copyFile(rawConcatenatedPath, finalWebmPath);
-  }
+  const finalBuffer = Buffer.concat(chunkBuffers);
+  await adapter.put(relativeFinalPath, finalBuffer, { contentType: 'video/webm' });
 
-  // Clean up raw concat and chunks
-  await fs.promises.unlink(rawConcatenatedPath).catch(() => {});
-  for (const file of chunkFiles) {
-    await fs.promises.unlink(path.join(chunksDir, file)).catch(() => {});
-  }
-  await fs.promises.rmdir(chunksDir).catch(() => {});
+  // Clean up chunk objects from storage
+  await adapter.deletePrefix(chunksPrefix).catch(() => {});
 
-  const stats = await fs.promises.stat(finalWebmPath);
-  const sizeBytes = stats.size;
-  const durationMs = remuxedDurationMs ?? clientDurationMs ?? 0;
-
+  const sizeBytes = finalBuffer.length;
+  const durationMs = clientDurationMs || chunkItems.length * 10000;
   const retentionDays = env.RECORDING_RETENTION_DAYS ?? 30;
-  const relativeFinalPath = path.join('recordings', String(examId), String(sessionId), 'recording.webm').replace(/\\/g, '/');
 
   await executeSql(
     `UPDATE Exam_Recordings
@@ -576,17 +566,19 @@ export async function getRecordingReviewDetails(recordingId: number): Promise<Re
 }
 
 /**
- * Deletes recording files and database entry (Admin manual delete).
+ * Deletes recording files from storage and database entry (Admin manual delete).
  */
 export async function deleteRecording(recordingId: number): Promise<boolean> {
   const rec = await getRecordingById(recordingId);
   if (!rec) return false;
 
-  const absolutePath = path.resolve(process.cwd(), env.UPLOADS_DIR, rec.file_path);
-  if (fs.existsSync(absolutePath)) {
-    await fs.promises.unlink(absolutePath).catch(() => {});
-    const parentDir = path.dirname(absolutePath);
-    await fs.promises.rm(parentDir, { recursive: true, force: true }).catch(() => {});
+  const adapter = getStorageAdapter();
+  if (rec.file_path) {
+    await adapter.delete(rec.file_path).catch(() => {});
+    const parentDir = rec.file_path.replace(/\/?[^/]+$/, '');
+    if (parentDir) {
+      await adapter.deletePrefix(`${parentDir}/`).catch(() => {});
+    }
   }
 
   await executeSql('DELETE FROM Exam_Recordings WHERE recording_id = ?', [recordingId]);
@@ -607,6 +599,7 @@ export async function setLegalHold(recordingId: number, hold: boolean): Promise<
 /**
  * Nightly/scheduled cleanup for expired recordings.
  * Respects legal_hold and protects sessions with confirmed violations or disqualification.
+ * Deletes storage objects as well as database rows.
  */
 export async function cleanupExpiredRecordings(): Promise<number> {
   // Query recordings eligible for deletion

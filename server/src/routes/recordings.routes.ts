@@ -1,9 +1,6 @@
-import fs from 'fs';
-import path from 'path';
 import { Router, type Response } from 'express';
 import express from 'express';
 import { z } from 'zod';
-import { env } from '../config/env.js';
 import { queryRows } from '../config/db.js';
 import { requireAuth, requireRole, verifyJwtToken, type AuthenticatedRequest } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
@@ -21,8 +18,10 @@ import {
   getRecordingStorageStats,
   logRecordingAccess,
   saveRecordingChunk,
+  saveCompleteRecording,
   setLegalHold,
 } from '../services/recordingService.js';
+import { getStorageAdapter } from '../storage/index.js';
 import { AppError } from '../utils/errors.js';
 import { sendSuccess } from '../utils/response.js';
 import type { ExamSessionRow, JwtUserPayload } from '../types/api.js';
@@ -77,6 +76,51 @@ async function assertSessionAccess(req: AuthenticatedRequest, sessionId: number)
 
   return session;
 }
+
+/**
+ * POST /api/sessions/:sessionId/recording/upload
+ * Option (b): Uploads a complete finalized video directly into object storage.
+ */
+recordingsRouter.post(
+  '/sessions/:sessionId/recording/upload',
+  requireAuth,
+  validate({ params: sessionIdParamSchema }),
+  express.raw({ type: ['video/webm', 'application/octet-stream', '*/*'], limit: '100mb' }),
+  async (req: AuthenticatedRequest, res, next) => {
+    try {
+      const { sessionId } = req.params as unknown as z.infer<typeof sessionIdParamSchema>;
+      const session = await assertSessionAccess(req, sessionId);
+
+      const buffer = req.body instanceof Buffer ? req.body : Buffer.from(req.body || '');
+      if (buffer.length === 0) {
+        throw new AppError(400, 'EMPTY_RECORDING', 'Recording payload is empty');
+      }
+
+      const durationMs = Number(req.query.durationMs || req.headers['x-duration-ms'] || 0);
+
+      const recording = await saveCompleteRecording({
+        sessionId,
+        examId: session.exam_id,
+        buffer,
+        durationMs,
+      });
+
+      sendSuccess(
+        res,
+        {
+          recordingId: recording.recording_id,
+          sessionId: recording.session_id,
+          status: recording.status,
+          durationMs: recording.duration_ms,
+          sizeBytes: recording.size_bytes,
+        },
+        200
+      );
+    } catch (err) {
+      next(err);
+    }
+  }
+);
 
 /**
  * PUT /api/sessions/:sessionId/recording/chunks/:index
@@ -201,9 +245,11 @@ recordingsRouter.get(
         throw new AppError(404, 'RECORDING_NOT_FOUND', 'Recording not found or not ready');
       }
 
-      const absolutePath = path.resolve(process.cwd(), env.UPLOADS_DIR, recording.file_path);
-      if (!fs.existsSync(absolutePath)) {
-        throw new AppError(404, 'FILE_NOT_FOUND', 'Recording video file missing on disk');
+      const adapter = getStorageAdapter();
+      const storageKey = recording.file_path;
+      const exists = await adapter.exists(storageKey);
+      if (!exists) {
+        throw new AppError(404, 'FILE_NOT_FOUND', 'Recording video file missing in storage');
       }
 
       // Audit view in Recording_Access_Log
@@ -216,8 +262,7 @@ recordingsRouter.get(
         userAgent: ua,
       });
 
-      const stat = await fs.promises.stat(absolutePath);
-      const fileSize = stat.size;
+      const fileSize = Number(recording.size_bytes);
       const range = req.headers.range;
 
       res.setHeader('Accept-Ranges', 'bytes');
@@ -236,18 +281,19 @@ recordingsRouter.get(
         }
 
         const chunksize = end - start + 1;
-        const fileStream = fs.createReadStream(absolutePath, { start, end });
+        const result = await adapter.get(storageKey, { start, end });
 
         res.writeHead(206, {
           'Content-Range': `bytes ${start}-${end}/${fileSize}`,
           'Content-Length': chunksize,
         });
 
-        fileStream.pipe(res);
+        result.stream.pipe(res);
       } else {
-        res.setHeader('Content-Length', fileSize);
+        const result = await adapter.get(storageKey);
+        res.setHeader('Content-Length', result.size || fileSize);
         res.status(200);
-        fs.createReadStream(absolutePath).pipe(res);
+        result.stream.pipe(res);
       }
     } catch (err) {
       next(err);
@@ -418,8 +464,10 @@ recordingsRouter.get(
         throw new AppError(404, 'RECORDING_NOT_FOUND', 'Recording not found');
       }
 
-      const absolutePath = path.resolve(process.cwd(), env.UPLOADS_DIR, rec.file_path);
-      if (!fs.existsSync(absolutePath)) {
+      const adapter = getStorageAdapter();
+      const storageKey = rec.file_path;
+      const exists = await adapter.exists(storageKey);
+      if (!exists) {
         throw new AppError(404, 'FILE_NOT_FOUND', 'Physical video file is missing');
       }
 
@@ -436,7 +484,8 @@ recordingsRouter.get(
       const filename = `recording-session-${rec.session_id}.webm`;
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
       res.setHeader('Content-Type', rec.mime_type || 'video/webm');
-      fs.createReadStream(absolutePath).pipe(res);
+      const result = await adapter.get(storageKey);
+      result.stream.pipe(res);
     } catch (err) {
       next(err);
     }

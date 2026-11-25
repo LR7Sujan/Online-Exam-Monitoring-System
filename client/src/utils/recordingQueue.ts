@@ -146,6 +146,33 @@ export async function flushAllChunks(sessionId: number, token: string): Promise<
 }
 
 /**
+ * Retrieves all chunks for a session sorted in sequential numerical order.
+ */
+export async function getAllSessionChunkBlobs(sessionId: number): Promise<Blob[]> {
+  try {
+    const db = await openRecordingDb();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, 'readonly');
+      const store = tx.objectStore(STORE_NAME);
+      const req = store.getAll();
+
+      req.onsuccess = () => {
+        const all = (req.result as StoredChunk[]) || [];
+        const sessionChunks = all
+          .filter((c) => c.sessionId === sessionId)
+          .sort((a, b) => a.chunkIndex - b.chunkIndex)
+          .map((c) => c.blob);
+        resolve(sessionChunks);
+      };
+      req.onerror = () => reject(req.error);
+    });
+  } catch (err) {
+    console.warn('[RecordingQueue] Failed to get session chunks:', err);
+    return [];
+  }
+}
+
+/**
  * Clears stored chunks for a session after successful finalization.
  */
 export async function clearSessionChunks(sessionId: number): Promise<void> {

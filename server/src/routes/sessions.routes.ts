@@ -1,6 +1,3 @@
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
 import { Router } from 'express';
 import type { RowDataPacket, ResultSetHeader } from 'mysql2/promise';
 import { z } from 'zod';
@@ -55,13 +52,7 @@ const upsertAnswerSchema = z.object({
   selectedOption: z.enum(['A', 'B', 'C', 'D']),
 });
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-// Resolve uploads directory relative to project root or script location
-const projectRootDir = path.resolve(__dirname, '../../../');
-const uploadsDir = env.UPLOADS_DIR
-  ? path.resolve(projectRootDir, env.UPLOADS_DIR)
-  : path.resolve(__dirname, '../../uploads');
+import { getStorageAdapter, resolveStorageKey } from '../storage/index.js';
 
 // QA Security Fix (Sub-Phase 11.4): Reject non-images and oversized uploads (> 2MB)
 export const MAX_SNAPSHOT_BYTES = 2 * 1024 * 1024; // 2MB
@@ -83,11 +74,15 @@ export function isValidImageBuffer(buffer: Buffer): boolean {
   return false;
 }
 
-export function saveSnapshotImage(sessionId: number, snapshot: string | null | undefined): string | null {
+export async function saveSnapshotImage(sessionId: number, snapshot: string | null | undefined): Promise<string | null> {
   if (!snapshot) return null;
   const trimmed = snapshot.trim();
 
-  if (trimmed.startsWith('/uploads/')) {
+  if (
+    trimmed.startsWith('/uploads/') ||
+    trimmed.startsWith('snapshots/') ||
+    trimmed.startsWith('test/snapshots/')
+  ) {
     if (trimmed.includes('..') || trimmed.includes('\\')) {
       throw new AppError(400, 'INVALID_SNAPSHOT_PATH', 'Path traversal in snapshot URL is forbidden.');
     }
@@ -129,16 +124,14 @@ export function saveSnapshotImage(sessionId: number, snapshot: string | null | u
   }
 
   try {
-    if (!fs.existsSync(uploadsDir)) {
-      fs.mkdirSync(uploadsDir, { recursive: true });
-    }
-    const ext = buffer[0] === 0x89 ? 'png' : (buffer[0] === 0x52 ? 'webp' : 'jpg');
-    const filename = `snapshot-${sessionId}-${Date.now()}-${Math.floor(Math.random() * 10000)}.${ext}`;
-    const filePath = path.join(uploadsDir, filename);
-    fs.writeFileSync(filePath, buffer);
-    return `/uploads/${filename}`;
+    const ext = buffer[0] === 0x89 ? 'png' : buffer[0] === 0x52 ? 'webp' : 'jpg';
+    const contentType = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
+    const storageKey = resolveStorageKey(`snapshots/${sessionId}/${Date.now()}-${Math.floor(Math.random() * 10000)}.${ext}`);
+    const adapter = getStorageAdapter();
+    await adapter.put(storageKey, buffer, { contentType });
+    return storageKey;
   } catch (err) {
-    console.warn('[Snapshot] Failed to write snapshot image:', err);
+    console.warn('[Snapshot] Failed to write snapshot image to storage adapter:', err);
     return null;
   }
 }
@@ -725,9 +718,9 @@ sessionsRouter.post(
 
       // Validate and save snapshot if provided synchronously in request (throws 400 if invalid/oversized)
       const savedSnapshotUrl = explicitUrl
-        ? saveSnapshotImage(sessionId, explicitUrl)
+        ? await saveSnapshotImage(sessionId, explicitUrl)
         : rawSnapshot
-          ? saveSnapshotImage(sessionId, rawSnapshot)
+          ? await saveSnapshotImage(sessionId, rawSnapshot)
           : null;
 
       if (shouldDebounceViolation(sessionId, code)) {

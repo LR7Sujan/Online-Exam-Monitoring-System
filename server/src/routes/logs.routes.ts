@@ -48,7 +48,7 @@ logsRouter.patch(
         throw new AppError(403, 'FORBIDDEN', 'You can only upload snapshots for your own session logs.');
       }
 
-      const savedUrl = saveSnapshotImage(Number(log.session_id), snapshot);
+      const savedUrl = await saveSnapshotImage(Number(log.session_id), snapshot);
       if (savedUrl) {
         await executeSql(
           'UPDATE Proctoring_Logs SET snapshot_url = ? WHERE id = ?',

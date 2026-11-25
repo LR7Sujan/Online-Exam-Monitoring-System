@@ -16,8 +16,10 @@ export function generateSignedSnapshotUrl(
   expiresInSeconds = 300 // 5 minutes
 ): string | null {
   if (!snapshotPath) return null;
-  // If not a relative /uploads path, return as is
-  if (!snapshotPath.startsWith('/uploads/')) return snapshotPath;
+  // If external absolute URL (e.g. S3 presigned URL directly), return as is
+  if (snapshotPath.startsWith('http://') || snapshotPath.startsWith('https://')) {
+    return snapshotPath;
+  }
 
   // Clean any existing query params from path
   const [cleanPath] = snapshotPath.split('?');
@@ -33,6 +35,12 @@ export function generateSignedSnapshotUrl(
     queryParams.set('logId', String(boundLogId));
   }
   queryParams.set('sig', sig);
+
+  // If path is a storage key (e.g. snapshots/...), return /api/snapshots/signed endpoint
+  if (!cleanPath.startsWith('/uploads/') && !cleanPath.startsWith('/')) {
+    queryParams.set('key', cleanPath);
+    return `/api/snapshots/signed?${queryParams.toString()}`;
+  }
 
   return `${cleanPath}?${queryParams.toString()}`;
 }

@@ -19,6 +19,7 @@ export default defineConfig({
       'tests/simulatorPersonas.test.ts',
       'tests/recording.api.test.ts',
       'tests/realtimeProviders.test.ts',
+      'tests/storageAdapter.test.ts',
       '../client/tests/**/*.unit.test.ts',
     ],
     testTimeout: 25000,

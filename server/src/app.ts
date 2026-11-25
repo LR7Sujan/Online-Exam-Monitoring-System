@@ -1,4 +1,3 @@
-import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import express from 'express';
@@ -31,6 +30,8 @@ import { recordingsRouter } from './routes/recordings.routes.js';
 import { realtimeRouter, handleGetEvents, getEventsQuerySchema } from './routes/realtime.routes.js';
 import { violationsRouter } from './routes/violations.routes.js';
 import { violationTypesRouter } from './routes/violationTypes.routes.js';
+import { snapshotsRouter } from './routes/snapshots.routes.js';
+import { getStorageAdapter, resolveStorageKey } from './storage/index.js';
 import { sendSuccess } from './utils/response.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -40,9 +41,6 @@ const projectRootDir = path.resolve(__dirname, '../../');
 export const serverUploadsDir = env.UPLOADS_DIR
   ? path.resolve(projectRootDir, env.UPLOADS_DIR)
   : path.resolve(__dirname, '../uploads');
-if (!fs.existsSync(serverUploadsDir)) {
-  fs.mkdirSync(serverUploadsDir, { recursive: true });
-}
 
 export function createApp() {
   const app = express();
@@ -56,11 +54,11 @@ export function createApp() {
   app.use(corsMiddleware);
   app.use(express.json({ limit: '10mb' }));
 
-  // Protected static snapshots route: requires valid signed URL (HMAC 5-min expiry) OR valid JWT with RBAC/IDOR checks
-  // QA Security Fix (Sub-Phase 11.4 & Phase 19): Restrict snapshot access to PROCTOR, ADMIN, or the session examinee
+  // Protected snapshots proxy route: requires valid signed URL (HMAC 5-min expiry) OR valid JWT with RBAC/IDOR checks
+  // Streams forensic snapshot from StorageAdapter without static filesystem serving
   app.use(
     '/uploads',
-    async (req, res, next) => {
+    async (req, res) => {
       // 1. Short-lived signed URL access (HMAC 5-minute expiry, bound to logId/path)
       if (req.query.sig || req.query.expires) {
         const fullUploadPath = `/uploads${req.path.startsWith('/') ? req.path : `/${req.path}`}`;
@@ -81,70 +79,99 @@ export function createApp() {
           });
           return;
         }
+      } else {
+        // 2. Token-based access (Bearer header or ?token=)
+        const authHeader = req.headers.authorization;
+        const token =
+          (authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null) ||
+          (req.query.token as string);
 
-        next();
-        return;
-      }
-
-      // 2. Token-based access (Bearer header or ?token=)
-      const authHeader = req.headers.authorization;
-      const token =
-        (authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null) ||
-        (req.query.token as string);
-
-      if (!token) {
-        res.status(401).json({
-          success: false,
-          data: null,
-          error: {
-            code: 'UNAUTHORIZED_SNAPSHOT_ACCESS',
-            message: 'Authentication token required to view forensic snapshot evidence.',
-          },
-        });
-        return;
-      }
-
-      try {
-        const decoded = jwt.verify(token, env.JWT_SECRET) as { sub?: number; role?: string };
-        if (decoded.role === 'PROCTOR' || decoded.role === 'ADMIN') {
-          next();
+        if (!token) {
+          res.status(401).json({
+            success: false,
+            data: null,
+            error: {
+              code: 'UNAUTHORIZED_SNAPSHOT_ACCESS',
+              message: 'Authentication token required to view forensic snapshot evidence.',
+            },
+          });
           return;
         }
 
-        // If STUDENT, strictly enforce IDOR check: only allow viewing their own session snapshots
-        const match = req.path.match(/^\/(?:snapshot|sim-[a-z_]+)-(\d+)-/);
-        if (match && decoded.role === 'STUDENT' && decoded.sub) {
-          const snapshotSessionId = Number(match[1]);
-          const rows = await queryRows<RowDataPacket[]>(
-            'SELECT student_id FROM Exam_Sessions WHERE id = ? LIMIT 1',
-            [snapshotSessionId]
-          );
-          if (rows[0] && Number(rows[0].student_id) === Number(decoded.sub)) {
-            next();
+        try {
+          const decoded = jwt.verify(token, env.JWT_SECRET) as { sub?: number; role?: string };
+          let allowed = decoded.role === 'PROCTOR' || decoded.role === 'ADMIN';
+
+          // If STUDENT, strictly enforce IDOR check: only allow viewing their own session snapshots
+          if (!allowed && decoded.role === 'STUDENT' && decoded.sub) {
+            const match = req.path.match(/^\/(?:snapshot|sim-[a-z_]+)-(\d+)-/);
+            if (match) {
+              const snapshotSessionId = Number(match[1]);
+              const rows = await queryRows<RowDataPacket[]>(
+                'SELECT student_id FROM Exam_Sessions WHERE id = ? LIMIT 1',
+                [snapshotSessionId]
+              );
+              if (rows[0] && Number(rows[0].student_id) === Number(decoded.sub)) {
+                allowed = true;
+              }
+            }
+          }
+
+          if (!allowed) {
+            res.status(403).json({
+              success: false,
+              data: null,
+              error: {
+                code: 'FORBIDDEN',
+                message: 'Forensic snapshots are restricted to authorized proctors and the verified session examinee.',
+              },
+            });
             return;
           }
+        } catch {
+          res.status(401).json({
+            success: false,
+            data: null,
+            error: {
+              code: 'INVALID_SNAPSHOT_TOKEN',
+              message: 'Invalid or expired snapshot authorization token.',
+            },
+          });
+          return;
         }
-
-        res.status(403).json({
-          success: false,
-          data: null,
-          error: {
-            code: 'FORBIDDEN',
-            message: 'Forensic snapshots are restricted to authorized proctors and the verified session examinee.',
-          },
-        });
-      } catch {
-        res.status(401).json({
-          success: false,
-          data: null,
-          error: {
-            code: 'INVALID_SNAPSHOT_TOKEN',
-            message: 'Invalid or expired snapshot authorization token.',
-          },
-        });
       }
-    },
-    express.static(serverUploadsDir)
+
+      // Stream object from StorageAdapter
+      const relativePath = req.path.replace(/^\/+/, '');
+      const storageKey = resolveStorageKey(relativePath);
+      const adapter = getStorageAdapter();
+
+      try {
+        const streamResult = await adapter.get(storageKey);
+        res.setHeader('Content-Type', streamResult.contentType || 'image/jpeg');
+        res.setHeader('Content-Length', streamResult.size);
+        res.setHeader('Cache-Control', 'private, max-age=300');
+        streamResult.stream.pipe(res);
+      } catch {
+        // Fallback: try raw relative key
+        try {
+          const rawResult = await adapter.get(relativePath);
+          res.setHeader('Content-Type', rawResult.contentType || 'image/jpeg');
+          res.setHeader('Content-Length', rawResult.size);
+          res.setHeader('Cache-Control', 'private, max-age=300');
+          rawResult.stream.pipe(res);
+        } catch {
+          res.status(404).json({
+            success: false,
+            data: null,
+            error: {
+              code: 'FILE_NOT_FOUND',
+              message: 'Forensic snapshot file not found in storage.',
+            },
+          });
+        }
+      }
+    }
   );
 
   app.get('/api/health', async (_req, res) => {
@@ -181,6 +208,7 @@ export function createApp() {
   app.use('/api/settings', settingsRouter);
   app.use('/api/students', studentsRouter);
   app.use('/api', recordingsRouter);
+  app.use('/api/snapshots', snapshotsRouter);
   app.use('/api/realtime', realtimeRouter);
   app.get('/api/events', requireAuth, validate({ query: getEventsQuerySchema }), handleGetEvents);
 

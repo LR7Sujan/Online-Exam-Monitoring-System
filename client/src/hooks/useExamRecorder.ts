@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { enqueueChunk, flushAllChunks, clearSessionChunks } from '../utils/recordingQueue';
+import { enqueueChunk, flushAllChunks, clearSessionChunks, getAllSessionChunkBlobs } from '../utils/recordingQueue';
 import { useAuthStore } from '../store/authStore';
 
 export interface UseExamRecorderParams {
@@ -203,12 +203,35 @@ export function useExamRecorder({
     // Wait a brief moment for any pending ondataavailable event to write to IndexedDB
     await new Promise((r) => setTimeout(r, 200));
 
-    // Flush all queued chunks to server
+    // Option (b): Assembles complete WebM from IndexedDB chunks and uploads directly to storage
     try {
       setIsUploading(true);
+
+      const allBlobs = await getAllSessionChunkBlobs(sessionId);
+      if (allBlobs.length > 0) {
+        const completeBlob = new Blob(allBlobs, { type: 'video/webm' });
+        const uploadRes = await fetch(
+          `/api/sessions/${sessionId}/recording/upload?durationMs=${durationMs}`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'video/webm',
+              Authorization: `Bearer ${token}`,
+              'x-duration-ms': String(durationMs),
+            },
+            body: completeBlob,
+          }
+        );
+
+        if (uploadRes.ok) {
+          await clearSessionChunks(sessionId);
+          return true;
+        }
+      }
+
+      // Crash-recovery fallback: flush queued chunks to server and finish
       await flushAllChunks(sessionId, token);
 
-      // Call server finish endpoint
       const finishRes = await fetch(`/api/sessions/${sessionId}/recording/finish`, {
         method: 'POST',
         headers: {
