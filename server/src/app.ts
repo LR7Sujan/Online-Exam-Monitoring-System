@@ -34,7 +34,7 @@ import { violationTypesRouter } from './routes/violationTypes.routes.js';
 import { snapshotsRouter } from './routes/snapshots.routes.js';
 import { cronRouter } from './routes/cron.routes.js';
 import { getStorageAdapter, resolveStorageKey } from './storage/index.js';
-import { sendSuccess, sendError } from './utils/response.js';
+import { sendSuccess } from './utils/response.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -190,27 +190,36 @@ export function createApp() {
 
   app.get('/api/health', async (_req, res) => {
     const dbHealth = await getDbHealth();
+    const payload = {
+      api: 'up' as const,
+      db: dbHealth.connected ? ('up' as const) : ('down' as const),
+      realtime: env.REALTIME_PROVIDER,
+      version: dbHealth.version ?? '8.0.46',
+      mysqlVersion: dbHealth.version ?? '8.0.46',
+      uptime: Math.floor(process.uptime()),
+      triggersCount: dbHealth.triggersCount ?? 0,
+      proceduresCount: dbHealth.proceduresCount ?? 0,
+      service: 'proctoriq-api',
+      status: dbHealth.connected ? 'ok' : 'degraded',
+      timestamp: new Date().toISOString(),
+    };
+
     if (!dbHealth.connected) {
-      sendError(
-        res,
-        503,
-        'DB_UNAVAILABLE',
-        `MySQL is not reachable at ${env.DB_HOST}:${env.DB_PORT}. Start your MySQL service or check .env`
-      );
+      res.status(503).json({
+        success: false,
+        data: payload,
+        error: {
+          code: 'DB_UNAVAILABLE',
+          message: `MySQL is not reachable at ${env.DB_HOST}:${env.DB_PORT}. Start your MySQL service (services.msc > MySQL80) or check .env`,
+          details: {
+            dbError: dbHealth.error,
+          },
+        },
+      });
       return;
     }
 
-    sendSuccess(res, {
-      service: 'proctoriq-api',
-      api: 'up',
-      db: 'up',
-      status: 'ok',
-      mysqlVersion: dbHealth.version ?? '8.0',
-      triggersCount: dbHealth.triggersCount ?? 0,
-      proceduresCount: dbHealth.proceduresCount ?? 0,
-      uptime: process.uptime(),
-      timestamp: new Date().toISOString(),
-    });
+    sendSuccess(res, payload);
   });
 
   // Auto-generated OpenAPI JSON & Swagger UI at /api/docs

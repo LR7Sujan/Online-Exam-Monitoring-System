@@ -60,7 +60,8 @@ axiosInstance.interceptors.response.use(
     const code = errorData?.error?.code ?? error.code ?? 'REQUEST_FAILED';
     const message = errorData?.error?.message ?? error.message ?? 'An unexpected error occurred';
     const status = error.response?.status ?? 500;
-    return Promise.reject(new ApiClientError(code, message, status, errorData?.error?.details));
+    const details = errorData?.data ?? errorData?.error?.details;
+    return Promise.reject(new ApiClientError(code, message, status, details));
   }
 );
 

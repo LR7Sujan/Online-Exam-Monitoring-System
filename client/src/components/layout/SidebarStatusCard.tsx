@@ -100,6 +100,12 @@ export function SidebarStatusCard({ isCollapsed = false }: SidebarStatusCardProp
     connectionState,
     apiStatus,
     dbStatus,
+    transport:
+      transport === 'pusher'
+        ? 'pusher'
+        : transport === 'websocket' || transport === 'wss'
+        ? 'websocket'
+        : 'polling',
     mysqlVersion,
     latencyMs,
   });
@@ -198,6 +204,17 @@ export function SidebarStatusCard({ isCollapsed = false }: SidebarStatusCardProp
                 <X className="w-3.5 h-3.5" />
               </button>
             </div>
+
+            {/* Plain-Language Diagnostic Hint Banner when service is down */}
+            {derived.diagnosticHint && (
+              <div
+                data-testid="connection-diagnostic-hint"
+                className="flex items-center gap-2 p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-500 dark:text-rose-400 text-[11px] font-sans font-medium"
+              >
+                <AlertTriangle className="w-4 h-4 shrink-0 text-rose-500" />
+                <span className="leading-snug">{derived.diagnosticHint}</span>
+              </div>
+            )}
 
             {/* Diagnostics Rows */}
             <div className="space-y-2 font-mono text-[11px]">

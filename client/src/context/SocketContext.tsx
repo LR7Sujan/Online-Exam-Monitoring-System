@@ -68,30 +68,67 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
   const hasShownDisconnectToastRef = useRef<boolean>(false);
   const wasEverConnectedRef = useRef<boolean>(false);
 
-  // Poll /api/health every 15s (or immediately on mount / state change)
+  // Poll /api/health every 15s (or faster 5s when down)
+  const prevOperationalRef = useRef<boolean>(false);
   const pollHealth = useCallback(async () => {
     try {
       const res = await api.get<{
         api?: 'up' | 'down';
         db?: 'up' | 'down';
+        realtime?: string;
+        version?: string;
         mysqlVersion?: string;
       }>('/health');
       setApiStatus(res?.api ?? 'up');
       setDbStatus(res?.db ?? 'up');
-      if (res?.mysqlVersion) {
-        setMysqlVersion(res.mysqlVersion);
+      const v = res?.version ?? res?.mysqlVersion;
+      if (v) {
+        setMysqlVersion(v);
       }
-    } catch {
-      setApiStatus('down');
-      setDbStatus('down');
+      if (res?.realtime) {
+        setTransport(res.realtime);
+      }
+
+      // Auto-recovery refetch
+      if (!prevOperationalRef.current && res?.api === 'up' && res?.db === 'up') {
+        if (wasEverConnectedRef.current) {
+          sonnerToast.success('Back online', {
+            id: 'connection-status-toast',
+            duration: 3000,
+          });
+        }
+        queryClient.refetchQueries({ type: 'active' });
+      }
+      prevOperationalRef.current = res?.api === 'up' && res?.db === 'up';
+    } catch (err: unknown) {
+      prevOperationalRef.current = false;
+      const apiErr = err as {
+        status?: number;
+        code?: string;
+        details?: { api?: 'up' | 'down'; db?: 'up' | 'down'; version?: string };
+      };
+      if (apiErr?.status === 503 || apiErr?.code === 'DB_UNAVAILABLE') {
+        // API is reachable, but MySQL is down
+        setApiStatus('up');
+        setDbStatus('down');
+        if (apiErr.details?.version) {
+          setMysqlVersion(apiErr.details.version);
+        }
+      } else {
+        // API server itself is unreachable
+        setApiStatus('down');
+        setDbStatus('down');
+      }
     }
-  }, []);
+  }, [queryClient]);
 
   useEffect(() => {
     pollHealth();
-    const interval = setInterval(pollHealth, 15000);
+    const isDegraded = apiStatus === 'down' || dbStatus === 'down' || connectionState === 'disconnected';
+    const intervalMs = isDegraded ? 5000 : 15000;
+    const interval = setInterval(pollHealth, intervalMs);
     return () => clearInterval(interval);
-  }, [pollHealth]);
+  }, [pollHealth, apiStatus, dbStatus, connectionState]);
 
   // Measure latency
   const measureLatency = useCallback((s: SocketLike) => {
@@ -108,11 +145,12 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   // Manual reconnect trigger
-  const handleReconnectNow = useCallback(() => {
+  const handleReconnectNow = useCallback(async () => {
     setConnectionState('reconnecting');
     reconnectSocket();
-    pollHealth();
-  }, [pollHealth]);
+    await pollHealth();
+    queryClient.refetchQueries({ type: 'active' });
+  }, [pollHealth, queryClient]);
 
   useEffect(() => {
     if (!token || !user) {

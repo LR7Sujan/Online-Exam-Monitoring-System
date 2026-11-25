@@ -16,6 +16,7 @@ describe('Connection Status Derivation Unit Tests', () => {
     expect(res.pulse).toBe(true);
     expect(res.statusLabel).toBe('CONNECTED');
     expect(res.subLabel).toBe('MySQL 8.0.46 • WSS • 12ms');
+    expect(res.diagnosticHint).toBe(null);
     expect(res.isFullyOperational).toBe(true);
   });
 
@@ -36,7 +37,7 @@ describe('Connection Status Derivation Unit Tests', () => {
     expect(res.isFullyOperational).toBe(false);
   });
 
-  it('derives Disconnected state when socket is disconnected', () => {
+  it('derives Disconnected state when API server is unreachable with plain-language hint', () => {
     const res = deriveConnectionStatus({
       connectionState: 'disconnected',
       apiStatus: 'down',
@@ -49,11 +50,12 @@ describe('Connection Status Derivation Unit Tests', () => {
     expect(res.dotColor).toBe('rose');
     expect(res.pulse).toBe(false);
     expect(res.statusLabel).toBe('DISCONNECTED');
-    expect(res.subLabel).toBe('MySQL 8.0 • WSS');
+    expect(res.subLabel).toBe('API Unreachable');
+    expect(res.diagnosticHint).toBe('API is not running: start it with npm run dev');
     expect(res.isFullyOperational).toBe(false);
   });
 
-  it('downgrades connected socket to disconnected if backend DB drops', () => {
+  it('downgrades connected socket to disconnected if backend DB drops with plain-language hint', () => {
     const res = deriveConnectionStatus({
       connectionState: 'connected',
       apiStatus: 'up',
@@ -66,6 +68,22 @@ describe('Connection Status Derivation Unit Tests', () => {
     expect(res.dotColor).toBe('rose');
     expect(res.pulse).toBe(false);
     expect(res.statusLabel).toBe('DISCONNECTED');
+    expect(res.subLabel).toBe('MySQL 8.0.46 • Down');
+    expect(res.diagnosticHint).toBe('Database is down: start MySQL');
     expect(res.isFullyOperational).toBe(false);
+  });
+
+  it('reflects dynamic transport and MySQL version when polling', () => {
+    const res = deriveConnectionStatus({
+      connectionState: 'connected',
+      apiStatus: 'up',
+      dbStatus: 'up',
+      transport: 'polling',
+      mysqlVersion: '8.0.46',
+      latencyMs: null,
+    });
+
+    expect(res.state).toBe('connected');
+    expect(res.subLabel).toBe('MySQL 8.0.46 • POLL');
   });
 });

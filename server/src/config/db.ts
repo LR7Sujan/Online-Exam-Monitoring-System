@@ -256,12 +256,47 @@ export async function getDbHealth(): Promise<DbHealthResult> {
     };
   } catch (err: unknown) {
     const errorMsg = (err as Error)?.message || 'Database connection failed';
-    console.error(
-      `MySQL is not reachable at ${env.DB_HOST}:${env.DB_PORT}. Start your MySQL service or check .env`
-    );
     return {
       connected: false,
       error: errorMsg,
     };
   }
+}
+
+/**
+ * Waits for MySQL database with exponential backoff up to maxWaitMs (default 60s).
+ * Does not crash if unavailable; prints helpful diagnostic guidance and allows
+ * HTTP server to boot and report health accurately.
+ */
+export async function waitForDatabase(options: {
+  maxWaitMs?: number;
+  initialDelayMs?: number;
+  silent?: boolean;
+} = {}): Promise<DbHealthResult> {
+  const maxWaitMs = options.maxWaitMs ?? 60000;
+  let delay = options.initialDelayMs ?? 500;
+  const startTime = Date.now();
+  let firstFailureLogged = false;
+
+  while (Date.now() - startTime < maxWaitMs) {
+    const health = await getDbHealth();
+    if (health.connected) {
+      return health;
+    }
+
+    if (!firstFailureLogged && !options.silent) {
+      console.warn(
+        `\x1b[33m[ProctorIQ]\x1b[0m MySQL not reachable at ${env.DB_HOST}:${env.DB_PORT}. Start the MySQL service (services.msc > MySQL80) or check .env`
+      );
+      firstFailureLogged = true;
+    }
+
+    const remainingTime = maxWaitMs - (Date.now() - startTime);
+    if (remainingTime <= 0) break;
+    const sleepTime = Math.min(delay, remainingTime);
+    await new Promise((resolve) => setTimeout(resolve, sleepTime));
+    delay = Math.min(delay * 1.5, 5000);
+  }
+
+  return getDbHealth();
 }

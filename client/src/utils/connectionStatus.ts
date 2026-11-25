@@ -5,6 +5,7 @@ export interface ConnectionStatusInput {
   connectionState: SocketConnectionState;
   apiStatus: ServiceHealthState;
   dbStatus: ServiceHealthState;
+  transport?: 'websocket' | 'polling' | 'pusher';
   mysqlVersion?: string;
   latencyMs?: number | null;
 }
@@ -15,11 +16,19 @@ export interface DerivedConnectionStatus {
   pulse: boolean;
   statusLabel: string;
   subLabel: string;
+  diagnosticHint: string | null;
   isFullyOperational: boolean;
 }
 
 export function deriveConnectionStatus(input: ConnectionStatusInput): DerivedConnectionStatus {
-  const { connectionState, apiStatus, dbStatus, mysqlVersion = '8.0', latencyMs } = input;
+  const {
+    connectionState,
+    apiStatus,
+    dbStatus,
+    transport = 'websocket',
+    mysqlVersion = '8.0.46',
+    latencyMs,
+  } = input;
 
   let state: SocketConnectionState = connectionState;
 
@@ -40,12 +49,33 @@ export function deriveConnectionStatus(input: ConnectionStatusInput): DerivedCon
       ? 'RECONNECTING...'
       : 'DISCONNECTED';
 
+  // Plain-language diagnostic hint for down services
+  let diagnosticHint: string | null = null;
+  if (apiStatus === 'down') {
+    diagnosticHint = 'API is not running: start it with npm run dev';
+  } else if (dbStatus === 'down') {
+    diagnosticHint = 'Database is down: start MySQL';
+  } else if (state === 'disconnected') {
+    diagnosticHint = 'Realtime stream disconnected: click Reconnect Now';
+  }
+
+  const transportLabel =
+    transport === 'websocket' ? 'WSS' : transport === 'pusher' ? 'PUSHER' : 'POLL';
+
   const latencyPart =
     state === 'connected' && typeof latencyMs === 'number' && latencyMs >= 0
       ? ` • ${latencyMs}ms`
       : '';
 
-  const subLabel = `MySQL ${mysqlVersion} • WSS${latencyPart}`;
+  // Dynamic subLabel showing real MySQL version and active transport
+  const subLabel =
+    apiStatus === 'down'
+      ? 'API Unreachable'
+      : dbStatus === 'down'
+      ? `MySQL ${mysqlVersion} • Down`
+      : state === 'connected'
+      ? `MySQL ${mysqlVersion} • ${transportLabel}${latencyPart}`
+      : `MySQL ${mysqlVersion} • ${transportLabel}`;
 
   const isFullyOperational =
     state === 'connected' && apiStatus === 'up' && dbStatus === 'up';
@@ -56,6 +86,7 @@ export function deriveConnectionStatus(input: ConnectionStatusInput): DerivedCon
     pulse,
     statusLabel,
     subLabel,
+    diagnosticHint,
     isFullyOperational,
   };
 }
