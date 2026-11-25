@@ -254,9 +254,10 @@ export function TrustRing({
             fill={primaryColor}
             stroke="#ffffff"
             strokeWidth={1.5}
+            initial={false}
             animate={{
-              cx: dotX,
-              cy: dotY,
+              opacity: 1,
+              scale: 1,
             }}
             transition={springTransition}
             style={{ filter: `drop-shadow(0 1px 3px rgba(0,0,0,0.4))` }}

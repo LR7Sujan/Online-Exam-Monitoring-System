@@ -12,7 +12,7 @@ ALTER TABLE Exam_Sessions
   ADD COLUMN paper_code VARCHAR(12) NOT NULL DEFAULT 'DEFAULT' AFTER last_warning_ack_at,
   ADD COLUMN question_order JSON NULL AFTER paper_code,
   ADD COLUMN option_maps JSON NULL AFTER question_order,
-  ADD COLUMN paper_hash CHAR(64) NOT NULL DEFAULT '' AFTER option_maps;
+  ADD COLUMN paper_hash CHAR(64) NULL DEFAULT NULL AFTER option_maps;
 
 -- 3. Backfill Existing Sessions (if any) with Deterministic Hashes and Safe Fallbacks
 UPDATE Exam_Sessions
@@ -20,14 +20,14 @@ UPDATE Exam_Sessions
        question_order = '[]',
        option_maps = '{}',
        paper_hash = SHA2(CONCAT(id, '-', exam_id, '-init-paper'), 256)
- WHERE paper_hash = '' OR paper_hash IS NULL;
+ WHERE paper_hash IS NULL;
 
 -- 4. Enforce Constraints and Defaults, and Unique Hash per Exam
 ALTER TABLE Exam_Sessions
   MODIFY COLUMN question_order JSON NOT NULL DEFAULT (JSON_ARRAY()),
   MODIFY COLUMN option_maps JSON NOT NULL DEFAULT (JSON_OBJECT()),
   MODIFY COLUMN paper_code VARCHAR(12) NOT NULL DEFAULT 'Paper 0000',
-  MODIFY COLUMN paper_hash CHAR(64) NOT NULL DEFAULT '',
+  MODIFY COLUMN paper_hash CHAR(64) NULL DEFAULT NULL,
   ADD UNIQUE KEY uq_exam_paper_hash (exam_id, paper_hash);
 
 -- 5. Update vw_ProctorLiveMonitor to Project paper_code and paper_hash

@@ -6,6 +6,7 @@ import { validate } from '../middleware/validate.js';
 import type { ViolationTypeRow } from '../types/api.js';
 import { AppError } from '../utils/errors.js';
 import { sendSuccess } from '../utils/response.js';
+import { invalidateViolationTypesCache } from './sessions.routes.js';
 
 export const violationTypesRouter = Router();
 
@@ -60,6 +61,7 @@ violationTypesRouter.post(
         'SELECT * FROM Violation_Types WHERE id = ? LIMIT 1',
         [result.insertId]
       );
+      invalidateViolationTypesCache();
       sendSuccess(res, created[0], 201);
     } catch (err) {
       next(err);
@@ -110,6 +112,7 @@ async function handleUpdateViolationType(
       ]
     );
 
+    invalidateViolationTypesCache();
     const updated = await queryRows<ViolationTypeRow[]>(
       'SELECT * FROM Violation_Types WHERE id = ? LIMIT 1',
       [id]

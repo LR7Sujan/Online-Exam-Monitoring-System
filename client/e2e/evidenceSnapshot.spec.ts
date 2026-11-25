@@ -68,27 +68,29 @@ test.describe('Phase 19: Forensic Evidence Snapshot Capture & Delivery', () => {
       .click();
 
     // Complete Pre-Exam Checklist
-    const checklistModal = studentPage.locator('text=Pre-Flight Verification Kiosk');
-    if (await checklistModal.isVisible({ timeout: 4000 }).catch(() => false)) {
-      await studentPage.check('input[type="checkbox"]');
-      await studentPage.click('button:has-text("Continue")');
-      const authCamBtn = studentPage.locator('button:has-text("Authorize Camera & Microphone"), button:has-text("Activate Webcam Sensor")');
-      if (await authCamBtn.isVisible({ timeout: 4000 }).catch(() => false)) {
-        await authCamBtn.click();
-        await studentPage.waitForTimeout(400);
-      }
-      await studentPage.click('button:has-text("Continue")');
-      const enterFsBtn = studentPage.locator('button:has-text("Enter Lockdown Fullscreen")');
-      if (await enterFsBtn.isVisible().catch(() => false)) {
-        await enterFsBtn.click();
-        await studentPage.waitForTimeout(300);
-      }
-      await studentPage.click('button:has-text("Continue")');
-      await studentPage.waitForTimeout(500);
-      const launchBtn = studentPage.locator('button:has-text("Initialize Assessment Session")');
-      await expect(launchBtn).toBeVisible({ timeout: 10000 });
-      await launchBtn.click();
+    await expect(studentPage.locator('text=Pre-Flight Verification Kiosk')).toBeVisible({ timeout: 10000 });
+    await studentPage.check('input[type="checkbox"]');
+    await studentPage.click('button:has-text("Continue")');
+
+    const authCamBtn = studentPage.locator('button:has-text("Authorize Camera & Microphone"), button:has-text("Activate Webcam Sensor")');
+    if (await authCamBtn.isVisible({ timeout: 4000 }).catch(() => false)) {
+      await authCamBtn.click();
+      await expect(studentPage.locator('text=OPTICAL & AUDIO SENSORS ACTIVE')).toBeVisible({ timeout: 8000 });
     }
+    await studentPage.click('button:has-text("Continue")');
+    await studentPage.waitForTimeout(400);
+
+    const enterFsBtn = studentPage.locator('button:has-text("Enter Lockdown Fullscreen")');
+    if (await enterFsBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await enterFsBtn.click();
+      await studentPage.waitForTimeout(300);
+    }
+    await studentPage.click('button:has-text("Continue")');
+    await studentPage.waitForTimeout(400);
+
+    const launchBtn = studentPage.locator('button:has-text("Initialize Assessment Session")');
+    await expect(launchBtn).toBeVisible({ timeout: 10000 });
+    await launchBtn.click();
 
     await studentPage.waitForURL('**/student/session/**', { timeout: 20000 });
     const match = studentPage.url().match(/\/student\/session\/(\d+)/);

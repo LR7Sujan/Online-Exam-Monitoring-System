@@ -236,6 +236,16 @@ export function emitSimulatorReset(payload?: Record<string, unknown>): void {
   ioInstance.emit('simulator:reset', payload ?? { timestamp: new Date().toISOString() });
 }
 
+export function emitSnapshotReady(
+  studentId: number,
+  sessionId: number,
+  payload: { logId: number; sessionId: number; snapshotUrl: string | null; snapshot_url?: string | null }
+): void {
+  if (!ioInstance) return;
+  emitToProctors('log:snapshot_ready', payload);
+  emitToStudent(studentId, sessionId, 'log:snapshot_ready', payload);
+}
+
 export function emitExtensionRequested(payload: Record<string, unknown>): void {
   if (!ioInstance) return;
   emitToProctors('extension:requested', payload);

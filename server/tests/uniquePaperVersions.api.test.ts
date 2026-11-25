@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import request from 'supertest';
 import type { RowDataPacket } from 'mysql2/promise';
 import { createApp } from '../src/app.js';
-import { executeSql, queryRows } from '../src/config/db.js';
+import { queryRows } from '../src/config/db.js';
 
 describe('Unique Exam Paper Versions: Anti-Cheat Paper Permutations & Grading Integrity', () => {
   const app = createApp();
@@ -47,6 +47,7 @@ describe('Unique Exam Paper Versions: Anti-Cheat Paper Permutations & Grading In
       });
     student2Token = s2Res.body.data.token;
     student2Id = s2Res.body.data.user.id;
+    void student2Id;
 
     // 2. Create standard multi-question shuffled exam (5 questions => 5! * 24^5 = ~955 billion permutations)
     const stdExamRes = await request(app)
@@ -254,14 +255,21 @@ describe('Unique Exam Paper Versions: Anti-Cheat Paper Permutations & Grading In
     expect(s1Q.status).toBe(200);
     expect(s2Q.status).toBe(200);
 
-    const s1Questions = s1Q.body.data.questions;
-    const s2Questions = s2Q.body.data.questions;
+    interface ExamQ {
+      id: number;
+      option_a: string;
+      option_b: string;
+      option_c: string;
+      option_d: string;
+    }
+    const s1Questions = s1Q.body.data.questions as ExamQ[];
+    const s2Questions = s2Q.body.data.questions as ExamQ[];
 
-    const s1Order = s1Questions.map((q: any) => q.id);
-    const s2Order = s2Questions.map((q: any) => q.id);
+    const s1Order = s1Questions.map((q) => q.id);
+    const s2Order = s2Questions.map((q) => q.id);
 
-    const s1Options = s1Questions.map((q: any) => `${q.option_a}|${q.option_b}|${q.option_c}|${q.option_d}`);
-    const s2Options = s2Questions.map((q: any) => `${q.option_a}|${q.option_b}|${q.option_c}|${q.option_d}`);
+    const s1Options = s1Questions.map((q) => `${q.option_a}|${q.option_b}|${q.option_c}|${q.option_d}`);
+    const s2Options = s2Questions.map((q) => `${q.option_a}|${q.option_b}|${q.option_c}|${q.option_d}`);
 
     // Either the sequence of questions differs, or the option assignments differ
     const orderDiffers = JSON.stringify(s1Order) !== JSON.stringify(s2Order);
@@ -341,7 +349,9 @@ describe('Unique Exam Paper Versions: Anti-Cheat Paper Permutations & Grading In
     const checkQ = await request(app)
       .get(`/api/sessions/${s1SessionId}/questions`)
       .set('Authorization', `Bearer ${student1Token}`);
-    const studentResp = checkQ.body.data.responses.find((r: any) => r.question_id === qId);
+    const studentResp = (checkQ.body.data.responses as Array<{ question_id: number; selected_option: string }>).find(
+      (r) => r.question_id === qId
+    );
     expect(studentResp.selected_option).toBe('B');
   });
 

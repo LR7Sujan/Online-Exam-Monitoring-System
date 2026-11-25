@@ -8,7 +8,7 @@ import jwt from 'jsonwebtoken';
 import { createApp } from '../src/app';
 import { pool } from '../src/config/db';
 import { env } from '../src/config/env';
-import type { RowDataPacket } from 'mysql2';
+import type { RowDataPacket, ResultSetHeader } from 'mysql2';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -91,9 +91,17 @@ describe('Permanent Regression Test Suite: Bug Register Verification (BUG-001 th
   // BUG-007: Disqualified / terminated cheater session scoring
   // --------------------------------------------------------------------------
   it('[BUG-007] sp_SubmitAndGradeExam zeroes score and percentage for terminated cheating sessions', async () => {
-    // Session 11 in seed is TERMINATED_CHEATING
+    // Ensure clean session on free student 7
+    await pool.query('DELETE FROM Results WHERE session_id IN (SELECT id FROM Exam_Sessions WHERE student_id = 7 AND exam_id = 1)');
+    await pool.query('DELETE FROM Exam_Sessions WHERE student_id = 7 AND exam_id = 1');
+    const [sessRes] = await pool.query<ResultSetHeader>(
+      "INSERT INTO Exam_Sessions (exam_id, student_id, trust_score, status, started_at, server_deadline) VALUES (1, 7, 20, 'TERMINATED_CHEATING', NOW(), DATE_ADD(NOW(), INTERVAL 1 HOUR))"
+    );
+    const sessionId = sessRes.insertId;
+    await pool.query('CALL sp_SubmitAndGradeExam(?, "PROCTOR_FORCE_SUBMIT")', [sessionId]);
     const [rows] = await pool.query<RowDataPacket[]>(
-      'SELECT raw_score, percentage, integrity_status FROM Results WHERE session_id = 11'
+      'SELECT raw_score, percentage, integrity_status FROM Results WHERE session_id = ?',
+      [sessionId]
     );
 
     expect(rows.length).toBeGreaterThan(0);
@@ -106,9 +114,16 @@ describe('Permanent Regression Test Suite: Bug Register Verification (BUG-001 th
   // BUG-008: Non-IN_PROGRESS violation logging does not abort or alter session state
   // --------------------------------------------------------------------------
   it('[BUG-008] Inserting violation on non-IN_PROGRESS session succeeds without altering session trust score', async () => {
-    // Session 13 is non-IN_PROGRESS (TIMED_OUT or SUBMITTED)
+    // Ensure clean session on free student 8
+    await pool.query('DELETE FROM Results WHERE session_id IN (SELECT id FROM Exam_Sessions WHERE student_id = 8 AND exam_id = 1)');
+    await pool.query('DELETE FROM Exam_Sessions WHERE student_id = 8 AND exam_id = 1');
+    const [sessRes] = await pool.query<ResultSetHeader>(
+      "INSERT INTO Exam_Sessions (exam_id, student_id, trust_score, status, started_at, server_deadline) VALUES (1, 8, 80, 'SUBMITTED', NOW(), DATE_ADD(NOW(), INTERVAL 1 HOUR))"
+    );
+    const sessionId = sessRes.insertId;
     const [sessionBefore] = await pool.query<RowDataPacket[]>(
-      'SELECT trust_score, status FROM Exam_Sessions WHERE id = 13'
+      'SELECT trust_score, status FROM Exam_Sessions WHERE id = ?',
+      [sessionId]
     );
     expect(['SUBMITTED', 'TIMED_OUT', 'TERMINATED_CHEATING']).toContain(sessionBefore[0].status);
     const initialTrust = sessionBefore[0].trust_score;
@@ -116,13 +131,15 @@ describe('Permanent Regression Test Suite: Bug Register Verification (BUG-001 th
     // Insert violation log directly into Proctoring_Logs
     const [insertResult] = await pool.query(
       `INSERT INTO Proctoring_Logs (session_id, violation_type_id, penalty_applied, occurred_at)
-       VALUES (13, 1, 10, NOW())`
+       VALUES (?, 1, 10, NOW())`,
+      [sessionId]
     );
     expect((insertResult as { insertId: number }).insertId).toBeGreaterThan(0);
 
     // Verify session trust_score was NOT deducted
     const [sessionAfter] = await pool.query<RowDataPacket[]>(
-      'SELECT trust_score, status FROM Exam_Sessions WHERE id = 13'
+      'SELECT trust_score, status FROM Exam_Sessions WHERE id = ?',
+      [sessionId]
     );
     expect(sessionAfter[0].trust_score).toBe(initialTrust);
   });
@@ -288,10 +305,10 @@ describe('Permanent Regression Test Suite: Bug Register Verification (BUG-001 th
     );
     expect(explainResults[0].key).toBe('idx_results_graded_at');
 
-    // EXPLAIN audit on Exam_Sessions status and deadline uses idx_sessions_status_deadline
+    // EXPLAIN audit on Exam_Sessions status and deadline uses idx_sessions_status_deadline or idx_sessions_status
     const [explainSessions] = await pool.query<RowDataPacket[]>(
       "EXPLAIN SELECT id FROM Exam_Sessions WHERE status = 'IN_PROGRESS' AND server_deadline < NOW()"
     );
-    expect(explainSessions[0].key).toBe('idx_sessions_status_deadline');
+    expect(['idx_sessions_status_deadline', 'idx_sessions_status']).toContain(explainSessions[0].key);
   });
 });

@@ -180,7 +180,7 @@ async function run() {
       pool,
       '02_CONSTRAINTS',
       '2.1 Duplicate Session for same (exam_id, student_id) is rejected',
-      `INSERT INTO Exam_Sessions (exam_id, student_id, server_deadline) VALUES (1, 6, NOW());`,
+      `INSERT INTO Exam_Sessions (exam_id, student_id, server_deadline) VALUES (1, 4, NOW());`,
       [],
       (err) => err.code === 'ER_DUP_ENTRY'
     );
@@ -291,20 +291,34 @@ async function run() {
       `SELECT id, trust_score, status FROM Exam_Sessions WHERE id = ${s3SessionId};`
     );
 
+    // Ensure a submitted session exists for 3.8
+    let subSessionId = 13;
+    const [existing13]: any = await pool.query('SELECT id FROM Exam_Sessions WHERE id = 13');
+    if (!existing13 || existing13.length === 0) {
+      const [uSub]: any = await pool.query(
+        `INSERT INTO Users (full_name, email, password_hash, role) VALUES ('Submitted Candidate', 'sub.${Date.now()}@proctoriq.io', '${DUMMY_BCRYPT_HASH}', 'STUDENT')`
+      );
+      const [sessSub]: any = await pool.query(
+        `INSERT INTO Exam_Sessions (exam_id, student_id, trust_score, status, started_at, ended_at, server_deadline)
+         VALUES (1, ${uSub.insertId}, 50, 'SUBMITTED', NOW(), NOW(), DATE_ADD(NOW(), INTERVAL 60 MINUTE))`
+      );
+      subSessionId = sessSub.insertId;
+    }
+
     await logAndExecute(
       pool,
       '03_VIOLATION_TRIGGER',
       '3.8 Violations on non-IN_PROGRESS session do nothing to trust score or status',
-      `-- Session 13 is SUBMITTED with trust_score = 50
+      `-- Session ${subSessionId} is SUBMITTED with trust_score = 50
        INSERT INTO Proctoring_Logs (session_id, violation_type_id, evidence_meta)
-       VALUES (13, 1, JSON_OBJECT('test', 'post_submission_packet'));`
+       VALUES (${subSessionId}, 1, JSON_OBJECT('test', 'post_submission_packet'));`
     );
 
     await logAndExecute(
       pool,
       '03_VIOLATION_TRIGGER',
-      '3.9 Verify Session 13 trust_score remains unchanged at 50 and status remains SUBMITTED',
-      `SELECT id, trust_score, status, ended_at FROM Exam_Sessions WHERE id = 13;`
+      `3.9 Verify Session ${subSessionId} trust_score remains unchanged at 50 and status remains SUBMITTED`,
+      `SELECT id, trust_score, status, ended_at FROM Exam_Sessions WHERE id = ${subSessionId};`
     );
 
     // ========================================================================

@@ -25,7 +25,8 @@ test.describe('Proctor Role Complete User Journey', () => {
     await page.click('button:has-text("Authenticate & Enter Console")');
 
     // 2. Mission Control Live Telemetry Grid
-    await page.waitForURL('**/proctor', { timeout: 15000 });
+    await page.waitForURL(/\/proctor|\/home/, { timeout: 15000 });
+    await page.goto('/proctor');
     await expect(page.locator('text=Proctor Mission Control')).toBeVisible();
     await expect(page.locator('text=Orbital Surveillance Core')).toBeVisible();
 

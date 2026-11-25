@@ -51,7 +51,12 @@ export function EvidenceImage({
   }, []);
 
   const fetchImage = useCallback(async () => {
-    if (!src || typeof src !== 'string' || !src.trim()) {
+    if (src === undefined || src === null) {
+      setLoading(true);
+      setError(false);
+      return;
+    }
+    if (typeof src !== 'string' || !src.trim()) {
       setLoading(false);
       setError(true);
       onError?.();
@@ -86,8 +91,8 @@ export function EvidenceImage({
         trimmed.startsWith('http://') || trimmed.startsWith('https://')
           ? trimmed
           : backendBase
-          ? `${backendBase}${trimmed.startsWith('/') ? trimmed : `/${trimmed}`}`
-          : trimmed;
+            ? `${backendBase}${trimmed.startsWith('/') ? trimmed : `/${trimmed}`}`
+            : trimmed;
 
       const res = await fetch(targetUrl, {
         method: 'GET',
@@ -120,20 +125,6 @@ export function EvidenceImage({
       cleanupObjectUrl();
     };
   }, [fetchImage, retryCount, cleanupObjectUrl]);
-
-  // Reset/probe natural aspect ratio when src changes
-  useEffect(() => {
-    if (src && typeof src === 'string' && src.startsWith('data:image/')) {
-      const probe = new Image();
-      probe.onload = () => {
-        if (probe.naturalWidth > 0 && probe.naturalHeight > 0) {
-          setNaturalRatio(`${probe.naturalWidth} / ${probe.naturalHeight}`);
-          setRatioMultiplier(probe.naturalWidth / probe.naturalHeight);
-        }
-      };
-      probe.src = src;
-    }
-  }, [src]);
 
   // Handle escape to close lightbox
   useEffect(() => {
@@ -168,8 +159,7 @@ export function EvidenceImage({
 
   const meaningfulAlt =
     alt ||
-    `Violation evidence snapshot${
-      violationCode ? ` for ${violationCode.replace(/_/g, ' ')}` : ''
+    `Violation evidence snapshot${violationCode ? ` for ${violationCode.replace(/_/g, ' ')}` : ''
     }${timestamp ? ` at ${new Date(timestamp).toLocaleTimeString()}` : ''}`;
 
   // Determine aspect ratio to apply
@@ -193,8 +183,8 @@ export function EvidenceImage({
     typeof maxHeight === 'number'
       ? maxHeight
       : typeof maxHeight === 'string' && maxHeight.endsWith('px')
-      ? parseInt(maxHeight, 10)
-      : undefined;
+        ? parseInt(maxHeight, 10)
+        : undefined;
 
   // Exact width calculation when maxHeight is capped to keep the frame matching the image without black bars
   let computedWidth: string | undefined = hasFixedW ? undefined : '100%';
@@ -206,9 +196,8 @@ export function EvidenceImage({
     <>
       <div
         data-testid="evidence-image-container"
-        className={`evidence-image-wrapper relative overflow-hidden rounded-[12px] border border-border/80 bg-[#0c0d12] dark:bg-[#090a0f] text-foreground flex items-center justify-center min-w-0 max-w-full ${
-          enableLightbox ? 'group cursor-zoom-in' : ''
-        } ${containerClassName}`}
+        className={`evidence-image-wrapper relative overflow-hidden rounded-[12px] border border-border/80 bg-[#0c0d12] dark:bg-[#090a0f] text-foreground flex items-center justify-center min-w-0 max-w-full ${enableLightbox ? 'group cursor-zoom-in' : ''
+          } ${containerClassName}`}
         onClick={enableLightbox ? () => setIsLightboxOpen(true) : undefined}
         style={{
           aspectRatio: hasFixedH ? undefined : resolvedAspectRatio,
@@ -269,7 +258,8 @@ export function EvidenceImage({
             alt={meaningfulAlt}
             onLoad={handleImageLoad}
             onError={handleImageError}
-            className={`absolute inset-0 w-full h-full object-contain block m-auto select-none ${className}`}
+            className={`absolute inset-0 w-full h-full object-contain block m-auto select-none transition-transform duration-200 ${enableLightbox ? 'group-hover:scale-[1.02]' : ''
+              } ${className}`}
             style={{
               maxWidth: '100%',
               maxHeight: '100%',

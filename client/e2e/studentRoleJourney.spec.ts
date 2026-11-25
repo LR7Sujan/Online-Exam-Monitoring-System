@@ -23,7 +23,7 @@ test.describe('Student Role Complete User Journey', () => {
     const studentEmail = `student.journey.${timestamp}@proctoriq.io`;
     const password = 'ProctorIQ#2026';
 
-    const registerRes = await request.post('http://localhost:4000/api/auth/register', {
+    const registerRes = await request.post('http://localhost:4001/api/auth/register', {
       data: {
         fullName: 'Jane Doe Candidate',
         email: studentEmail,
@@ -60,9 +60,12 @@ test.describe('Student Role Complete User Journey', () => {
     await page.check('input[type="checkbox"]');
     await page.click('button:has-text("Continue")');
 
-    // Step 2: Authorize Camera
-    await page.click('button:has-text("Activate Webcam Sensor")');
-    await page.waitForTimeout(600);
+    // Step 2: Authorize Camera & Microphone
+    const authCamBtn = page.locator('button:has-text("Authorize Camera & Microphone"), button:has-text("Activate Webcam Sensor")');
+    if (await authCamBtn.isVisible({ timeout: 4000 }).catch(() => false)) {
+      await authCamBtn.click();
+      await page.waitForTimeout(600);
+    }
     await page.click('button:has-text("Continue")');
 
     // Step 3: Fullscreen Entry
@@ -146,7 +149,7 @@ test.describe('Student Role Complete User Journey', () => {
     request,
   }) => {
     // Create an exam scheduled far in the future
-    const adminLoginRes = await request.post('http://localhost:4000/api/auth/login', {
+    const adminLoginRes = await request.post('http://localhost:4001/api/auth/login', {
       data: { email: 'admin@proctoriq.io', password: 'ProctorIQ#2026' },
     });
     const adminToken = (await adminLoginRes.json()).data.token;
@@ -154,7 +157,7 @@ test.describe('Student Role Complete User Journey', () => {
     const futureStart = new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString();
     const futureEnd = new Date(Date.now() + 14 * 24 * 3600 * 1000).toISOString();
 
-    const createExamRes = await request.post('http://localhost:4000/api/exams', {
+    const createExamRes = await request.post('http://localhost:4001/api/exams', {
       headers: { Authorization: `Bearer ${adminToken}` },
       data: {
         title: `Future Scheduled Exam ${Date.now()}`,
@@ -195,7 +198,7 @@ test.describe('Student Role Complete User Journey', () => {
     const studentEmail = `student.multitab.${Date.now()}@proctoriq.io`;
     const password = 'ProctorIQ#2026';
 
-    await request.post('http://localhost:4000/api/auth/register', {
+    await request.post('http://localhost:4001/api/auth/register', {
       data: { fullName: 'Multi-Tab Student', email: studentEmail, password },
     });
 
@@ -214,8 +217,11 @@ test.describe('Student Role Complete User Journey', () => {
     // Fast-track checklist
     await page.check('input[type="checkbox"]');
     await page.click('button:has-text("Continue")');
-    await page.click('button:has-text("Activate Webcam Sensor")');
-    await page.waitForTimeout(500);
+    const authCamBtn = page.locator('button:has-text("Authorize Camera & Microphone"), button:has-text("Activate Webcam Sensor")');
+    if (await authCamBtn.isVisible({ timeout: 4000 }).catch(() => false)) {
+      await authCamBtn.click();
+      await page.waitForTimeout(500);
+    }
     await page.click('button:has-text("Continue")');
     const enterFsBtn = page.locator('button:has-text("Enter Lockdown Fullscreen")');
     if (await enterFsBtn.isVisible().catch(() => false)) {

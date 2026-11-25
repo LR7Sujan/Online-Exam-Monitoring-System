@@ -7,7 +7,7 @@ test.describe('Student End-to-End Exam Proctoring Journey', () => {
   }) => {
     // 1. Register a fresh test candidate for a clean session flow
     const studentEmail = `playwright.candidate.${Date.now()}@proctoriq.io`;
-    const regRes = await request.post('http://localhost:4000/api/auth/register', {
+    const regRes = await request.post('http://localhost:4001/api/auth/register', {
       data: {
         fullName: 'Playwright E2E Candidate',
         email: studentEmail,
@@ -29,7 +29,8 @@ test.describe('Student End-to-End Exam Proctoring Journey', () => {
     await page.click('button:has-text("Authenticate & Enter Console")');
 
     // 3. User Enters Student Dashboard
-    await page.waitForURL('**/student', { timeout: 15000 });
+    await page.waitForURL(/\/student|\/home/, { timeout: 15000 });
+    await page.goto('/student');
     await expect(page.locator('text=Candidate Examination Console')).toBeVisible();
 
     // Find Exam #1 card and click Launch Pre-Exam Checklist
@@ -46,9 +47,12 @@ test.describe('Student End-to-End Exam Proctoring Journey', () => {
       await page.check('input[type="checkbox"]');
       await page.click('button:has-text("Continue")');
 
-      // Step 2: Authorize Camera
-      await page.click('button:has-text("Activate Webcam Sensor")');
-      await page.waitForTimeout(600);
+      // Step 2: Authorize Camera & Microphone
+      const authCamBtn = page.locator('button:has-text("Authorize Camera & Microphone"), button:has-text("Activate Webcam Sensor")');
+      if (await authCamBtn.isVisible({ timeout: 4000 }).catch(() => false)) {
+        await authCamBtn.click();
+        await page.waitForTimeout(600);
+      }
       await page.click('button:has-text("Continue")');
 
       // Step 3: Fullscreen Entry
@@ -84,19 +88,28 @@ test.describe('Student End-to-End Exam Proctoring Journey', () => {
 
     // 7. Trigger Violations to Breach Trust Threshold (100 -> 65 -> 15 < 50%)
     // Report MULTIPLE_FACES (-35 pts)
-    const v1Res = await request.post(`http://localhost:4000/api/sessions/${sessionId}/violation`, {
+    const v1Res = await request.post(`http://localhost:4001/api/sessions/${sessionId}/violation`, {
       headers: { Authorization: `Bearer ${studentToken}` },
       data: { code: 'MULTIPLE_FACES' },
     });
     expect(v1Res.ok()).toBeTruthy();
 
+    // Acknowledge Warning #1 via API to unblock Warning Gate
+    await request.post(`http://localhost:4001/api/sessions/${sessionId}/warning/acknowledge`, {
+      headers: { Authorization: `Bearer ${studentToken}` },
+    });
+
+    // Wait for 5-second post-acknowledgment grace period to elapse
+    await page.waitForTimeout(5500);
+
     // Report DEVTOOLS_OPEN (-50 pts) -> Drops score below threshold, status flips to TERMINATED_CHEATING
-    const termRes = await request.post(`http://localhost:4000/api/sessions/${sessionId}/violation`, {
+    const termRes = await request.post(`http://localhost:4001/api/sessions/${sessionId}/violation`, {
       headers: { Authorization: `Bearer ${studentToken}` },
       data: { code: 'DEVTOOLS_OPEN' },
     });
     expect(termRes.ok()).toBeTruthy();
     const termData = await termRes.json();
+    console.log('termData payload:', JSON.stringify(termData));
     expect(termData.data.status).toBe('TERMINATED_CHEATING');
 
     // 8. Auto-Termination Screen or Lockout Overlay

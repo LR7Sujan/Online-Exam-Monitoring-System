@@ -35,6 +35,7 @@ describe('Warning Gate & New Violation Types: Invariant & API Tests', () => {
       .send({ email: 'student@proctoriq.io', password: 'ProctorIQ#2026' });
     studentToken = studentRes.body.data.token;
     studentId = studentRes.body.data.user.id;
+    void studentId;
 
     // Register a secondary student for cross-tenant auth verification
     const otherEmail = `other.student.${Date.now()}@proctoriq.io`;

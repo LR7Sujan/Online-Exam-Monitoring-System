@@ -7,12 +7,12 @@ const VIEWPORTS = [
 ];
 
 async function loginAsAdmin(page: Page) {
-  await page.goto('http://localhost:5173/login');
-  await expect(page.locator('text=ProctorIQ Access')).toBeVisible({ timeout: 10000 });
+  await page.goto('/login');
+  await expect(page.locator('input[type="email"]')).toBeVisible({ timeout: 10000 });
   await page.fill('input[type="email"]', 'admin@proctoriq.io');
   await page.fill('input[type="password"]', 'ProctorIQ#2026');
   await page.click('button:has-text("Authenticate & Enter Console")');
-  await page.waitForURL(/\/home|\/admin/, { timeout: 15000 });
+  await page.waitForURL(/\/home|\/admin/, { timeout: 20000 });
 }
 
 async function scrollToCatalogBottom(page: Page, scrollAmount = 800) {
@@ -44,7 +44,7 @@ async function assertBoundingBoxInViewport(locator: Locator, page: Page, name: s
 test.describe('Phase 17: Overlays Centered in Visible Viewport (No Page Scrolling)', () => {
   test.beforeEach(async ({ page }) => {
     await loginAsAdmin(page);
-    await page.goto('http://localhost:5173/admin/exams');
+    await page.goto('/admin/exams');
     await expect(page.locator('text=Curated Assessment Directory')).toBeVisible({ timeout: 15000 });
   });
 
@@ -168,37 +168,23 @@ test.describe('Phase 17: Overlays Centered in Visible Viewport (No Page Scrollin
     }) => {
       await page.setViewportSize({ width: vp.width, height: vp.height });
 
-      // Click card to open exam detail page
-      const card = page.locator('.grid > div.rounded-2xl').first();
-      await expect(card).toBeVisible({ timeout: 10000 });
-      await card.click();
-      await page.waitForURL(/\/admin\/exams\/\d+/, { timeout: 15000 });
+      // Navigate directly to draft exam 2 detail page
+      await page.goto('/admin/exams/2');
+      await expect(page.locator('h1')).toBeVisible({ timeout: 15000 });
 
       // Scroll down 800px on detail page
       await scrollToCatalogBottom(page, 800);
 
-      // Check if "Add Question" button exists (or Unpublish first if published)
-      const unpublishBtn = page.locator('button:has-text("Unpublish to Edit")');
-      if ((await unpublishBtn.count()) > 0) {
-        await unpublishBtn.click();
-        const confirmBtn = page.locator('button:has-text("Unpublish Exam")');
-        if (await confirmBtn.isVisible()) {
-          await confirmBtn.click();
-          await page.waitForTimeout(1000);
-        }
-      }
-
       const addQuestionBtn = page.locator('button:has-text("Add Question")').first();
-      if (await addQuestionBtn.isVisible()) {
-        await addQuestionBtn.click();
+      await expect(addQuestionBtn).toBeVisible({ timeout: 10000 });
+      await addQuestionBtn.click();
 
-        const modal = page.locator('[role="dialog"]:has-text("Add New Question")').first();
-        await assertBoundingBoxInViewport(modal, page, 'Question Add/Edit Dialog');
+      const modal = page.locator('[role="dialog"]:has-text("Add New Question")').first();
+      await assertBoundingBoxInViewport(modal, page, 'Question Add/Edit Dialog');
 
-        // Close modal
-        await modal.locator('button:has-text("Cancel")').click();
-        await expect(modal).not.toBeVisible({ timeout: 5000 });
-      }
+      // Close modal
+      await modal.locator('button:has-text("Cancel")').click();
+      await expect(modal).not.toBeVisible({ timeout: 5000 });
     });
   }
 });

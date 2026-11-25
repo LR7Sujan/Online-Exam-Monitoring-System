@@ -1,5 +1,4 @@
-import { describe, it } from 'node:test';
-import assert from 'node:assert/strict';
+import { describe, it, expect } from 'vitest';
 import {
   buildHeatmapMatrix,
   formatHour,
@@ -9,6 +8,11 @@ import {
   KNOWN_VIOLATION_TYPES,
   type RawHeatmapRecord,
 } from '../src/utils/heatmapMatrix.js';
+
+const assert = {
+  equal: (a: unknown, b: unknown) => expect(a).toEqual(b),
+  ok: (a: unknown) => expect(a).toBeTruthy(),
+};
 
 describe('Circadian Incident Heatmap Matrix Helper (buildHeatmapMatrix)', () => {
   it('handles empty records by generating a 24-hour zero-filled matrix and 6 zero-filled buckets', () => {

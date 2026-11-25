@@ -19,8 +19,8 @@ import { executeSql } from '../../server/dist/config/db.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const API_URL = process.env.VITE_API_URL || 'http://localhost:4000/api';
-const SOCKET_URL = process.env.VITE_SOCKET_URL || 'http://localhost:4000';
+const API_URL = process.env.VITE_API_URL || 'http://localhost:4001/api';
+const SOCKET_URL = process.env.VITE_SOCKET_URL || 'http://localhost:4001';
 
 async function testProctorMissionControl() {
   console.log('\n====================================================');

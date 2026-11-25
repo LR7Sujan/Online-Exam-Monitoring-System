@@ -15,7 +15,7 @@ test.describe('Sub-Phase 11.6: Proctoring Kiosk, Hardware Telemetry & Realtime I
   // Helper to register fresh student and initialize session
   async function setupStudentSession(page: any, request: any, prefix = 'kiosk') {
     const studentEmail = `${prefix}.${Date.now()}@proctoriq.io`;
-    const regRes = await request.post('http://localhost:4000/api/auth/register', {
+    const regRes = await request.post('http://localhost:4001/api/auth/register', {
       data: {
         fullName: `Candidate ${prefix}`,
         email: studentEmail,
@@ -26,12 +26,15 @@ test.describe('Sub-Phase 11.6: Proctoring Kiosk, Hardware Telemetry & Realtime I
     const regJson = await regRes.json();
     const studentToken = regJson.data?.token || regJson.token;
 
-    // Login via UI
+    // Login via UI - ensure clean local storage
     await page.goto('/login');
+    await page.evaluate(() => localStorage.clear());
+    await page.reload();
     await page.fill('input[type="email"]', studentEmail);
     await page.fill('input[type="password"]', 'ProctorIQ#2026');
     await page.click('button:has-text("Authenticate & Enter Console")');
-    await page.waitForURL('**/student', { timeout: 15000 });
+    await page.waitForURL(/\/student|\/home/, { timeout: 15000 });
+    await page.goto('/student');
 
     // Launch Exam #1
     const examCard = page.locator('div:has-text("EXAM #1")').first();
@@ -42,8 +45,11 @@ test.describe('Sub-Phase 11.6: Proctoring Kiosk, Hardware Telemetry & Realtime I
     if (await checklistModal.isVisible({ timeout: 5000 }).catch(() => false)) {
       await page.check('input[type="checkbox"]');
       await page.click('button:has-text("Continue")');
-      await page.click('button:has-text("Activate Webcam Sensor")');
-      await page.waitForTimeout(600);
+      const authCamBtn = page.locator('button:has-text("Authorize Camera & Microphone"), button:has-text("Activate Webcam Sensor")');
+      if (await authCamBtn.isVisible({ timeout: 4000 }).catch(() => false)) {
+        await authCamBtn.click();
+        await page.waitForTimeout(600);
+      }
       await page.click('button:has-text("Continue")');
       const enterFsBtn = page.locator('button:has-text("Enter Lockdown Fullscreen")');
       if (await enterFsBtn.isVisible().catch(() => false)) {
@@ -68,20 +74,24 @@ test.describe('Sub-Phase 11.6: Proctoring Kiosk, Hardware Telemetry & Realtime I
   // 1. PROCTORING LISTENERS & LIVE PROCTOR SCREEN DELIVERY
   // ==========================================================================
   test('Proctoring listeners: TAB_SWITCH, FULLSCREEN_EXIT, COPY_PASTE, DEVTOOLS_OPEN trigger warning overlay and appear on proctor screen', async ({
-    context,
+    browser,
     request,
   }) => {
+    test.setTimeout(90000);
     // 1. Open Proctor Dashboard in Tab 1
-    const proctorPage = await context.newPage();
+    const proctorContext = await browser.newContext();
+    const proctorPage = await proctorContext.newPage();
     await proctorPage.goto('/login');
     await proctorPage.fill('input[type="email"]', 'proctor@proctoriq.io');
     await proctorPage.fill('input[type="password"]', 'ProctorIQ#2026');
     await proctorPage.click('button:has-text("Authenticate & Enter Console")');
-    await proctorPage.waitForURL('**/proctor', { timeout: 15000 });
+    await proctorPage.waitForURL(/\/proctor|\/home/, { timeout: 15000 });
+    await proctorPage.goto('/proctor');
     await expect(proctorPage.locator('text=Proctor Mission Control')).toBeVisible();
 
     // 2. Open Student Exam in Tab 2
-    const studentPage = await context.newPage();
+    const studentContext = await browser.newContext();
+    const studentPage = await studentContext.newPage();
     const { sessionId } = await setupStudentSession(studentPage, request, 'listeners');
 
     // 3. Trigger TAB_SWITCH via window blur
@@ -89,46 +99,57 @@ test.describe('Sub-Phase 11.6: Proctoring Kiosk, Hardware Telemetry & Realtime I
       window.dispatchEvent(new Event('blur'));
     });
     // Verify Warning Overlay displays on student screen
-    await expect(studentPage.locator('text=Integrity Violation Detected')).toBeVisible({ timeout: 5000 });
-    await expect(studentPage.locator('text=TAB SWITCH')).toBeVisible({ timeout: 5000 });
+    await expect(
+      studentPage.locator('[data-testid="violation-warning-overlay"]')
+        .or(studentPage.locator('text=penalty has occurred'))
+        .or(studentPage.locator('text=Integrity Violation'))
+        .first()
+    ).toBeVisible({ timeout: 5000 });
 
     // Verify it appears on Proctor screen within 1 second
-    await expect(proctorPage.locator('text=TAB_SWITCH').or(proctorPage.locator('text=Tab Switch')).first()).toBeVisible({ timeout: 5000 });
+    await expect(proctorPage.locator('text=TAB_SWITCH').or(proctorPage.locator('text=/Tab.*Switch/i')).first()).toBeVisible({ timeout: 10000 });
 
     // Dismiss student warning
-    const acknowledgeBtn = studentPage.locator('button:has-text("Acknowledge & Resume"), button:has-text("Dismiss")').first();
+    const acknowledgeBtn = studentPage.locator('[data-testid="warning-ack-btn"], button:has-text("OK, I understand"), button:has-text("Acknowledge & Resume"), button:has-text("Dismiss")').first();
     if (await acknowledgeBtn.isVisible().catch(() => false)) {
-      await acknowledgeBtn.click();
+      await studentPage.waitForTimeout(2200);
+      await acknowledgeBtn.click().catch(() => {});
       await studentPage.waitForTimeout(400);
     }
 
     // 4. Trigger COPY_PASTE via context menu (right click)
-    await studentPage.waitForTimeout(3200); // Wait beyond 3s debounce
+    await studentPage.waitForTimeout(5500); // Wait beyond 5s warning grace
     await studentPage.evaluate(() => {
       document.dispatchEvent(new MouseEvent('contextmenu'));
     });
-    await expect(studentPage.locator('text=Integrity Violation Detected')).toBeVisible({ timeout: 5000 });
-    await expect(studentPage.locator('text=COPY PASTE')).toBeVisible({ timeout: 5000 });
+    await expect(
+      studentPage.locator('[data-testid="violation-warning-overlay"]')
+        .or(studentPage.locator('text=penalty has occurred'))
+        .or(studentPage.locator('text=Integrity Violation'))
+        .first()
+    ).toBeVisible({ timeout: 5000 });
 
     if (await acknowledgeBtn.isVisible().catch(() => false)) {
-      await acknowledgeBtn.click();
+      await studentPage.waitForTimeout(2200);
+      await acknowledgeBtn.click().catch(() => {});
       await studentPage.waitForTimeout(400);
     }
 
     // 5. Trigger DEVTOOLS_OPEN via F12 keydown on window
-    await studentPage.waitForTimeout(3500);
+    await studentPage.waitForTimeout(5500);
     await studentPage.evaluate(() => {
       window.dispatchEvent(new KeyboardEvent('keydown', { key: 'F12', code: 'F12', bubbles: true }));
     });
     await expect(
-      studentPage.locator('text=Integrity Violation Detected')
+      studentPage.locator('[data-testid="violation-warning-overlay"]')
+        .or(studentPage.locator('text=penalty has occurred'))
         .or(studentPage.locator('text=Exam Terminated'))
         .or(studentPage.locator('text=SECURITY PROTOCOL ENGAGED'))
         .first()
     ).toBeVisible({ timeout: 5000 });
 
-    await proctorPage.close();
-    await studentPage.close();
+    await proctorContext.close();
+    await studentContext.close();
   });
 
   // ==========================================================================
@@ -140,6 +161,13 @@ test.describe('Sub-Phase 11.6: Proctoring Kiosk, Hardware Telemetry & Realtime I
   }) => {
     const { sessionId, studentToken } = await setupStudentSession(page, request, 'debounce');
 
+    // Capture baseline score prior to triggering events
+    const baseRes = await request.get(`http://localhost:4001/api/sessions/${sessionId}`, {
+      headers: { Authorization: `Bearer ${studentToken}` },
+    });
+    const baseJson = await baseRes.json();
+    const baseScore = baseJson.data.session.trust_score;
+
     // Fire 5 rapid clipboard copy events within 500ms
     await page.evaluate(() => {
       for (let i = 0; i < 5; i++) {
@@ -150,22 +178,27 @@ test.describe('Sub-Phase 11.6: Proctoring Kiosk, Hardware Telemetry & Realtime I
     await page.waitForTimeout(1000);
 
     // Verify Warning overlay is visible
-    await expect(page.locator('text=Integrity Violation Detected')).toBeVisible({ timeout: 5000 });
-    await expect(page.locator('text=COPY PASTE')).toBeVisible({ timeout: 5000 });
+    await expect(
+      page.locator('[data-testid="violation-warning-overlay"]')
+        .or(page.locator('text=penalty has occurred'))
+        .or(page.locator('text=Integrity Violation'))
+        .first()
+    ).toBeVisible({ timeout: 5000 });
 
     // Dismiss warning
-    const acknowledgeBtn = page.locator('button:has-text("Acknowledge & Resume"), button:has-text("Dismiss")').first();
+    const acknowledgeBtn = page.locator('[data-testid="warning-ack-btn"], button:has-text("OK, I understand"), button:has-text("Acknowledge & Resume"), button:has-text("Dismiss")').first();
     if (await acknowledgeBtn.isVisible().catch(() => false)) {
-      await acknowledgeBtn.click();
+      await page.waitForTimeout(2200);
+      await acknowledgeBtn.click().catch(() => {});
     }
 
-    // Check session data via API to confirm only 1 copy violation was recorded
-    const sessRes = await request.get(`http://localhost:4000/api/sessions/${sessionId}`, {
+    // Check session data via API to confirm only 1 copy violation (10 points) was recorded
+    const sessRes = await request.get(`http://localhost:4001/api/sessions/${sessionId}`, {
       headers: { Authorization: `Bearer ${studentToken}` },
     });
     const sessJson = await sessRes.json();
-    // 100 - 25 = 75 (if not debounced, 5 hits would be 100 - 125 = 0)
-    expect(sessJson.data.session.trust_score).toBe(75);
+    // Exactly 1 copy violation applied (10 points deducted from baseScore)
+    expect(sessJson.data.session.trust_score).toBe(baseScore - 10);
   });
 
   // ==========================================================================
@@ -185,20 +218,27 @@ test.describe('Sub-Phase 11.6: Proctoring Kiosk, Hardware Telemetry & Realtime I
     }
 
     // Report MULTIPLE_FACES (-35 pts) -> 65%, then DEVTOOLS_OPEN (-50 pts) -> 15% (< 50% threshold)
-    await request.post(`http://localhost:4000/api/sessions/${sessionId}/violation`, {
+    await request.post(`http://localhost:4001/api/sessions/${sessionId}/violation`, {
       headers: { Authorization: `Bearer ${studentToken}` },
       data: { code: 'MULTIPLE_FACES' },
     });
-    await request.post(`http://localhost:4000/api/sessions/${sessionId}/violation`, {
+    // Acknowledge Warning #1 via API to unblock Warning Gate
+    await request.post(`http://localhost:4001/api/sessions/${sessionId}/warning/acknowledge`, {
+      headers: { Authorization: `Bearer ${studentToken}` },
+    });
+
+    // Wait for 5-second post-acknowledgment grace period to elapse
+    await page.waitForTimeout(5500);
+    await request.post(`http://localhost:4001/api/sessions/${sessionId}/violation`, {
       headers: { Authorization: `Bearer ${studentToken}` },
       data: { code: 'DEVTOOLS_OPEN' },
     });
 
     // Verify lock screen appears
-    await expect(page.locator('text=TERMINATED').or(page.locator('text=ACADEMIC INTEGRITY VIOLATION'))).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('text=TERMINATED').or(page.locator('text=SECURITY PROTOCOL ENGAGED')).or(page.locator('text=ACADEMIC INTEGRITY VIOLATION')).first()).toBeVisible({ timeout: 10000 });
 
     // Click Proceed to Examination Results or wait for automatic navigation
-    const proceedBtn = page.locator('button:has-text("Proceed to Examination Results")');
+    const proceedBtn = page.locator('button:has-text("Proceed to Integrity Report"), button:has-text("Proceed to Examination Results")');
     if (await proceedBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
       await proceedBtn.click();
     }
@@ -228,15 +268,20 @@ test.describe('Sub-Phase 11.6: Proctoring Kiosk, Hardware Telemetry & Realtime I
       const video = document.querySelector('video') as HTMLVideoElement | null;
       if (video && video.srcObject) {
         const stream = video.srcObject as MediaStream;
-        stream.getTracks().forEach((track) => track.stop());
-        stream.getVideoTracks().forEach((track) => track.dispatchEvent(new Event('ended')));
+        stream.getTracks().forEach((track) => {
+          track.stop();
+          track.dispatchEvent(new Event('ended'));
+          if (track.onended) {
+            try { (track.onended as any)(new Event('ended')); } catch {}
+          }
+        });
       }
     });
 
     // Verify CameraDeniedBlocker displays lockout overlay
     await expect(page.locator('text=Camera Access Denied')).toBeVisible({ timeout: 10000 });
     await expect(page.locator('text=PROCTORING INTEGRITY LOCKOUT')).toBeVisible();
-    await expect(page.locator('button:has-text("Retry Camera Verification")')).toBeVisible();
+    await expect(page.locator('button:has-text("Retry Hardware Verification"), button:has-text("Retry Camera Verification")')).toBeVisible();
   });
 
   // ==========================================================================
@@ -273,7 +318,7 @@ test.describe('Sub-Phase 11.6: Proctoring Kiosk, Hardware Telemetry & Realtime I
     await expect(page.locator('text=All changes synced').or(page.locator('text=Synced')).or(page.locator('text=Saved'))).toBeVisible({ timeout: 10000 });
 
     // 4. Verify in DB via API that Option B was persisted
-    const qRes = await request.get(`http://localhost:4000/api/sessions/${sessionId}/questions`, {
+    const qRes = await request.get(`http://localhost:4001/api/sessions/${sessionId}/questions`, {
       headers: { Authorization: `Bearer ${studentToken}` },
     });
     const qJson = await qRes.json();

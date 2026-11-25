@@ -14,8 +14,8 @@ const uploadsDir = process.env.UPLOADS_DIR
   ? path.resolve(rootDir, process.env.UPLOADS_DIR)
   : path.resolve(rootDir, 'server', 'uploads');
 
-const API_BASE = 'http://localhost:4000/api';
-const SOCKET_URL = 'http://localhost:4000';
+const API_BASE = process.env.VITE_API_URL || 'http://localhost:4001/api';
+const SOCKET_URL = process.env.VITE_SOCKET_URL || 'http://localhost:4001';
 
 async function main() {
   console.log('====================================================');
@@ -183,12 +183,12 @@ async function main() {
   assert.ok(diskStats.size > 0, 'Uploaded snapshot file on disk must not be empty');
 
   // Verify unauthenticated fetch is blocked with 401
-  const unauthFetchRes = await fetch(`http://localhost:4000${violReport.data.snapshot_url}`);
+  const unauthFetchRes = await fetch(`${SOCKET_URL}${violReport.data.snapshot_url}`);
   assert.equal(unauthFetchRes.status, 401, 'Unauthenticated snapshot fetch must be blocked with HTTP 401');
 
   // Verify Express statically serves the snapshot over HTTP GET when authenticated
   const staticFetchRes = await fetch(
-    `http://localhost:4000${violReport.data.snapshot_url}?token=${studentToken}`
+    `${SOCKET_URL}${violReport.data.snapshot_url}?token=${studentToken}`
   );
   assert.equal(staticFetchRes.status, 200, 'Authenticated static snapshot fetch must return HTTP 200');
   const fetchedBytes = await staticFetchRes.arrayBuffer();

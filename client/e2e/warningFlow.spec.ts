@@ -59,7 +59,7 @@ test.describe('End-to-End Warning Screen & History Flow (Multi-Context)', () => 
     const match = page.url().match(/\/student\/session\/(\d+)/);
     const sessionId = match ? Number(match[1]) : 0;
 
-    return { studentEmail, studentId, sessionId, token };
+    return { studentEmail, studentId, sessionId, token, studentName: `Candidate ${prefix}` };
   }
 
   test('Full Warning Flow: trigger violation, warning screen appears, answers locked, ignore subsequent, reload restores, acknowledge, history drawer, and proctor live badge', async ({
@@ -80,7 +80,7 @@ test.describe('End-to-End Warning Screen & History Flow (Multi-Context)', () => 
     // 2. Setup Student Context & Start Exam
     const studentContext = await browser.newContext();
     const studentPage = await studentContext.newPage();
-    const { studentEmail, sessionId, token } = await setupStudentSession(studentPage, request, 'warning-flow');
+    const { studentEmail, sessionId, token, studentName } = await setupStudentSession(studentPage, request, 'warning-flow');
 
     // Select Answer Option B on Question 1
     const optionB = studentPage.locator('button:has-text("B.")');
@@ -137,7 +137,7 @@ test.describe('End-to-End Warning Screen & History Flow (Multi-Context)', () => 
     // 7. Verify Proctor sees Warning Badge on Candidate Tile
     await proctorPage.reload();
     await proctorPage.waitForLoadState('networkidle');
-    const studentTile = proctorPage.locator(`text=${studentEmail}`).locator('xpath=ancestor::div[contains(@class, "rounded-2xl") or contains(@class, "rounded-3xl")]').first();
+    const studentTile = proctorPage.locator(`text=${studentName}`).locator('xpath=ancestor::div[contains(@class, "rounded-2xl") or contains(@class, "rounded-3xl")]').first();
     await expect(studentTile).toBeVisible({ timeout: 10000 });
     const warningBadge = studentTile.locator('[data-testid="tile-warning-badge"]');
     await expect(warningBadge).toBeVisible({ timeout: 10000 });
@@ -153,6 +153,14 @@ test.describe('End-to-End Warning Screen & History Flow (Multi-Context)', () => 
 
     // Warning screen closes and student returns to exam exactly where they were
     await expect(studentPage.locator('[data-testid="violation-warning-overlay"]')).toHaveCount(0);
+
+    // Dismiss fullscreen exit prompt if triggered during reload
+    const fsExitBtn = studentPage.locator('button:has-text("Re-enter Fullscreen")');
+    if (await fsExitBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await fsExitBtn.click();
+      await studentPage.waitForTimeout(400);
+    }
+
     // Answer B is still selected
     const selectedOptionB = studentPage.locator('button:has-text("B.")');
     await expect(selectedOptionB).toBeVisible();

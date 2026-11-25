@@ -117,12 +117,17 @@ test.describe('Admin Role Complete User Journey', () => {
     // Confirm DB has updated penalty_points via API
     const authRaw = await page.evaluate(() => localStorage.getItem('proctoriq_auth_v1'));
     const token = authRaw ? JSON.parse(authRaw).token : '';
-    const vtRes = await request.get('http://localhost:4000/api/violation-types', {
+    const vtRes = await request.get('http://localhost:4001/api/violation-types', {
       headers: { Authorization: `Bearer ${token}` },
     });
     const vtJson = await vtRes.json();
     const copyPasteVt = vtJson.data.find((v: { code: string }) => v.code === 'COPY_PASTE');
     expect(copyPasteVt.penalty_points).toBe(Number(targetPenalty));
+
+    // Restore original penalty points so other tests receive expected defaults
+    await penaltyInput.fill(currentVal);
+    await saveWeightBtn.click();
+    await expect(copyPasteRow.locator('text=Deployed')).toBeVisible({ timeout: 5000 });
 
     // 5. Switch to User Directory Tab
     await page.click('button:has-text("User Directory")');

@@ -71,33 +71,31 @@ async function completeChecklistAndEnterExam(page: Page) {
   const startBtn = page.locator('button:has-text("Launch Pre-Exam Checklist"), button:has-text("Resume Active Session")').first();
   await startBtn.click();
 
-  const checklistModal = page.locator('text=Pre-Flight Verification Kiosk');
-  if (await checklistModal.isVisible({ timeout: 5000 }).catch(() => false)) {
-    // Step 1: Accept Rules
-    await page.check('input[type="checkbox"]');
-    await page.click('button:has-text("Continue")');
+  await expect(page.locator('text=Pre-Flight Verification Kiosk')).toBeVisible({ timeout: 10000 });
+  // Step 1: Accept Rules
+  await page.check('input[type="checkbox"]');
+  await page.click('button:has-text("Continue")');
 
-    // Step 2: Authorize Camera & Microphone
-    const authCamBtn = page.locator('button:has-text("Authorize Camera & Microphone"), button:has-text("Activate Webcam Sensor")');
-    if (await authCamBtn.isVisible({ timeout: 4000 }).catch(() => false)) {
-      await authCamBtn.click();
-      await expect(page.locator('text=OPTICAL & AUDIO SENSORS ACTIVE')).toBeVisible({ timeout: 6000 });
-    }
-    await page.click('button:has-text("Continue")');
-
-    // Step 3: Fullscreen Entry
-    const enterFsBtn = page.locator('button:has-text("Enter Lockdown Fullscreen")');
-    if (await enterFsBtn.isVisible().catch(() => false)) {
-      await enterFsBtn.click();
-      await page.waitForTimeout(400);
-    }
-    await page.click('button:has-text("Continue")');
-
-    // Step 4: System Diagnostics & Launch
-    await page.waitForTimeout(400);
-    const launchBtn = page.locator('button:has-text("Initialize Assessment Session")');
-    await launchBtn.click();
+  // Step 2: Authorize Camera & Microphone
+  const authCamBtn = page.locator('button:has-text("Authorize Camera & Microphone"), button:has-text("Activate Webcam Sensor")');
+  if (await authCamBtn.isVisible({ timeout: 4000 }).catch(() => false)) {
+    await authCamBtn.click();
+    await expect(page.locator('text=OPTICAL & AUDIO SENSORS ACTIVE')).toBeVisible({ timeout: 6000 });
   }
+  await page.click('button:has-text("Continue")');
+
+  // Step 3: Fullscreen Entry
+  const enterFsBtn = page.locator('button:has-text("Enter Lockdown Fullscreen")');
+  if (await enterFsBtn.isVisible().catch(() => false)) {
+    await enterFsBtn.click();
+    await page.waitForTimeout(400);
+  }
+  await page.click('button:has-text("Continue")');
+
+  // Step 4: System Diagnostics & Launch
+  await page.waitForTimeout(400);
+  const launchBtn = page.locator('button:has-text("Initialize Assessment Session")');
+  await launchBtn.click();
 
   await page.waitForURL('**/student/session/**', { timeout: 15000 });
 }
@@ -179,6 +177,7 @@ test.describe('Media Session Teardown & Camera/Mic Release Verification', () => 
     page,
     request,
   }) => {
+    test.setTimeout(90000);
     const studentEmail = `playwright.submitrelease.${Date.now()}@proctoriq.io`;
     const regRes = await request.post('http://localhost:4001/api/auth/register', {
       data: {
@@ -192,43 +191,13 @@ test.describe('Media Session Teardown & Camera/Mic Release Verification', () => 
     await loginStudent(page, studentEmail);
     await completeChecklistAndEnterExam(page);
 
-    // Dismiss any overlays (fullscreen exit or violation warning) that might intercept HUD
-    const clearBlockers = async () => {
-      const fsBtn = page.locator('button:has-text("Re-enter Fullscreen & Continue")');
-      if (await fsBtn.isVisible().catch(() => false)) {
-        await fsBtn.click().catch(() => {});
-        await page.waitForTimeout(300);
-      }
-      const warnOverlay = page.locator('[data-testid="violation-warning-overlay"]');
-      if (await warnOverlay.isVisible().catch(() => false)) {
-        const ackBtn = page.locator('[data-testid="warning-ack-btn"]');
-        if (await ackBtn.isVisible().catch(() => false)) {
-          await expect(ackBtn).toBeEnabled({ timeout: 6000 });
-          await ackBtn.click().catch(() => {});
-          await page.waitForTimeout(300);
-        }
-      }
-    };
+    await page.waitForTimeout(1000);
+    const submitBtn = page.locator('[data-testid="hud-submit-exam-button"]');
+    await submitBtn.click({ force: true });
 
-    const clickWithBlockerBypass = async (locatorSelector: string) => {
-      for (let attempt = 0; attempt < 10; attempt++) {
-        await clearBlockers();
-        try {
-          const target = page.locator(locatorSelector);
-          await target.click({ timeout: 2000 });
-          return;
-        } catch {
-          await page.waitForTimeout(400);
-        }
-      }
-      await clearBlockers();
-      await page.locator(locatorSelector).click({ force: true });
-    };
-
-    await clickWithBlockerBypass('[data-testid="hud-submit-exam-button"]');
-
-    // Confirm submission in modal
-    await clickWithBlockerBypass('[data-testid="confirm-submit-modal-btn"]');
+    const confirmModalBtn = page.locator('[data-testid="confirm-submit-modal-btn"]');
+    await expect(confirmModalBtn).toBeVisible({ timeout: 5000 });
+    await confirmModalBtn.click();
 
     // Wait for results page
     await page.waitForURL('**/student/results/**', { timeout: 20000 });

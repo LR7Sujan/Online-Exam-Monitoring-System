@@ -233,6 +233,7 @@ export function mapQuestionForStudent<T extends {
 
   // Clone and exclude correct_option
   const { correct_option: _stripCorrect, ...rest } = question;
+  void _stripCorrect;
 
   return {
     ...rest,

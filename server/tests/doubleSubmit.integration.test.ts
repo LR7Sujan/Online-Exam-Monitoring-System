@@ -31,12 +31,11 @@ test('Concurrent double-submit produces exactly one Results row against seeded M
   let createdSessionId: number | null = null;
 
   try {
-    // 1. Authenticate as seeded student@proctoriq.io (id=5, free on live Exam 1)
-    await pool.execute('DELETE FROM Exam_Sessions WHERE exam_id = 1 AND student_id = 5');
+    // 1. Authenticate as seeded student3@proctoriq.io (free on live Exam 1)
     const loginRes = await fetch(`${baseUrl}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: 'student@proctoriq.io', password: 'ProctorIQ#2026' }),
+      body: JSON.stringify({ email: 'student3@proctoriq.io', password: 'ProctorIQ#2026' }),
     });
     assert.equal(loginRes.status, 200);
     const loginJson = (await loginRes.json()) as {
@@ -44,6 +43,17 @@ test('Concurrent double-submit produces exactly one Results row against seeded M
       data: { token: string; user: { id: number } };
     };
     const token = loginJson.data.token;
+    const studentId = loginJson.data.user.id;
+
+    const [existingSessions] = await pool.query<RowDataPacket[]>(
+      'SELECT id FROM Exam_Sessions WHERE exam_id = 1 AND student_id = ?',
+      [studentId]
+    );
+    for (const s of existingSessions) {
+      await pool.query('DELETE FROM Results WHERE session_id = ?', [s.id]);
+      await pool.query('DELETE FROM Student_Responses WHERE session_id = ?', [s.id]);
+      await pool.query('DELETE FROM Exam_Sessions WHERE id = ?', [s.id]);
+    }
 
     // 2. Start live Exam 1 with fingerprint
     const startRes = await fetch(`${baseUrl}/exams/1/start`, {

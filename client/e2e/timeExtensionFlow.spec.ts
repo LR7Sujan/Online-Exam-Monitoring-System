@@ -34,8 +34,11 @@ test.describe('End-to-End Time Extension Flow (Multi-Context)', () => {
     if (await checklistModal.isVisible({ timeout: 4000 }).catch(() => false)) {
       await page.check('input[type="checkbox"]');
       await page.click('button:has-text("Continue")');
-      await page.click('button:has-text("Activate Webcam Sensor")');
-      await page.waitForTimeout(400);
+      const authCamBtn = page.locator('button:has-text("Authorize Camera & Microphone"), button:has-text("Activate Webcam Sensor")');
+      if (await authCamBtn.isVisible({ timeout: 4000 }).catch(() => false)) {
+        await authCamBtn.click();
+        await page.waitForTimeout(400);
+      }
       await page.click('button:has-text("Continue")');
       const enterFsBtn = page.locator('button:has-text("Enter Lockdown Fullscreen")');
       if (await enterFsBtn.isVisible().catch(() => false)) {
