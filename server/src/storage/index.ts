@@ -28,6 +28,11 @@ export function getStorageAdapter(): StorageAdapter {
       break;
     case 'local':
     default:
+      if (env.NODE_ENV === 'production') {
+        throw new Error(
+          '[FATAL] Production code must never write to the local filesystem. Configure STORAGE_PROVIDER="blob" or STORAGE_PROVIDER="s3".'
+        );
+      }
       activeAdapter = new LocalStorageAdapter();
       break;
   }
