@@ -29,7 +29,7 @@ export function EmptyState({
     >
       <div className="relative mb-5 flex items-center justify-center">
         {/* Subtle decorative concentric rings */}
-        <div className="absolute w-24 h-24 rounded-full border border-border/60 animate-pulse-slow" />
+        <div className="absolute w-24 h-24 rounded-full border border-border animate-pulse-slow" />
         <div className="absolute w-16 h-16 rounded-full border border-dashed border-border" />
 
         {/* Center icon container */}

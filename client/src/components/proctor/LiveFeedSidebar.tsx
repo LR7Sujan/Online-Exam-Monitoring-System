@@ -52,7 +52,7 @@ export function LiveFeedSidebar({
   return (
     <div className="flex h-full flex-col rounded-2xl border border-border bg-surface/90 backdrop-blur-xl shadow-layered-sm overflow-hidden">
       {/* Feed Header */}
-      <div className="flex items-center justify-between border-b border-border/70 bg-surface-elevated/60 p-3.5 sm:p-4">
+      <div className="flex items-center justify-between border-b border-border bg-surface-elevated/60 p-3.5 sm:p-4">
         <div className="flex items-center gap-2.5">
           <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-500 shadow-sm">
             <Radio className="w-4 h-4 animate-pulse" />
@@ -188,7 +188,7 @@ export function LiveFeedSidebar({
       </div>
 
       {/* Feed Footer */}
-      <div className="border-t border-border/70 bg-surface-elevated/40 p-2.5 text-center text-[10px] font-mono text-muted-foreground">
+      <div className="border-t border-border bg-surface-elevated/40 p-2.5 text-center text-[10px] font-mono text-muted-foreground">
         Socket Room: <span className="text-brand font-bold">proctors</span> • Latency:{' '}
         <span className="text-emerald-500 font-bold">&lt;15ms</span>
       </div>

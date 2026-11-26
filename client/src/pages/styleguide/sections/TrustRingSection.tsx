@@ -110,7 +110,7 @@ export function TrustRingSection() {
           </div>
 
           {/* Interactive Preview Canvas */}
-          <div className="flex flex-col items-center justify-center p-8 bg-background/50 rounded-2xl border border-border/80 min-h-[260px]">
+          <div className="flex flex-col items-center justify-center p-8 bg-background/50 rounded-2xl border border-border min-h-[260px]">
             <TrustRing
               score={trustScore}
               minThreshold={minThreshold}
@@ -250,7 +250,7 @@ export function TrustRingSection() {
         <div className="space-y-8 w-full py-4">
           {(['xs', 'sm', 'md', 'lg', 'xl'] as const).map((sz) => (
             <div key={sz} className="space-y-3">
-              <div className="flex items-center justify-between border-b border-border/70 pb-1.5">
+              <div className="flex items-center justify-between border-b border-border pb-1.5">
                 <span className="font-mono text-xs font-bold uppercase tracking-wider text-brand">
                   Size: {sz} ({TRUST_RING_SIZES[sz]}px)
                 </span>

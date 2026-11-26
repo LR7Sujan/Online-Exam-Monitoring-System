@@ -75,7 +75,7 @@ export function IndicatorsSection() {
             </button>
           </div>
 
-          <div className="flex items-center justify-around gap-8 pt-4 border-t border-border/60">
+          <div className="flex items-center justify-around gap-8 pt-4 border-t border-border">
             <div className="text-center space-y-2">
               <div className="h-10 flex items-center justify-center">
                 <LiveDot color="emerald" size="sm" pulse={pulseActive} />

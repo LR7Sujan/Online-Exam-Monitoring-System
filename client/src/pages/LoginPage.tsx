@@ -288,7 +288,7 @@ export function LoginPage({ initialTab }: { initialTab?: AuthTab }) {
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
-        className="rounded-3xl border border-border/80 dark:border-white/10 bg-surface/85 backdrop-blur-2xl p-5 sm:p-6 shadow-layered-lg shadow-black/20 dark:shadow-black/40 space-y-3.5 relative overflow-hidden"
+        className="rounded-3xl border border-border dark:border-border bg-surface/85 backdrop-blur-2xl p-5 sm:p-6 shadow-layered-lg shadow-black/20 dark:shadow-black/40 space-y-3.5 relative overflow-hidden"
       >
         {/* Top ambient highlight line */}
         <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500" />
@@ -512,7 +512,7 @@ export function LoginPage({ initialTab }: { initialTab?: AuthTab }) {
               >
                 {loading ? (
                   <span className="inline-flex items-center gap-2">
-                    <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <span className="w-3.5 h-3.5 border-2 border-current/30 border-t-current rounded-full animate-spin" />
                     Authenticating...
                   </span>
                 ) : (
@@ -525,7 +525,7 @@ export function LoginPage({ initialTab }: { initialTab?: AuthTab }) {
             </form>
 
             {/* Collapsible Demo Accounts Section */}
-            <div className="pt-2 border-t border-border/70 space-y-1.5">
+            <div className="pt-2 border-t border-border space-y-1.5">
               <button
                 type="button"
                 onClick={() => setIsDemoOpen(!isDemoOpen)}
@@ -563,7 +563,7 @@ export function LoginPage({ initialTab }: { initialTab?: AuthTab }) {
                           className={`p-1.5 rounded-xl border text-left transition-all duration-200 select-none cursor-pointer ${
                             isSelected
                               ? 'border-brand/60 bg-brand/10 shadow-sm'
-                              : 'border-border bg-surface-elevated/60 hover:bg-surface-elevated hover:border-border/80'
+                              : 'border-border bg-surface-elevated/60 hover:bg-surface-elevated hover:border-border'
                           }`}
                         >
                           <div className="flex items-center justify-between">
@@ -742,7 +742,7 @@ export function LoginPage({ initialTab }: { initialTab?: AuthTab }) {
             >
               {loading ? (
                 <span className="inline-flex items-center gap-2">
-                  <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <span className="w-3.5 h-3.5 border-2 border-current/30 border-t-current rounded-full animate-spin" />
                   Provisioning...
                 </span>
               ) : (

@@ -323,7 +323,7 @@ export function AdminOverviewDashboard() {
           </div>
 
           {/* Summary Row under title */}
-          <div className="grid grid-cols-3 gap-2 sm:gap-4 pt-2 pb-1 border-t border-border/60">
+          <div className="grid grid-cols-3 gap-2 sm:gap-4 pt-2 pb-1 border-t border-border">
             <div className="flex flex-col">
               <span className="text-[11px] font-medium text-muted-foreground">Total</span>
               <span className="text-sm font-bold font-mono text-foreground">
@@ -560,14 +560,14 @@ export function AdminOverviewDashboard() {
 
           {/* Interactive Legend: No scrollbar, all rows, 2 columns on wide / 1 on narrow, keyboard focusable */}
           {violationDistribution.length === 0 ? (
-            <div className="pt-3 border-t border-border/50 text-center py-2 text-xs text-muted-foreground">
+            <div className="pt-3 border-t border-border text-center py-2 text-xs text-muted-foreground">
               No violations recorded
             </div>
           ) : (
             <div
               role="list"
               aria-label="Violation categories breakdown"
-              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 gap-1.5 pt-3 border-t border-border/50 text-sm font-sans"
+              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 gap-1.5 pt-3 border-t border-border text-sm font-sans"
             >
               {violationDistribution.map((item, idx) => {
                 const pct = totalAlerts > 0 ? Math.round((Number(item.count || 0) / totalAlerts) * 100) : 0;

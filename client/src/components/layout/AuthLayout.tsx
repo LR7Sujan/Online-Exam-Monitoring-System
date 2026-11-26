@@ -110,7 +110,7 @@ export function AuthLayout({ children }: AuthLayoutProps) {
             </div>
 
             {/* Testimonial Card (Visible on desktop >= 1024px) */}
-            <div className="hidden lg:block p-3 rounded-2xl border border-border/80 bg-surface/70 backdrop-blur-md shadow-sm space-y-1">
+            <div className="hidden lg:block p-3 rounded-2xl border border-border bg-surface/70 backdrop-blur-md shadow-sm space-y-1">
               <div className="flex items-center justify-between text-[11px] font-mono">
                 <span className="text-brand font-semibold">99.98% VERIFIED INTEGRITY</span>
                 <span className="text-muted-foreground">50,000+ SESSIONS</span>
@@ -137,7 +137,7 @@ export function AuthLayout({ children }: AuthLayoutProps) {
       </main>
 
       {/* Centered Single Line Footer Across Full Page */}
-      <footer className="w-full py-2.5 sm:py-3 border-t border-border/40 text-[11px] font-mono text-muted-foreground flex flex-wrap items-center justify-center gap-x-3 sm:gap-x-5 gap-y-1 text-center z-10 px-4">
+      <footer className="w-full py-2.5 sm:py-3 border-t border-border text-[11px] font-mono text-muted-foreground flex flex-wrap items-center justify-center gap-x-3 sm:gap-x-5 gap-y-1 text-center z-10 px-4">
         <div className="flex items-center gap-1.5">
           <LiveDot color="emerald" size="sm" />
           <span>NODE ONLINE • MYSQL 8.0 ACID</span>

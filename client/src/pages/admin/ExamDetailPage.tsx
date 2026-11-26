@@ -825,7 +825,7 @@ export function ExamDetailPage() {
                       onClick={() => setIsEditingParams(true)}
                       aria-label="Edit exam parameters"
                       title="Edit exam parameters"
-                      className="w-9 h-9 inline-flex items-center justify-center rounded-lg border border-border/70 bg-surface/90 text-muted-foreground hover:text-foreground hover:border-brand/50 hover:bg-brand/10 transition-colors cursor-pointer"
+                      className="w-9 h-9 inline-flex items-center justify-center rounded-lg border border-border bg-surface/90 text-muted-foreground hover:text-foreground hover:border-brand/50 hover:bg-brand/10 transition-colors cursor-pointer"
                     >
                       <Pencil className="w-4 h-4 text-brand" />
                     </button>
@@ -1173,7 +1173,7 @@ export function ExamDetailPage() {
 
             {/* Bulk Edit Actions Bar */}
             {isBulkEditMode && !isPublished && (
-              <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-xl border border-border/80 bg-background/80 font-mono text-xs">
+              <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-xl border border-border bg-background/80 font-mono text-xs">
                 <div className="flex items-center gap-3">
                   <button
                     type="button"
@@ -1322,7 +1322,7 @@ export function ExamDetailPage() {
                   </p>
                 )}
 
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-border/60">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-border">
                   <div className="flex items-center gap-3">
                     <span className="text-muted-foreground font-semibold">Correct Option:</span>
                     {(['A', 'B', 'C', 'D'] as const).map((opt) => (
@@ -1563,7 +1563,7 @@ export function ExamDetailPage() {
                 {questions.map((q, idx) => (
                   <div
                     key={q.id}
-                    className="rounded-xl border border-border bg-background p-4 text-xs font-mono space-y-2.5 transition-colors hover:border-border/80"
+                    className="rounded-xl border border-border bg-background p-4 text-xs font-mono space-y-2.5 transition-colors hover:border-border"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0 flex-1 flex items-start gap-2.5">
@@ -1616,7 +1616,7 @@ export function ExamDetailPage() {
                             disabled={isPublished}
                             aria-label="Edit question"
                             title={isPublished ? 'Unpublish to edit questions' : 'Edit question'}
-                            className="w-9 h-9 inline-flex items-center justify-center rounded-lg border border-border/70 bg-surface/90 text-muted-foreground hover:text-foreground hover:border-brand/50 hover:bg-brand/10 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-150 cursor-pointer"
+                            className="w-9 h-9 inline-flex items-center justify-center rounded-lg border border-border bg-surface/90 text-muted-foreground hover:text-foreground hover:border-brand/50 hover:bg-brand/10 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-150 cursor-pointer"
                           >
                             <Pencil className="w-4 h-4" />
                           </button>
@@ -1626,7 +1626,7 @@ export function ExamDetailPage() {
                             disabled={isPublished || duplicateQuestionMutation.isPending}
                             aria-label="Duplicate question"
                             title={isPublished ? 'Unpublish to edit questions' : 'Duplicate question'}
-                            className="w-9 h-9 inline-flex items-center justify-center rounded-lg border border-border/70 bg-surface/90 text-muted-foreground hover:text-foreground hover:border-brand/50 hover:bg-brand/10 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-150 cursor-pointer"
+                            className="w-9 h-9 inline-flex items-center justify-center rounded-lg border border-border bg-surface/90 text-muted-foreground hover:text-foreground hover:border-brand/50 hover:bg-brand/10 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-150 cursor-pointer"
                           >
                             <Copy className="w-4 h-4" />
                           </button>
@@ -1636,7 +1636,7 @@ export function ExamDetailPage() {
                             disabled={isPublished || idx === 0 || reorderQuestionsMutation.isPending}
                             aria-label="Move question up"
                             title={isPublished ? 'Unpublish to edit questions' : 'Move up'}
-                            className="w-9 h-9 inline-flex items-center justify-center rounded-lg border border-border/70 bg-surface/90 text-muted-foreground hover:text-foreground hover:border-brand/50 hover:bg-brand/10 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-150 cursor-pointer"
+                            className="w-9 h-9 inline-flex items-center justify-center rounded-lg border border-border bg-surface/90 text-muted-foreground hover:text-foreground hover:border-brand/50 hover:bg-brand/10 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-150 cursor-pointer"
                           >
                             <ArrowUp className="w-4 h-4" />
                           </button>
@@ -1646,7 +1646,7 @@ export function ExamDetailPage() {
                             disabled={isPublished || idx === questions.length - 1 || reorderQuestionsMutation.isPending}
                             aria-label="Move question down"
                             title={isPublished ? 'Unpublish to edit questions' : 'Move down'}
-                            className="w-9 h-9 inline-flex items-center justify-center rounded-lg border border-border/70 bg-surface/90 text-muted-foreground hover:text-foreground hover:border-brand/50 hover:bg-brand/10 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-150 cursor-pointer"
+                            className="w-9 h-9 inline-flex items-center justify-center rounded-lg border border-border bg-surface/90 text-muted-foreground hover:text-foreground hover:border-brand/50 hover:bg-brand/10 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-150 cursor-pointer"
                           >
                             <ArrowDown className="w-4 h-4" />
                           </button>
@@ -1656,7 +1656,7 @@ export function ExamDetailPage() {
                             disabled={isPublished}
                             aria-label="Delete question"
                             title={isPublished ? 'Unpublish to edit questions' : 'Delete question'}
-                            className="w-9 h-9 inline-flex items-center justify-center rounded-lg border border-border/70 bg-surface/90 text-muted-foreground hover:text-rose-500 hover:border-rose-500/50 hover:bg-rose-500/10 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-150 cursor-pointer"
+                            className="w-9 h-9 inline-flex items-center justify-center rounded-lg border border-border bg-surface/90 text-muted-foreground hover:text-rose-500 hover:border-rose-500/50 hover:bg-rose-500/10 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-150 cursor-pointer"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>

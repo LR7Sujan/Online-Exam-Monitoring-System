@@ -493,7 +493,7 @@ export function RecordingPlayer({
     >
       {/* Player Wrapper Container */}
       <div
-        className={`flex flex-col w-full h-full rounded-2xl border border-border/80 bg-surface shadow-2xl overflow-hidden ${
+        className={`flex flex-col w-full h-full rounded-2xl border border-border bg-surface shadow-2xl overflow-hidden ${
           mode === 'modal' ? 'max-w-7xl max-h-[96vh]' : 'max-w-full'
         }`}
       >
@@ -889,7 +889,7 @@ export function RecordingPlayer({
                       onClick={() => setSpeedMenuOpen(!speedMenuOpen)}
                       title="Playback speed (Shift+< or Shift+>)"
                       aria-label="Playback speed menu"
-                      className="px-2 py-1 rounded-lg border border-white/20 bg-white/10 hover:bg-white/20 text-xs font-bold transition-colors cursor-pointer"
+                      className="px-2 py-1 rounded-lg border border-border bg-surface-elevated hover:bg-muted text-xs font-bold transition-colors cursor-pointer"
                     >
                       {playbackSpeed}x
                     </button>

@@ -374,7 +374,7 @@ export function ViolationWarningOverlay({
               )}
 
               {/* Rules Reminder */}
-              <div className="flex items-start gap-2 rounded-xl border border-border/80 bg-surface-elevated/50 p-2 text-left text-[11px] text-muted-foreground leading-relaxed">
+              <div className="flex items-start gap-2 rounded-xl border border-border bg-surface-elevated/50 p-2 text-left text-[11px] text-muted-foreground leading-relaxed">
                 <Info className="w-4 h-4 text-brand shrink-0 mt-0.5" />
                 <p id="warning-dialog-desc">
                   <strong className="text-foreground">Rules reminder:</strong> Remain seated, look directly at the screen, avoid talking, and keep all secondary devices away. Dropping below {minThreshold}% will immediately terminate and submit your assessment.

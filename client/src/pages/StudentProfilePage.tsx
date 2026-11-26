@@ -91,7 +91,7 @@ export function StudentProfilePage() {
   return (
     <div className="flex flex-col gap-6 p-4 sm:p-6 max-w-7xl mx-auto w-full font-mono">
       {/* Breadcrumbs & Header Bar */}
-      <div className="flex flex-col gap-2 pb-2 border-b border-border/80">
+      <div className="flex flex-col gap-2 pb-2 border-b border-border">
         <div className="flex items-center gap-2 text-xs text-muted-foreground uppercase tracking-wider">
           <button
             type="button"
@@ -134,13 +134,13 @@ export function StudentProfilePage() {
 
       {/* Summary KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3.5">
-        <div className="p-4 rounded-2xl border border-border/80 bg-surface shadow-xs flex flex-col justify-between">
+        <div className="p-4 rounded-2xl border border-border bg-surface shadow-xs flex flex-col justify-between">
           <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Exams Attended</span>
           <div className="text-2xl font-black text-foreground mt-2">{kpis.examsAttended}</div>
           <span className="text-[10px] text-muted-foreground mt-1">Total recorded attempts</span>
         </div>
 
-        <div className="p-4 rounded-2xl border border-border/80 bg-surface shadow-xs flex flex-col justify-between">
+        <div className="p-4 rounded-2xl border border-border bg-surface shadow-xs flex flex-col justify-between">
           <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Average Score</span>
           <div className={`text-2xl font-black mt-2 ${
             kpis.avgScore !== null && kpis.avgScore >= 75 ? 'text-emerald-400' : kpis.avgScore !== null && kpis.avgScore >= 50 ? 'text-amber-400' : 'text-rose-400'
@@ -150,7 +150,7 @@ export function StudentProfilePage() {
           <span className="text-[10px] text-muted-foreground mt-1">Across graded papers</span>
         </div>
 
-        <div className="p-4 rounded-2xl border border-border/80 bg-surface shadow-xs flex flex-col justify-between">
+        <div className="p-4 rounded-2xl border border-border bg-surface shadow-xs flex flex-col justify-between">
           <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Average Trust</span>
           <div className={`text-2xl font-black mt-2 ${
             kpis.avgTrust !== null && kpis.avgTrust >= 80 ? 'text-emerald-400' : kpis.avgTrust !== null && kpis.avgTrust >= 60 ? 'text-amber-400' : 'text-rose-400'
@@ -160,7 +160,7 @@ export function StudentProfilePage() {
           <span className="text-[10px] text-muted-foreground mt-1">Zero-trust baseline</span>
         </div>
 
-        <div className="p-4 rounded-2xl border border-border/80 bg-surface shadow-xs flex flex-col justify-between">
+        <div className="p-4 rounded-2xl border border-border bg-surface shadow-xs flex flex-col justify-between">
           <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Total Violations</span>
           <div className={`text-2xl font-black mt-2 ${kpis.totalViolations > 0 ? 'text-rose-400' : 'text-foreground'}`}>
             {kpis.totalViolations}
@@ -168,7 +168,7 @@ export function StudentProfilePage() {
           <span className="text-[10px] text-muted-foreground mt-1">Logged proctoring events</span>
         </div>
 
-        <div className="p-4 rounded-2xl border border-border/80 bg-surface shadow-xs flex flex-col justify-between col-span-2 lg:col-span-1">
+        <div className="p-4 rounded-2xl border border-border bg-surface shadow-xs flex flex-col justify-between col-span-2 lg:col-span-1">
           <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Clean Rate</span>
           <div className="text-2xl font-black text-emerald-400 mt-2">{kpis.cleanRate}%</div>
           <span className="text-[10px] text-muted-foreground mt-1">Fully unflagged exams</span>
@@ -178,8 +178,8 @@ export function StudentProfilePage() {
       {/* Charts Row: Progress Timeline + Violations Donut */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* Progress Chart (Score & Trust per exam over time) */}
-        <div className="lg:col-span-2 p-4 sm:p-5 rounded-2xl border border-border/80 bg-surface shadow-xs flex flex-col">
-          <div className="flex items-center justify-between pb-3 border-b border-border/60">
+        <div className="lg:col-span-2 p-4 sm:p-5 rounded-2xl border border-border bg-surface shadow-xs flex flex-col">
+          <div className="flex items-center justify-between pb-3 border-b border-border">
             <div className="flex items-center gap-2">
               <TrendingUp className="w-4 h-4 text-brand" />
               <h2 className="text-sm font-bold text-foreground">Longitudinal Performance & Trust Trajectory</h2>
@@ -242,8 +242,8 @@ export function StudentProfilePage() {
         </div>
 
         {/* Violations-by-type Donut Chart */}
-        <div className="p-4 sm:p-5 rounded-2xl border border-border/80 bg-surface shadow-xs flex flex-col">
-          <div className="flex items-center justify-between pb-3 border-b border-border/60">
+        <div className="p-4 sm:p-5 rounded-2xl border border-border bg-surface shadow-xs flex flex-col">
+          <div className="flex items-center justify-between pb-3 border-b border-border">
             <div className="flex items-center gap-2">
               <ShieldAlert className="w-4 h-4 text-rose-400" />
               <h2 className="text-sm font-bold text-foreground">Violation Breakdown</h2>
@@ -307,7 +307,7 @@ export function StudentProfilePage() {
             description="Candidate has not participated in any formal proctored examinations yet."
           />
         ) : (
-          <div className="overflow-x-auto rounded-2xl border border-border/80 bg-surface shadow-md">
+          <div className="overflow-x-auto rounded-2xl border border-border bg-surface shadow-md">
             <table className="w-full text-left text-xs text-foreground border-collapse" data-testid="attended-exams-table">
               <thead>
                 <tr className="border-b border-border bg-surface-elevated/70 text-muted-foreground uppercase tracking-wider text-[11px]">

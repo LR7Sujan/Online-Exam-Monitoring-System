@@ -190,7 +190,7 @@ export function SidebarStatusCard({ isCollapsed = false }: SidebarStatusCardProp
             className="z-50 w-72 rounded-2xl border border-border bg-surface dark:bg-[#13141f] p-4 shadow-2xl text-foreground text-xs space-y-3 backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150"
           >
             {/* Popover Header */}
-            <div className="flex items-center justify-between border-b border-border/70 pb-2">
+            <div className="flex items-center justify-between border-b border-border pb-2">
               <div className="flex items-center gap-1.5 font-bold text-foreground">
                 <Activity className="w-4 h-4 text-brand" />
                 <span>Node Telemetry</span>
@@ -219,7 +219,7 @@ export function SidebarStatusCard({ isCollapsed = false }: SidebarStatusCardProp
             {/* Diagnostics Rows */}
             <div className="space-y-2 font-mono text-[11px]">
               {/* 1. WebSocket Telemetry */}
-              <div className="flex items-center justify-between p-2 rounded-xl bg-surface-elevated/70 border border-border/60">
+              <div className="flex items-center justify-between p-2 rounded-xl bg-surface-elevated/70 border border-border">
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <Radio className="w-3.5 h-3.5" />
                   <span>Realtime ({transport})</span>
@@ -245,7 +245,7 @@ export function SidebarStatusCard({ isCollapsed = false }: SidebarStatusCardProp
               </div>
 
               {/* 2. REST API Status */}
-              <div className="flex items-center justify-between p-2 rounded-xl bg-surface-elevated/70 border border-border/60">
+              <div className="flex items-center justify-between p-2 rounded-xl bg-surface-elevated/70 border border-border">
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <Server className="w-3.5 h-3.5" />
                   <span>REST API</span>
@@ -266,7 +266,7 @@ export function SidebarStatusCard({ isCollapsed = false }: SidebarStatusCardProp
               </div>
 
               {/* 3. Database Status */}
-              <div className="flex items-center justify-between p-2 rounded-xl bg-surface-elevated/70 border border-border/60">
+              <div className="flex items-center justify-between p-2 rounded-xl bg-surface-elevated/70 border border-border">
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <Database className="w-3.5 h-3.5" />
                   <span>MySQL DBMS</span>

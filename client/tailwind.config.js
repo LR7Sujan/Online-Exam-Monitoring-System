@@ -1,9 +1,22 @@
+function withColorMix(variableName) {
+  return ({ opacityValue }) => {
+    if (opacityValue !== undefined) {
+      return `color-mix(in srgb, var(${variableName}) calc(${opacityValue} * 100%), transparent)`;
+    }
+    return `var(${variableName})`;
+  };
+}
+
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
   darkMode: 'class',
   theme: {
     extend: {
+      borderColor: {
+        DEFAULT: 'var(--border)',
+        strong: 'var(--border-strong)',
+      },
       colors: {
         // Aurora Bento CSS-Variable Tokens (Dual-Theme)
         background: 'var(--background)',
@@ -13,8 +26,12 @@ export default {
           DEFAULT: 'var(--surface)',
           elevated: 'var(--surface-elevated)',
         },
-        border: 'var(--border)',
-        'bento-border': 'var(--border)',
+        border: {
+          DEFAULT: withColorMix('--border'),
+          strong: withColorMix('--border-strong'),
+        },
+        'border-strong': withColorMix('--border-strong'),
+        'bento-border': withColorMix('--border'),
         muted: {
           DEFAULT: 'var(--muted)',
           foreground: 'var(--muted-foreground)',

@@ -337,7 +337,7 @@ export function PreExamChecklistModal({
           <div className="h-1 bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500" />
 
           {/* Header */}
-          <div className="flex items-center justify-between p-5 border-b border-border/70 bg-surface-elevated/50">
+          <div className="flex items-center justify-between p-5 border-b border-border bg-surface-elevated/50">
             <div>
               <div className="flex items-center gap-2">
                 <ShieldCheck className="w-5 h-5 text-brand" />
@@ -360,7 +360,7 @@ export function PreExamChecklistModal({
           </div>
 
           {/* Stepper Progress Bar */}
-          <div className="px-6 pt-5 pb-3 bg-surface-elevated/40 border-b border-border/60">
+          <div className="px-6 pt-5 pb-3 bg-surface-elevated/40 border-b border-border">
             <div className="flex items-center justify-between gap-2">
               {[
                 { step: 1 as StepKey, label: 'Integrity Rules', completed: rulesAccepted },
@@ -377,7 +377,7 @@ export function PreExamChecklistModal({
                       ? 'bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 text-white font-bold shadow-sm'
                       : s.completed
                       ? 'bg-emerald-500/15 text-emerald-500 border border-emerald-500/30'
-                      : 'bg-surface-elevated text-muted-foreground hover:text-foreground border border-border/60'
+                      : 'bg-surface-elevated text-muted-foreground hover:text-foreground border border-border'
                   }`}
                 >
                   <span className="w-4 h-4 rounded-full bg-current/20 flex items-center justify-center text-[10px]">
@@ -424,7 +424,7 @@ export function PreExamChecklistModal({
               >
                 {isLoading ? (
                   <span className="inline-flex items-center gap-2">
-                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <span className="w-4 h-4 border-2 border-current/30 border-t-current rounded-full animate-spin" />
                     Initializing...
                   </span>
                 ) : (
@@ -458,11 +458,11 @@ export function PreExamChecklistModal({
                 </div>
 
                 <div className="space-y-2.5 rounded-2xl border border-border bg-surface-elevated/60 p-4 text-xs text-foreground font-mono">
-                  <div className="flex items-center justify-between pb-2 border-b border-border/60">
+                  <div className="flex items-center justify-between pb-2 border-b border-border">
                     <span className="text-muted-foreground">Initial Candidate Trust Score:</span>
                     <span className="text-emerald-500 font-bold">100%</span>
                   </div>
-                  <div className="flex items-center justify-between pb-2 border-b border-border/60">
+                  <div className="flex items-center justify-between pb-2 border-b border-border">
                     <span className="text-muted-foreground">Auto-Disqualification Limit:</span>
                     <span className="text-rose-500 font-bold">
                       {exam.min_trust_score ?? 50}%

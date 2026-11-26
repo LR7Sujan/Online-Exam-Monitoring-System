@@ -360,7 +360,7 @@ export function AdminDashboardPage({
                         }}
                         className={`rounded-lg px-3 py-1.5 text-xs font-mono font-medium transition-all ${
                           isPublished
-                            ? 'opacity-50 cursor-not-allowed bg-surface text-muted-foreground/50 border border-border/50'
+                            ? 'opacity-50 cursor-not-allowed bg-surface text-muted-foreground/50 border border-border'
                             : isSelected
                               ? 'bg-brand/15 text-brand border border-brand/30 cursor-pointer'
                               : 'bg-surface-elevated text-muted-foreground hover:text-foreground hover:bg-muted/50 border border-border cursor-pointer'
@@ -496,7 +496,7 @@ export function AdminDashboardPage({
 
             {/* Webcam Video Recording Storage & Retention Card */}
             <div className="rounded-2xl border border-border bg-surface p-5 shadow-sm space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/80 pb-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border pb-3">
                 <div className="flex items-center gap-2.5">
                   <div className="p-2 rounded-xl bg-brand/10 text-brand">
                     <Video className="w-4 h-4" />

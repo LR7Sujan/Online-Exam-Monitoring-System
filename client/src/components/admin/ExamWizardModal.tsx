@@ -810,7 +810,7 @@ export function ExamWizardModal({
         header={
           <div className="p-5 sm:p-6 pb-0">
             {/* Wizard Header + Stepper Progress */}
-            <div className="flex items-center justify-between border-b border-border/70 pb-4">
+            <div className="flex items-center justify-between border-b border-border pb-4">
               <div>
                 <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
                   <Sparkles className="w-5 h-5 text-brand" />
@@ -831,7 +831,7 @@ export function ExamWizardModal({
             </div>
 
             {/* Animated Stepper Tabs */}
-            <div className="grid grid-cols-3 gap-2 border-b border-border/50 py-3 font-mono text-xs">
+            <div className="grid grid-cols-3 gap-2 border-b border-border py-3 font-mono text-xs">
               {[
                 { step: 1, label: '1. Exam Details', isValid: isStep1Valid },
                 { step: 2, label: '2. Windows & Threshold', isValid: isStep2Valid },
@@ -1327,7 +1327,7 @@ export function ExamWizardModal({
               {csvMode ? (
                 <div className="rounded-2xl border border-border bg-surface-elevated p-4 space-y-4 font-mono text-xs">
                   {/* CSV Sub-Tabs & Template Link */}
-                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/70 pb-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3">
                     <div className="flex items-center gap-2 bg-background p-1 rounded-xl border border-border">
                       <button
                         type="button"
@@ -1537,7 +1537,7 @@ export function ExamWizardModal({
                       </div>
 
                       {/* Scrollable Table */}
-                      <div className="max-h-60 overflow-y-auto rounded-xl border border-border/80 overflow-x-auto scrollbar-thin">
+                      <div className="max-h-60 overflow-y-auto rounded-xl border border-border overflow-x-auto scrollbar-thin">
                         <table className="w-full text-left text-xs font-mono">
                           <thead className="bg-surface sticky top-0 border-b border-border text-[11px] text-muted-foreground uppercase">
                             <tr>

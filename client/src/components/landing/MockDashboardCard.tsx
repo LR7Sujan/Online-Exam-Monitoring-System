@@ -105,7 +105,7 @@ export function MockDashboardCard() {
       <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 opacity-80" />
 
       {/* Header telemetry pill */}
-      <div className="flex items-center justify-between pb-3 border-b border-border/70">
+      <div className="flex items-center justify-between pb-3 border-b border-border">
         <div className="flex items-center gap-2">
           <LiveDot color="emerald" size="sm" />
           <span className="text-xs font-mono font-semibold tracking-wide text-foreground">
@@ -119,8 +119,8 @@ export function MockDashboardCard() {
       </div>
 
       {/* Metrics Row */}
-      <div className="grid grid-cols-4 gap-2 py-3 border-b border-border/70 text-center">
-        <div className="p-2 rounded-xl bg-surface-elevated/60 border border-border/40">
+      <div className="grid grid-cols-4 gap-2 py-3 border-b border-border text-center">
+        <div className="p-2 rounded-xl bg-surface-elevated/60 border border-border">
           <div className="text-[10px] font-mono uppercase text-muted-foreground">Examinees</div>
           <motion.div
             key={candidates}
@@ -133,7 +133,7 @@ export function MockDashboardCard() {
           <div className="text-[9px] text-emerald-500 font-medium">● 100% active</div>
         </div>
 
-        <div className="p-2 rounded-xl bg-surface-elevated/60 border border-border/40">
+        <div className="p-2 rounded-xl bg-surface-elevated/60 border border-border">
           <div className="text-[10px] font-mono uppercase text-muted-foreground">Avg Trust</div>
           <motion.div
             key={trustScore}
@@ -146,7 +146,7 @@ export function MockDashboardCard() {
           <div className="text-[9px] text-muted-foreground">Radial gauge</div>
         </div>
 
-        <div className="p-2 rounded-xl bg-surface-elevated/60 border border-border/40">
+        <div className="p-2 rounded-xl bg-surface-elevated/60 border border-border">
           <div className="text-[10px] font-mono uppercase text-muted-foreground">Deflected</div>
           <motion.div
             key={violations}
@@ -159,7 +159,7 @@ export function MockDashboardCard() {
           <div className="text-[9px] text-rose-400 font-semibold">Auto-deducted</div>
         </div>
 
-        <div className="p-2 rounded-xl bg-surface-elevated/60 border border-border/40">
+        <div className="p-2 rounded-xl bg-surface-elevated/60 border border-border">
           <div className="text-[10px] font-mono uppercase text-muted-foreground">DB Lock</div>
           <div className="text-base sm:text-lg font-bold font-mono text-indigo-400 dark:text-indigo-400 tracking-tight">ACID</div>
           <div className="text-[9px] text-muted-foreground font-mono">FOR UPDATE</div>
@@ -179,7 +179,7 @@ export function MockDashboardCard() {
         </div>
 
         {/* Mini simulated camera box with HUD overlay */}
-        <div className="relative rounded-xl border border-border/80 bg-background/90 p-2.5 overflow-hidden">
+        <div className="relative rounded-xl border border-border bg-background/90 p-2.5 overflow-hidden">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500/20 to-violet-500/30 border border-brand/30 flex items-center justify-center text-brand font-bold text-xs shrink-0">

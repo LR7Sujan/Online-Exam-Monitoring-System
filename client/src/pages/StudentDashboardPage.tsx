@@ -136,7 +136,7 @@ export function StudentDashboardPage() {
   return (
     <div className="space-y-8 pb-16">
       {/* Candidate Hero Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border/70 pb-6">
+      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border pb-6">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <GraduationCap className="w-5 h-5 text-brand" />
@@ -329,7 +329,7 @@ export function StudentDashboardPage() {
                       </div>
 
                       {/* Countdown Timer Display */}
-                      <div className="mt-4 pt-3 border-t border-border/70 flex items-center justify-between text-xs font-mono">
+                      <div className="mt-4 pt-3 border-t border-border flex items-center justify-between text-xs font-mono">
                         <span className="text-muted-foreground flex items-center gap-1.5">
                           <Clock className="w-3.5 h-3.5 text-brand" />
                           {isUpcoming

@@ -361,7 +361,7 @@ type DemoStatus = 'loading' | 'loaded' | 'empty' | 'error';
                       <div
                         key={idx}
                         data-testid="interactive-skeleton"
-                        className="min-h-[52px] p-3.5 rounded-2xl border border-border/80 bg-surface-elevated/50 flex items-center justify-between gap-4"
+                        className="min-h-[52px] p-3.5 rounded-2xl border border-border bg-surface-elevated/50 flex items-center justify-between gap-4"
                       >
                         <div className="flex items-center gap-3 min-w-0">
                           <Skeleton variant="circle" className="w-9 h-9 shrink-0" />
@@ -587,7 +587,7 @@ type DemoStatus = 'loading' | 'loaded' | 'empty' | 'error';
                   </div>
                 </div>
 
-                <div className="pt-3 border-t border-border/70 flex items-center justify-between text-[11px] font-mono text-muted-foreground">
+                <div className="pt-3 border-t border-border flex items-center justify-between text-[11px] font-mono text-muted-foreground">
                   <span>MediaPipe Vision v0.10.x</span>
                   <span className="text-emerald-500 font-semibold">99.8% Facial Lock</span>
                 </div>
@@ -636,7 +636,7 @@ type DemoStatus = 'loading' | 'loaded' | 'empty' | 'error';
                   </div>
                 </div>
 
-                <div className="pt-2 border-t border-border/70 flex items-center justify-between text-[11px] font-mono text-muted-foreground">
+                <div className="pt-2 border-t border-border flex items-center justify-between text-[11px] font-mono text-muted-foreground">
                   <span>Sub-20ms WebSocket cluster</span>
                   <span className="text-brand font-semibold">Row-level Lock Active</span>
                 </div>

@@ -38,8 +38,8 @@ export function ComponentPreview({
     previewTheme === 'light'
       ? 'bg-slate-50 text-slate-900 border-slate-200'
       : previewTheme === 'dark'
-      ? 'bg-[#0b0c13] text-slate-100 border-white/10'
-      : 'bg-surface-elevated/40 text-foreground border-border/60';
+      ? 'bg-[#0b0c13] text-slate-100 border-border'
+      : 'bg-surface-elevated/40 text-foreground border-border';
 
   return (
     <div
@@ -65,7 +65,7 @@ export function ComponentPreview({
         {/* Controls: Preview / Code tabs + Light/Dark simulation toggle + Copy */}
         <div className="flex items-center gap-2 shrink-0">
           {tab === 'preview' && (
-            <div className="flex items-center bg-muted/60 rounded-lg p-0.5 border border-border/60 text-[11px] font-mono">
+            <div className="flex items-center bg-muted/60 rounded-lg p-0.5 border border-border text-[11px] font-mono">
               <button
                 type="button"
                 onClick={() => setPreviewTheme('auto')}
@@ -106,7 +106,7 @@ export function ComponentPreview({
           )}
 
           {/* Segmented Tab: Preview / Code */}
-          <div className="flex items-center bg-muted/80 rounded-lg p-0.5 border border-border/80">
+          <div className="flex items-center bg-muted/80 rounded-lg p-0.5 border border-border">
             <button
               type="button"
               onClick={() => setTab('preview')}
@@ -164,7 +164,7 @@ export function ComponentPreview({
           <div className="w-full flex items-center justify-center">{children}</div>
         </div>
       ) : (
-        <div className="relative bg-[#090a10] text-slate-100 p-4 font-mono text-xs overflow-x-auto leading-relaxed border-t border-border/40 max-h-[360px] overflow-y-auto">
+        <div className="relative bg-[#090a10] text-slate-100 p-4 font-mono text-xs overflow-x-auto leading-relaxed border-t border-border max-h-[360px] overflow-y-auto">
           <pre className="selection:bg-brand/30">
             <code>{code.trim()}</code>
           </pre>

@@ -547,7 +547,7 @@ export function AppShell() {
 
                       {/* Interactive Hover Flyout Sub-menu (pointer-events enabled on hover) */}
                       <div className="opacity-0 group-hover/navitem:opacity-100 group-hover/navitem:pointer-events-auto transition-opacity duration-150 absolute left-full ml-3 top-1/2 -translate-y-1/2 z-[80] p-2 rounded-xl border border-border bg-surface dark:bg-[#12131d] text-foreground text-xs shadow-2xl pointer-events-none whitespace-nowrap min-w-[210px] max-h-[80vh] overflow-y-auto space-y-1 before:absolute before:-left-3.5 before:top-0 before:bottom-0 before:w-4 before:content-['']">
-                        <div className="flex items-center justify-between px-2.5 py-1.5 border-b border-border/60 font-semibold text-xs">
+                        <div className="flex items-center justify-between px-2.5 py-1.5 border-b border-border font-semibold text-xs">
                           <span>{item.label}</span>
                           {item.badge !== undefined && (
                             <span className="px-1.5 py-0.2 rounded-full text-[9px] font-mono font-semibold bg-rose-500/15 text-rose-500 border border-rose-500/30">
@@ -682,7 +682,7 @@ export function AppShell() {
                           animate={{ opacity: 1, height: 'auto' }}
                           exit={{ opacity: 0, height: 0 }}
                           transition={{ duration: 0.2 }}
-                          className="ml-5 pl-3 border-l-2 border-border/70 space-y-0.5 pt-1 overflow-hidden"
+                          className="ml-5 pl-3 border-l-2 border-border space-y-0.5 pt-1 overflow-hidden"
                         >
                           {item.children?.map((sub) => {
                             const isSubActive =
@@ -742,7 +742,7 @@ export function AppShell() {
             className="fixed z-50 w-72 max-h-[70vh] flex flex-col rounded-2xl border border-border bg-surface dark:bg-[#12131d] shadow-2xl p-3 select-none"
           >
             {/* Flyout Header */}
-            <div className="flex items-center justify-between pb-2 border-b border-border/80">
+            <div className="flex items-center justify-between pb-2 border-b border-border">
               <div className="flex items-center gap-2">
                 <div className="p-1.5 rounded-lg bg-brand/10 border border-brand/20 text-brand">
                   <Palette className="w-4 h-4" />
@@ -991,7 +991,7 @@ export function AppShell() {
                   className="fixed sm:absolute right-3 sm:right-0 top-16 sm:top-full sm:mt-2 w-[calc(100vw-1.5rem)] sm:w-72 max-w-sm p-2.5"
                 >
                   {/* Top user card: avatar + full name + email + role & ID badges */}
-                  <div className="p-3 bg-surface-elevated/50 dark:bg-[#181926]/70 rounded-xl border border-border/70 flex items-start gap-3">
+                  <div className="p-3 bg-surface-elevated/50 dark:bg-[#181926]/70 rounded-xl border border-border flex items-start gap-3">
                     <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500/20 to-fuchsia-500/20 border border-brand/40 flex items-center justify-center font-bold text-sm text-foreground shrink-0 shadow-sm">
                       {user.fullName.charAt(0).toUpperCase()}
                     </div>
@@ -1197,7 +1197,7 @@ export function AppShell() {
                         </div>
 
                         {hasChildren && isGroupOpen && (
-                          <div className="pl-6 pr-2 space-y-0.5 border-l-2 border-border/70 ml-4 py-1">
+                          <div className="pl-6 pr-2 space-y-0.5 border-l-2 border-border ml-4 py-1">
                             {item.children?.map((sub) => (
                               <NavLink
                                 key={sub.to}

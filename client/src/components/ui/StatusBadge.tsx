@@ -33,7 +33,7 @@ const badgeStyles: Record<string, string> = {
 
 export function StatusBadge({ value }: StatusBadgeProps) {
   const style =
-    badgeStyles[value] ?? 'border-white/15 bg-white/5 text-slate-300';
+    badgeStyles[value] ?? 'border-border bg-surface-elevated text-muted-foreground';
 
   return (
     <span

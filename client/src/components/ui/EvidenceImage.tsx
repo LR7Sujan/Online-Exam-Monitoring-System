@@ -196,7 +196,7 @@ export function EvidenceImage({
     <>
       <div
         data-testid="evidence-image-container"
-        className={`evidence-image-wrapper relative overflow-hidden rounded-[12px] border border-border/80 bg-[#0c0d12] dark:bg-[#090a0f] text-foreground flex items-center justify-center min-w-0 max-w-full ${enableLightbox ? 'group cursor-zoom-in' : ''
+        className={`evidence-image-wrapper relative overflow-hidden rounded-[12px] border border-border bg-[#0c0d12] dark:bg-[#090a0f] text-foreground flex items-center justify-center min-w-0 max-w-full ${enableLightbox ? 'group cursor-zoom-in' : ''
           } ${containerClassName}`}
         onClick={enableLightbox ? () => setIsLightboxOpen(true) : undefined}
         style={{
@@ -273,7 +273,7 @@ export function EvidenceImage({
             title="Click to view enlarged snapshot"
             className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none z-10"
           >
-            <div className="p-2 rounded-xl bg-black/70 backdrop-blur-md text-white border border-white/20 shadow-xl flex items-center gap-1.5 text-xs font-mono">
+            <div className="p-2 rounded-xl bg-black/70 backdrop-blur-md text-white border border-border shadow-xl flex items-center gap-1.5 text-xs font-mono">
               <Maximize2 className="w-3.5 h-3.5 text-brand" />
               <span>Enlarge Snapshot</span>
             </div>
@@ -299,7 +299,7 @@ export function EvidenceImage({
               onClick={(e) => e.stopPropagation()}
             >
               {/* Lightbox Header */}
-              <div className="flex items-center justify-between border-b border-border/70 pb-3">
+              <div className="flex items-center justify-between border-b border-border pb-3">
                 <div className="flex items-center gap-2">
                   <div className="p-1.5 rounded-lg bg-rose-500/10 text-rose-500 border border-rose-500/20">
                     <ShieldAlert className="w-4 h-4" />
@@ -327,7 +327,7 @@ export function EvidenceImage({
               </div>
 
               {/* Lightbox Image Container */}
-              <div className="relative rounded-xl border border-border/80 bg-black/60 overflow-hidden max-h-[75vh] flex items-center justify-center p-1">
+              <div className="relative rounded-xl border border-border bg-black/60 overflow-hidden max-h-[75vh] flex items-center justify-center p-1">
                 <img
                   src={objectUrl}
                   alt={meaningfulAlt}

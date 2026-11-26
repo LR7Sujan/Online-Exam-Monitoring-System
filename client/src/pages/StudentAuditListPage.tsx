@@ -129,7 +129,7 @@ export function StudentAuditListPage() {
   return (
     <div className="flex flex-col gap-6 p-4 sm:p-6 max-w-7xl mx-auto w-full font-mono">
       {/* Top Banner / Breadcrumb & Title */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-border/80">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-border">
         <div>
           <div className="flex items-center gap-2 text-xs text-muted-foreground uppercase tracking-wider mb-1">
             <span>Surveillance</span>
@@ -169,7 +169,7 @@ export function StudentAuditListPage() {
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="flex flex-col gap-3 p-4 rounded-2xl border border-border/80 bg-surface shadow-xs">
+      <div className="flex flex-col gap-3 p-4 rounded-2xl border border-border bg-surface shadow-xs">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {/* Search bar */}
           <div className="relative">
@@ -254,7 +254,7 @@ export function StudentAuditListPage() {
         </div>
 
         {(search || integrityStatus !== 'ALL' || attendance !== 'ALL' || trustMin > 0 || trustMax < 100) && (
-          <div className="flex items-center justify-between text-xs pt-2 border-t border-border/40">
+          <div className="flex items-center justify-between text-xs pt-2 border-t border-border">
             <span className="text-muted-foreground">Active filters applied</span>
             <button
               type="button"
@@ -287,7 +287,7 @@ export function StudentAuditListPage() {
         />
       ) : (
         <div className="flex flex-col gap-4">
-          <div className="overflow-x-auto rounded-2xl border border-border/80 bg-surface shadow-md">
+          <div className="overflow-x-auto rounded-2xl border border-border bg-surface shadow-md">
             <table className="w-full text-left text-xs text-foreground border-collapse" data-testid="student-audit-table">
               <thead>
                 <tr className="border-b border-border bg-surface-elevated/70 text-muted-foreground uppercase tracking-wider text-[11px]">

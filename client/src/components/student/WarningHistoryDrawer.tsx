@@ -179,7 +179,7 @@ export function WarningHistoryDrawer({
                           </div>
                         )}
 
-                        <div className="pt-2 border-t border-border/70 flex items-center justify-between text-[11px] font-mono">
+                        <div className="pt-2 border-t border-border flex items-center justify-between text-[11px] font-mono">
                           <div className="flex items-center gap-1.5 text-muted-foreground">
                             <Clock className="w-3.5 h-3.5" />
                             <span>

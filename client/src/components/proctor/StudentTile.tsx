@@ -192,7 +192,7 @@ export const StudentTile = memo(function StudentTile({
       </div>
 
       {/* Body Row: 56px TrustRing + Score & Min on two lines | Right violation stack */}
-      <div className="mt-2.5 rounded-xl border border-border/80 bg-surface-elevated/70 p-2 min-w-0 overflow-hidden">
+      <div className="mt-2.5 rounded-xl border border-border bg-surface-elevated/70 p-2 min-w-0 overflow-hidden">
         <div className="flex flex-wrap items-center justify-between gap-2 min-w-0">
           {/* Left Cluster: TrustRing (fixed 56px slot) + Score/Min */}
           <div className="flex items-center gap-2 min-w-0">
@@ -253,7 +253,7 @@ export const StudentTile = memo(function StudentTile({
       </div>
 
       {/* Footer Row: Last activity with relative time format + Inspect on one line */}
-      <div className="mt-2.5 pt-2 border-t border-border/60 flex items-center justify-between gap-2 min-w-0 text-xs font-mono text-muted-foreground">
+      <div className="mt-2.5 pt-2 border-t border-border flex items-center justify-between gap-2 min-w-0 text-xs font-mono text-muted-foreground">
         <div
           className="flex items-center gap-1.5 min-w-0 truncate"
           title={`Last infraction: ${exactTime}`}

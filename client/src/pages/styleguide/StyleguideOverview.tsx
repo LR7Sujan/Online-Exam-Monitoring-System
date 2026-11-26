@@ -114,7 +114,7 @@ export function StyleguideOverview() {
                   </div>
 
                   {/* Tag Chips pinned to bottom */}
-                  <div className="flex flex-wrap gap-1.5 pt-4 mt-4 border-t border-border/50">
+                  <div className="flex flex-wrap gap-1.5 pt-4 mt-4 border-t border-border">
                     {section.tags.slice(0, 3).map((tag) => (
                       <span
                         key={tag}

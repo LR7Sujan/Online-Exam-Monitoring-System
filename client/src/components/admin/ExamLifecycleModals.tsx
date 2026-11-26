@@ -335,7 +335,7 @@ export function ExamStatusMenu({
             <span>Publish</span>
           </button>
 
-          <div className="border-t border-border/60 my-1" />
+          <div className="border-t border-border my-1" />
 
           <button
             type="button"

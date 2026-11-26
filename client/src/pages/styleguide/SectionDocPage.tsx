@@ -113,7 +113,7 @@ export function SectionDocPage({ slug, toc = [], children }: SectionDocPageProps
               <Bookmark className="w-3.5 h-3.5 text-brand" />
               <span>On this page</span>
             </div>
-            <ul className="space-y-1.5 border-l border-border/80 pl-3">
+            <ul className="space-y-1.5 border-l border-border pl-3">
               {toc.map((item) => (
                 <li key={item.id}>
                   <a

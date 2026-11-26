@@ -316,7 +316,7 @@ export function StudentDetailDrawer({ sessionId, onClose }: StudentDetailDrawerP
           className="relative z-10 flex h-full w-full max-w-2xl flex-col border-l border-border bg-surface/98 backdrop-blur-2xl shadow-2xl overflow-hidden"
         >
           {/* Drawer Top Bar */}
-          <div className="flex items-center justify-between border-b border-border/70 bg-surface-elevated/60 p-5">
+          <div className="flex items-center justify-between border-b border-border bg-surface-elevated/60 p-5">
             <div className="flex items-center gap-3">
               <motion.div
                 layoutId={`student-avatar-${sessionId}`}
@@ -363,7 +363,7 @@ export function StudentDetailDrawer({ sessionId, onClose }: StudentDetailDrawerP
               </div>
 
               <div className="sm:col-span-2 space-y-2 text-xs font-mono">
-                <div className="flex justify-between border-b border-border/60 pb-1.5">
+                <div className="flex justify-between border-b border-border pb-1.5">
                   <span className="text-muted-foreground">Current Trust Rating:</span>
                   <span
                     className={
@@ -377,11 +377,11 @@ export function StudentDetailDrawer({ sessionId, onClose }: StudentDetailDrawerP
                     {currentScore}%
                   </span>
                 </div>
-                <div className="flex justify-between border-b border-border/60 pb-1.5">
+                <div className="flex justify-between border-b border-border pb-1.5">
                   <span className="text-muted-foreground">Termination Limit:</span>
                   <span className="text-rose-500 font-bold">{minThreshold}%</span>
                 </div>
-                <div className="flex justify-between border-b border-border/60 pb-1.5">
+                <div className="flex justify-between border-b border-border pb-1.5">
                   <span className="text-muted-foreground">Logged Violations:</span>
                   <span className="text-foreground font-bold">
                     {session?.total_violations ?? logs.length} (
@@ -646,7 +646,7 @@ export function StudentDetailDrawer({ sessionId, onClose }: StudentDetailDrawerP
                   Loading recording telemetry...
                 </div>
               ) : !recording ? (
-                <div className="py-5 text-center text-muted-foreground rounded-xl border border-dashed border-border/80 bg-surface/50">
+                <div className="py-5 text-center text-muted-foreground rounded-xl border border-dashed border-border bg-surface/50">
                   <Video className="w-6 h-6 mx-auto mb-1 text-muted-foreground/40" />
                   <span>No recording stream available for this session</span>
                 </div>
@@ -685,7 +685,7 @@ export function StudentDetailDrawer({ sessionId, onClose }: StudentDetailDrawerP
                   </div>
 
                   {/* Controls & Metadata */}
-                  <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-border/60">
+                  <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-border">
                     {/* Playback speed selector */}
                     <div className="flex items-center gap-1.5">
                       <span className="text-[10px] text-muted-foreground">SPEED:</span>
@@ -792,7 +792,7 @@ export function StudentDetailDrawer({ sessionId, onClose }: StudentDetailDrawerP
                       <div
                         key={`audit-log-${log.log_id ?? idx}-${idx}`}
                         className={`rounded-xl border p-3 transition-colors ${isDismissed
-                          ? 'border-border/60 bg-surface/50 opacity-60'
+                          ? 'border-border bg-surface/50 opacity-60'
                           : 'border-border bg-surface'
                           }`}
                       >
@@ -880,7 +880,7 @@ export function StudentDetailDrawer({ sessionId, onClose }: StudentDetailDrawerP
                           const ackedAt = matchingWarning.acknowledged_at ?? matchingWarning.acknowledgedAt;
                           const warningIdx = warnings.indexOf(matchingWarning) + 1;
                           return (
-                            <div className="mt-2.5 pt-2 border-t border-border/60 flex items-center justify-between text-[11px] font-mono">
+                            <div className="mt-2.5 pt-2 border-t border-border flex items-center justify-between text-[11px] font-mono">
                               <span className="text-amber-500 font-bold">
                                 Warning #{warningIdx}
                               </span>
@@ -909,7 +909,7 @@ export function StudentDetailDrawer({ sessionId, onClose }: StudentDetailDrawerP
           </div>
 
           {/* Drawer Footer Actions: Warn, Force Terminate, Reinstate */}
-          <div className="border-t border-border/70 bg-surface-elevated/70 p-4 sm:p-5 flex items-center justify-between gap-3">
+          <div className="border-t border-border bg-surface-elevated/70 p-4 sm:p-5 flex items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <button
                 type="button"
@@ -1140,7 +1140,7 @@ export function StudentDetailDrawer({ sessionId, onClose }: StudentDetailDrawerP
               key={`paper-q-${q.questionId ?? qIdx}-${qIdx}`}
               className="rounded-2xl border border-border bg-surface p-4 space-y-3 text-xs"
             >
-              <div className="flex items-center justify-between pb-2 border-b border-border/70">
+              <div className="flex items-center justify-between pb-2 border-b border-border">
                 <div className="flex items-center gap-2 font-mono">
                   <span className="font-bold text-brand text-sm">
                     Q{q.displayNumber}

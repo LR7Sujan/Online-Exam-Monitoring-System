@@ -93,7 +93,7 @@ const statusConfig: Record<
     label: 'CONFIRMED',
   },
   DISMISSED: {
-    border: 'border-zinc-200 dark:border-zinc-800',
+    border: 'border-border',
     bg: 'bg-zinc-100 dark:bg-zinc-800/60',
     text: 'text-zinc-600 dark:text-zinc-400',
     dotColor: 'gray',
@@ -132,7 +132,7 @@ export function StatusPill({
 }: StatusPillProps) {
   const norm = (status || '').toUpperCase().replace(/[\s-]/g, '_');
   const cfg = statusConfig[norm] ?? {
-    border: 'border-zinc-200 dark:border-zinc-800',
+    border: 'border-border',
     bg: 'bg-zinc-100 dark:bg-zinc-800',
     text: 'text-zinc-600 dark:text-zinc-400',
     dotColor: 'gray' as const,

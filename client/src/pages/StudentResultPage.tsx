@@ -180,7 +180,7 @@ export function StudentResultPage() {
             <div className="absolute -top-16 -right-16 w-64 h-64 rounded-full bg-rose-500/15 blur-3xl pointer-events-none" />
           )}
 
-          <div className="flex flex-wrap items-start justify-between gap-4 pb-6 border-b border-border/70">
+          <div className="flex flex-wrap items-start justify-between gap-4 pb-6 border-b border-border">
             <div className="space-y-1">
               <div className="flex items-center gap-2">
                 <Award className="w-5 h-5 text-brand" />

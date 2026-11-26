@@ -118,7 +118,7 @@ export function LandingPage() {
           </div>
 
           {/* Live DBMS Tech Badges */}
-          <div className="grid grid-cols-3 gap-3 sm:gap-4 border-t border-border/70 pt-4">
+          <div className="grid grid-cols-3 gap-3 sm:gap-4 border-t border-border pt-4">
             <div>
               <div className="text-xl sm:text-2xl font-bold font-mono text-brand">ACID</div>
               <div className="text-xs text-muted-foreground font-mono leading-tight whitespace-normal mt-0.5">
@@ -217,7 +217,7 @@ export function LandingPage() {
                   </p>
                 </div>
 
-                <div className="pt-3 border-t border-border/50 text-[11px] font-mono text-brand flex items-center gap-1">
+                <div className="pt-3 border-t border-border text-[11px] font-mono text-brand flex items-center gap-1">
                   <span>Automated Protocol</span>
                   <ArrowRight className="w-3 h-3" />
                 </div>
@@ -264,7 +264,7 @@ export function LandingPage() {
                 </span>
               </div>
 
-              <div className="mt-3.5 pt-2.5 border-t border-border/60 flex items-center justify-between">
+              <div className="mt-3.5 pt-2.5 border-t border-border flex items-center justify-between">
                 <SeverityBadge severity={item.severity} size="sm" />
                 <span className="text-[10px] font-mono text-muted-foreground">
                   Auto-Deduct
@@ -314,7 +314,7 @@ export function LandingPage() {
       {/* ============================================================== */}
       {/* 7. FOOTER                                                      */}
       {/* ============================================================== */}
-      <footer className="pt-6 border-t border-border/60 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-mono text-muted-foreground">
+      <footer className="pt-6 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-mono text-muted-foreground">
         <div className="flex items-center gap-2">
           <LiveDot color="emerald" size="sm" />
           <span>All systems nominal • MySQL 8.0 • WSS cluster</span>

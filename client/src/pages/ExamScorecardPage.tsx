@@ -143,7 +143,7 @@ export function ExamScorecardPage() {
   return (
     <div className="flex flex-col gap-6 p-4 sm:p-6 max-w-7xl mx-auto w-full font-mono print:p-0 print:max-w-none">
       {/* Breadcrumbs & Actions Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-border/80 print:hidden">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-border print:hidden">
         <div className="flex items-center gap-2 text-xs text-muted-foreground uppercase tracking-wider flex-wrap">
           <button
             type="button"
@@ -189,7 +189,7 @@ export function ExamScorecardPage() {
       </div>
 
       {/* Main Examination Header Banner */}
-      <div className="p-5 sm:p-6 rounded-2xl border border-border/80 bg-surface shadow-md flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+      <div className="p-5 sm:p-6 rounded-2xl border border-border bg-surface shadow-md flex flex-col lg:flex-row lg:items-center justify-between gap-6">
         <div className="flex flex-col gap-2 min-w-0">
           <div className="flex items-center gap-3 flex-wrap">
             <span className="text-xs px-2.5 py-0.5 rounded-md font-bold border border-brand/40 bg-brand/10 text-brand">
@@ -261,7 +261,7 @@ export function ExamScorecardPage() {
 
       {/* Score & Ranking Bento Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-6 gap-3.5">
-        <div className="p-4 rounded-2xl border border-border/80 bg-surface shadow-xs flex flex-col justify-between">
+        <div className="p-4 rounded-2xl border border-border bg-surface shadow-xs flex flex-col justify-between">
           <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Score / Total</span>
           <div className="text-2xl font-black text-foreground mt-1">
             {score.rawScore} <span className="text-sm font-normal text-muted-foreground">/ {score.totalMarks}</span>
@@ -269,7 +269,7 @@ export function ExamScorecardPage() {
           <span className="text-[10px] text-muted-foreground mt-1">Raw points scored</span>
         </div>
 
-        <div className="p-4 rounded-2xl border border-border/80 bg-surface shadow-xs flex flex-col justify-between">
+        <div className="p-4 rounded-2xl border border-border bg-surface shadow-xs flex flex-col justify-between">
           <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Percentage</span>
           <div className={`text-2xl font-black mt-1 ${
             score.percentage >= 75 ? 'text-emerald-400' : score.percentage >= 50 ? 'text-amber-400' : 'text-rose-400'
@@ -279,7 +279,7 @@ export function ExamScorecardPage() {
           <span className="text-[10px] text-muted-foreground mt-1">Exam Average: {score.examAverage}%</span>
         </div>
 
-        <div className="p-4 rounded-2xl border border-border/80 bg-surface shadow-xs flex flex-col justify-between">
+        <div className="p-4 rounded-2xl border border-border bg-surface shadow-xs flex flex-col justify-between">
           <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Cohort Rank</span>
           <div className="text-2xl font-black text-brand mt-1">
             #{score.examRank} <span className="text-sm font-normal text-muted-foreground">/ {score.totalAttendees}</span>
@@ -287,7 +287,7 @@ export function ExamScorecardPage() {
           <span className="text-[10px] text-muted-foreground mt-1">Among all candidates</span>
         </div>
 
-        <div className="p-4 rounded-2xl border border-border/80 bg-surface shadow-xs flex flex-col justify-between">
+        <div className="p-4 rounded-2xl border border-border bg-surface shadow-xs flex flex-col justify-between">
           <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Correct Answers</span>
           <div className="text-2xl font-black text-emerald-400 mt-1 flex items-center gap-1.5">
             <CheckCircle2 className="w-5 h-5 text-emerald-400" />
@@ -296,7 +296,7 @@ export function ExamScorecardPage() {
           <span className="text-[10px] text-muted-foreground mt-1">Validated correct</span>
         </div>
 
-        <div className="p-4 rounded-2xl border border-border/80 bg-surface shadow-xs flex flex-col justify-between">
+        <div className="p-4 rounded-2xl border border-border bg-surface shadow-xs flex flex-col justify-between">
           <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Wrong Answers</span>
           <div className="text-2xl font-black text-rose-400 mt-1 flex items-center gap-1.5">
             <XCircle className="w-5 h-5 text-rose-400" />
@@ -305,7 +305,7 @@ export function ExamScorecardPage() {
           <span className="text-[10px] text-muted-foreground mt-1">Incorrect selections</span>
         </div>
 
-        <div className="p-4 rounded-2xl border border-border/80 bg-surface shadow-xs flex flex-col justify-between">
+        <div className="p-4 rounded-2xl border border-border bg-surface shadow-xs flex flex-col justify-between">
           <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Unanswered</span>
           <div className="text-2xl font-black text-muted-foreground mt-1 flex items-center gap-1.5">
             <HelpCircle className="w-5 h-5 text-muted-foreground" />
@@ -325,7 +325,7 @@ export function ExamScorecardPage() {
           <span className="text-xs text-muted-foreground">Mapped through student's unique shuffled paper layout</span>
         </div>
 
-        <div className="overflow-x-auto rounded-2xl border border-border/80 bg-surface shadow-md">
+        <div className="overflow-x-auto rounded-2xl border border-border bg-surface shadow-md">
           <table className="w-full text-left text-xs text-foreground border-collapse" data-testid="scorecard-questions-table">
             <thead>
               <tr className="border-b border-border bg-surface-elevated/70 text-muted-foreground uppercase tracking-wider text-[11px]">
@@ -345,7 +345,7 @@ export function ExamScorecardPage() {
                   </td>
                   <td className="p-3.5 max-w-lg">
                     <div className="font-semibold text-foreground">{q.questionText}</div>
-                    <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-2 text-[11px] text-muted-foreground bg-surface-elevated/50 p-2 rounded-lg border border-border/40">
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-2 text-[11px] text-muted-foreground bg-surface-elevated/50 p-2 rounded-lg border border-border">
                       <div><strong className="text-brand">A:</strong> {q.options.A}</div>
                       <div><strong className="text-brand">B:</strong> {q.options.B}</div>
                       <div><strong className="text-brand">C:</strong> {q.options.C}</div>
@@ -399,7 +399,7 @@ export function ExamScorecardPage() {
         </h2>
 
         {timeline.length === 0 ? (
-          <div className="p-6 rounded-2xl border border-border/80 bg-surface shadow-xs flex items-center justify-center text-xs text-muted-foreground">
+          <div className="p-6 rounded-2xl border border-border bg-surface shadow-xs flex items-center justify-center text-xs text-muted-foreground">
             Zero violations or warnings detected for this examination session.
           </div>
         ) : (
@@ -409,7 +409,7 @@ export function ExamScorecardPage() {
               return (
                 <div
                   key={item.id}
-                  className="p-4 rounded-2xl border border-border/80 bg-surface shadow-xs flex flex-col justify-between gap-3"
+                  className="p-4 rounded-2xl border border-border bg-surface shadow-xs flex flex-col justify-between gap-3"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div>
@@ -471,14 +471,14 @@ export function ExamScorecardPage() {
                       </div>
                     </div>
                   ) : (
-                    <div className="h-20 rounded-xl border border-border/50 bg-surface-elevated flex items-center justify-center text-[11px] text-muted-foreground italic">
+                    <div className="h-20 rounded-xl border border-border bg-surface-elevated flex items-center justify-center text-[11px] text-muted-foreground italic">
                       No snapshot capture
                     </div>
                   )}
 
                   {/* Reviewed State & Metadata (no buttons once reviewed) */}
                   {item.type === 'VIOLATION' && item.status !== 'PENDING' && (
-                    <div className="text-[11px] font-mono text-muted-foreground pt-1.5 border-t border-border/40 flex items-center justify-between">
+                    <div className="text-[11px] font-mono text-muted-foreground pt-1.5 border-t border-border flex items-center justify-between">
                       <span className="text-muted-foreground">Reviewed:</span>
                       <span className="font-semibold text-foreground truncate max-w-[200px]" title={item.reviewNotes ?? undefined}>
                         {item.reviewerName || 'Staff'}
@@ -494,7 +494,7 @@ export function ExamScorecardPage() {
 
                   {/* Proctor Actions (Only for PENDING violations with valid logId) */}
                   {item.type === 'VIOLATION' && item.status === 'PENDING' && (
-                    <div className="flex items-center gap-2 pt-2 border-t border-border/40">
+                    <div className="flex items-center gap-2 pt-2 border-t border-border">
                       <button
                         type="button"
                         disabled={reviewMutation.isPending && pendingLogId === logIdNum}
@@ -527,7 +527,7 @@ export function ExamScorecardPage() {
             <Clock className="w-4 h-4 text-brand" />
             <span>Time Extension Request History ({extensionHistory.length})</span>
           </h2>
-          <div className="overflow-x-auto rounded-2xl border border-border/80 bg-surface shadow-xs">
+          <div className="overflow-x-auto rounded-2xl border border-border bg-surface shadow-xs">
             <table className="w-full text-left text-xs text-foreground border-collapse">
               <thead>
                 <tr className="border-b border-border bg-surface-elevated/70 text-muted-foreground uppercase text-[11px]">
@@ -578,7 +578,7 @@ export function ExamScorecardPage() {
         </h2>
 
         {recording.hasRecording && recording.recordingId ? (
-          <div className="p-5 rounded-2xl border border-border/80 bg-surface shadow-md flex flex-col gap-4">
+          <div className="p-5 rounded-2xl border border-border bg-surface shadow-md flex flex-col gap-4">
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="font-bold text-sm text-foreground">Continuous Webcam Video Capture</h3>
@@ -606,7 +606,7 @@ export function ExamScorecardPage() {
             </div>
           </div>
         ) : (
-          <div className="p-6 rounded-2xl border border-border/80 bg-surface shadow-xs flex flex-col items-center justify-center text-center gap-2">
+          <div className="p-6 rounded-2xl border border-border bg-surface shadow-xs flex flex-col items-center justify-center text-center gap-2">
             <Video className="w-8 h-8 text-muted-foreground/60 mb-1" />
             <span className="font-bold text-sm text-foreground">No Video Recording Available</span>
             <span className="text-xs text-muted-foreground max-w-md">{recording.message}</span>

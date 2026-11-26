@@ -25,7 +25,7 @@ const glowClasses: Record<GlassGlow, string> = {
 };
 
 const hoverGlowClasses: Record<GlassGlow, string> = {
-  none: 'hover:border-zinc-300 dark:hover:border-zinc-700',
+  none: 'hover:border-border-strong',
   cyan: 'hover:border-sky-400 dark:hover:border-sky-400/60 hover:shadow-[0_0_28px_rgba(14,165,233,0.2)]',
   violet: 'hover:border-violet-400 dark:hover:border-violet-400/60 hover:shadow-[0_0_28px_rgba(139,92,246,0.2)]',
   magenta: 'hover:border-rose-400 dark:hover:border-rose-400/60 hover:shadow-[0_0_28px_rgba(244,63,94,0.22)]',

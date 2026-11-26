@@ -674,7 +674,7 @@ export function StudentExamPage() {
       {/* ============================================================== */}
       {/* MINIMAL TOP HUD BAR */}
       {/* ============================================================== */}
-      <header className="h-16 border-b border-border/70 bg-surface/85 backdrop-blur-xl sticky top-0 z-30 flex items-center justify-between px-4 sm:px-6">
+      <header className="h-16 border-b border-border bg-surface/85 backdrop-blur-xl sticky top-0 z-30 flex items-center justify-between px-4 sm:px-6">
         {/* Left: Exam title & Progress */}
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl bg-brand/10 border border-brand/30 flex items-center justify-center text-brand shadow-sm flex-shrink-0">
@@ -917,7 +917,7 @@ export function StudentExamPage() {
               >
                 {/* Question Header Card */}
                 <div className="p-6 sm:p-8 rounded-3xl border border-border bg-surface/90 backdrop-blur-xl shadow-layered-sm space-y-4">
-                  <div className="flex items-center justify-between pb-3 border-b border-border/70 font-mono text-xs text-muted-foreground">
+                  <div className="flex items-center justify-between pb-3 border-b border-border font-mono text-xs text-muted-foreground">
                     <span className="text-brand font-bold tracking-wider">
                       QUESTION {currentIndex + 1} OF {questions.length}
                     </span>
@@ -1011,7 +1011,7 @@ export function StudentExamPage() {
         <div className="lg:col-span-4 space-y-6">
           {/* TrustRing Card */}
           <div className="p-5 rounded-3xl border border-border bg-surface/90 backdrop-blur-xl shadow-layered-sm flex flex-col items-center justify-center text-center space-y-3">
-            <div className="w-full flex items-center justify-between pb-2 border-b border-border/70">
+            <div className="w-full flex items-center justify-between pb-2 border-b border-border">
               <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
                 Integrity Index HUD
               </span>
@@ -1071,7 +1071,7 @@ export function StudentExamPage() {
             </div>
 
             {/* Phone & Microphone Status Indicators */}
-            <div className="flex items-center justify-between pt-2 border-t border-border/70 text-[10px] font-mono text-muted-foreground">
+            <div className="flex items-center justify-between pt-2 border-t border-border text-[10px] font-mono text-muted-foreground">
               <span className="flex items-center gap-1">
                 <Smartphone className="w-3 h-3 text-brand" />
                 <span data-testid="hud-phone-check-status">{phoneStatusText || 'Phone check: OK'}</span>
@@ -1085,7 +1085,7 @@ export function StudentExamPage() {
 
           {/* Question Palette Grid */}
           <div className="p-5 rounded-3xl border border-border bg-surface/90 backdrop-blur-xl shadow-layered-sm space-y-4">
-            <div className="flex items-center justify-between pb-2 border-b border-border/70">
+            <div className="flex items-center justify-between pb-2 border-b border-border">
               <span className="font-mono text-xs font-semibold text-foreground uppercase tracking-wider">
                 Question Palette
               </span>
@@ -1120,7 +1120,7 @@ export function StudentExamPage() {
             </div>
 
             {/* Legend */}
-            <div className="pt-2 border-t border-border/70 flex items-center justify-between text-[10px] font-mono text-muted-foreground">
+            <div className="pt-2 border-t border-border flex items-center justify-between text-[10px] font-mono text-muted-foreground">
               <div className="flex items-center gap-1.5">
                 <span className="w-2.5 h-2.5 rounded bg-emerald-500/30 border border-emerald-500/60" />
                 <span>Answered</span>
@@ -1152,7 +1152,7 @@ export function StudentExamPage() {
           <span>Previous Question</span>
         </button>
 
-        <span className="font-mono text-xs text-muted-foreground px-2 border-x border-border/80">
+        <span className="font-mono text-xs text-muted-foreground px-2 border-x border-border">
           Question {currentIndex + 1} of {questions.length}
         </span>
 

@@ -660,7 +660,7 @@ export function ProctorDashboardPage({ initialTab = 'monitor' }: { initialTab?: 
 
             {/* Just Finished Strip (Collapsible, last 5 minutes) */}
             {justFinished.length > 0 && (
-              <div className="rounded-2xl border border-border/70 bg-surface/80 p-3 text-xs font-mono">
+              <div className="rounded-2xl border border-border bg-surface/80 p-3 text-xs font-mono">
                 <button
                   type="button"
                   onClick={() => setShowJustFinished((prev) => !prev)}
@@ -676,7 +676,7 @@ export function ProctorDashboardPage({ initialTab = 'monitor' }: { initialTab?: 
                   </span>
                 </button>
                 {showJustFinished && (
-                  <div className="mt-3 flex flex-wrap gap-2 pt-2 border-t border-border/50">
+                  <div className="mt-3 flex flex-wrap gap-2 pt-2 border-t border-border">
                     {justFinished.map((jf) => (
                       <div
                         key={jf.sessionId}

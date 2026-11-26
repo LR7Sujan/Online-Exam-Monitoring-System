@@ -156,12 +156,12 @@ export function TimeExtensionModal({
                 <span className="font-bold text-foreground">{existingRequest.requested_minutes} minutes</span>
               </div>
               {existingRequest.reason && (
-                <div className="flex justify-between items-start text-muted-foreground pt-1 border-t border-border/50">
+                <div className="flex justify-between items-start text-muted-foreground pt-1 border-t border-border">
                   <span>Reason:</span>
                   <span className="text-foreground max-w-[65%] text-right truncate">{existingRequest.reason}</span>
                 </div>
               )}
-              <div className="flex justify-between items-center text-amber-500 pt-1 border-t border-border/50 font-semibold">
+              <div className="flex justify-between items-center text-amber-500 pt-1 border-t border-border font-semibold">
                 <span>Auto-Expiry Countdown:</span>
                 <span className="tabular-nums font-bold text-sm">
                   {formatCountdown(secondsRemainingInExpiry)}

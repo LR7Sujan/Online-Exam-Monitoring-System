@@ -53,7 +53,7 @@ function getIndigoCellClasses(count: number, max: number): {
   if (count === 0) {
     return {
       step: 0,
-      bg: 'bg-zinc-800/25 border-zinc-700/20 dark:bg-zinc-900/40 dark:border-white/[0.04] text-transparent hover:border-zinc-500/40',
+      bg: 'bg-zinc-800/25 border-zinc-700/20 dark:bg-zinc-900/40 dark:border-border text-transparent hover:border-zinc-500/40',
     };
   }
   const ratio = max > 0 ? count / max : 0;
@@ -82,7 +82,7 @@ function getIndigoCellClasses(count: number, max: number): {
 }
 
 const LEGEND_STEPS = [
-  { label: '0', title: 'Zero incidents (empty cell)', bg: 'bg-zinc-800/25 border-zinc-700/20 dark:bg-zinc-900/40 dark:border-white/[0.04]' },
+  { label: '0', title: 'Zero incidents (empty cell)', bg: 'bg-zinc-800/25 border-zinc-700/20 dark:bg-zinc-900/40 dark:border-border' },
   { label: 'Low', title: 'Low incidents (1 - 25%)', bg: 'bg-indigo-100 border-indigo-200/60 dark:bg-indigo-950/70 dark:border-indigo-900/40' },
   { label: 'Med', title: 'Medium incidents (26 - 50%)', bg: 'bg-indigo-200 border-indigo-300/70 dark:bg-indigo-900/80 dark:border-indigo-700/50' },
   { label: 'High', title: 'High incidents (51 - 75%)', bg: 'bg-indigo-400 border-indigo-500/80 dark:bg-indigo-600 dark:border-indigo-500/60' },
@@ -507,7 +507,7 @@ export function CircadianHeatmap({
             {/* Bottom Summary Row: Hourly Totals & Grand Total */}
             <div
               data-testid="heatmap-bottom-summary"
-              className="grid grid-cols-[180px_repeat(24,1fr)_54px] gap-[2px] items-center pt-2 border-t border-border/70 font-mono text-[10px]"
+              className="grid grid-cols-[180px_repeat(24,1fr)_54px] gap-[2px] items-center pt-2 border-t border-border font-mono text-[10px]"
             >
               <div className="text-left text-muted-foreground font-semibold pl-1 uppercase select-none">
                 HOURLY TOTAL
@@ -654,7 +654,7 @@ export function CircadianHeatmap({
               })}
 
               {/* Bucket Bottom Summary Row */}
-              <div className="grid grid-cols-[130px_repeat(6,1fr)_50px] gap-[2px] items-center pt-2 border-t border-border/70 font-mono text-[10px] font-bold">
+              <div className="grid grid-cols-[130px_repeat(6,1fr)_50px] gap-[2px] items-center pt-2 border-t border-border font-mono text-[10px] font-bold">
                 <div className="text-left text-muted-foreground pl-1 select-none">TOTAL</div>
                 {bucketColTotals.map((cnt, b) => {
                   const isColActive = activeCell?.isBucket && activeCell?.hour === b;
@@ -708,7 +708,7 @@ export function CircadianHeatmap({
           }}
           className="pointer-events-none z-50 min-w-[220px] rounded-xl border border-border bg-surface p-3.5 shadow-2xl text-foreground font-sans animate-in fade-in zoom-in-95 duration-100"
         >
-          <div className="flex items-center justify-between gap-2 border-b border-border/60 pb-2 mb-2">
+          <div className="flex items-center justify-between gap-2 border-b border-border pb-2 mb-2">
             <div className="flex items-center gap-1.5 min-w-0">
               <SeverityIcon
                 severity={
@@ -744,7 +744,7 @@ export function CircadianHeatmap({
               </span>
             </div>
 
-            <div className="pt-1.5 border-t border-border/40 space-y-1 text-[11px] text-muted-foreground">
+            <div className="pt-1.5 border-t border-border space-y-1 text-[11px] text-muted-foreground">
               <div className="flex justify-between items-center">
                 <span>Share of Grand Total:</span>
                 <span className="font-mono font-medium text-foreground">

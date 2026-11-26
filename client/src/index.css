@@ -12,6 +12,7 @@
     --surface: #ffffff;
     --surface-elevated: #f4f4f5;
     --border: #e4e4e7;
+    --border-strong: #d4d4d8;
     --foreground: #09090b;
     --muted: #f4f4f5;
     --muted-foreground: #71717a;
@@ -27,12 +28,19 @@
     --surface: #111114;
     --surface-elevated: #18181b;
     --border: #27272a;
+    --border-strong: #3f3f46;
     --foreground: #f4f4f5;
     --muted: #27272a;
     --muted-foreground: #a1a1aa;
     --ring: #6366f1;
     --dotted-grid-color: rgba(255, 255, 255, 0.05);
     --aurora-opacity: 0.85;
+  }
+
+  *,
+  *::before,
+  *::after {
+    border-color: var(--border);
   }
 
   html {

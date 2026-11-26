@@ -136,7 +136,7 @@ export function TimeExtensionRequestsDrawer({
           </div>
 
           {/* Tab Selector */}
-          <div className="grid grid-cols-2 p-2 border-b border-border/80 bg-surface-elevated/40 gap-1 font-mono text-xs">
+          <div className="grid grid-cols-2 p-2 border-b border-border bg-surface-elevated/40 gap-1 font-mono text-xs">
             <button
               type="button"
               onClick={() => setTab('pending')}
@@ -225,7 +225,7 @@ export function TimeExtensionRequestsDrawer({
 
                       {/* Reason (if provided) */}
                       {req.reason && (
-                        <div className="text-xs font-mono text-foreground bg-surface border border-border/70 p-2.5 rounded-xl">
+                        <div className="text-xs font-mono text-foreground bg-surface border border-border p-2.5 rounded-xl">
                           <span className="text-muted-foreground block text-[10px] uppercase">Student Reason:</span>
                           <p className="mt-0.5 italic">"{req.reason}"</p>
                         </div>
@@ -275,7 +275,7 @@ export function TimeExtensionRequestsDrawer({
                       )}
 
                       {/* Action Buttons */}
-                      <div className="flex items-center gap-2 pt-1 border-t border-border/60">
+                      <div className="flex items-center gap-2 pt-1 border-t border-border">
                         {isCustomOpen ? (
                           <NeonButton
                             variant="primary"
