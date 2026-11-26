@@ -228,10 +228,10 @@ export function SidebarStatusCard({ isCollapsed = false }: SidebarStatusCardProp
                   <span
                     className={`font-semibold ${
                       connectionState === 'connected'
-                        ? 'text-emerald-500'
+                        ? 'text-emerald-700 dark:text-emerald-400'
                         : connectionState === 'reconnecting'
-                        ? 'text-amber-500 animate-pulse'
-                        : 'text-rose-500'
+                        ? 'text-amber-700 dark:text-amber-400 animate-pulse'
+                        : 'text-rose-700 dark:text-rose-400'
                     }`}
                   >
                     {derived.statusLabel}
@@ -253,13 +253,13 @@ export function SidebarStatusCard({ isCollapsed = false }: SidebarStatusCardProp
                 <div className="flex items-center gap-1">
                   {apiStatus === 'up' ? (
                     <>
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-                      <span className="text-emerald-500 font-semibold">200 OK</span>
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400" />
+                      <span className="text-emerald-700 dark:text-emerald-400 font-semibold">200 OK</span>
                     </>
                   ) : (
                     <>
-                      <XCircle className="w-3.5 h-3.5 text-rose-500" />
-                      <span className="text-rose-500 font-semibold">Unreachable</span>
+                      <XCircle className="w-3.5 h-3.5 text-rose-700 dark:text-rose-400" />
+                      <span className="text-rose-700 dark:text-rose-400 font-semibold">Unreachable</span>
                     </>
                   )}
                 </div>
@@ -274,15 +274,15 @@ export function SidebarStatusCard({ isCollapsed = false }: SidebarStatusCardProp
                 <div className="flex items-center gap-1">
                   {dbStatus === 'up' ? (
                     <>
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-                      <span className="text-emerald-500 font-semibold">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400" />
+                      <span className="text-emerald-700 dark:text-emerald-400 font-semibold">
                         v{mysqlVersion}
                       </span>
                     </>
                   ) : (
                     <>
-                      <AlertTriangle className="w-3.5 h-3.5 text-rose-500" />
-                      <span className="text-rose-500 font-semibold">Down</span>
+                      <AlertTriangle className="w-3.5 h-3.5 text-rose-700 dark:text-rose-400" />
+                      <span className="text-rose-700 dark:text-rose-400 font-semibold">Down</span>
                     </>
                   )}
                 </div>

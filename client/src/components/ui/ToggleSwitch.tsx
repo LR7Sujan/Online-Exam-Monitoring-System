@@ -68,7 +68,7 @@ export function ToggleSwitch({
       </div>
 
       {label && (
-        <span className="text-xs font-mono text-slate-300 select-none">
+        <span className="text-xs font-mono text-muted-foreground select-none">
           {label}
         </span>
       )}

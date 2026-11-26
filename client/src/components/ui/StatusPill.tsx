@@ -47,9 +47,9 @@ const statusConfig: Record<
     label: 'TERMINATED',
   },
   DISCONNECTED: {
-    border: 'border-amber-400 dark:border-amber-600/80',
-    bg: 'bg-amber-500/10 dark:bg-amber-950/40',
-    text: 'text-amber-600 dark:text-amber-400',
+    border: 'border-amber-300 dark:border-amber-600/80',
+    bg: 'bg-amber-50 dark:bg-amber-950/40',
+    text: 'text-amber-800 dark:text-amber-400',
     dotColor: 'amber',
     label: 'DISCONNECTED',
   },
@@ -65,7 +65,7 @@ const statusConfig: Record<
   FLAGGED: {
     border: 'border-amber-200 dark:border-amber-800/80',
     bg: 'bg-amber-50 dark:bg-amber-950/40',
-    text: 'text-amber-700 dark:text-amber-300',
+    text: 'text-amber-800 dark:text-amber-300',
     dotColor: 'amber',
     label: 'FLAGGED',
   },
@@ -81,7 +81,7 @@ const statusConfig: Record<
   PENDING: {
     border: 'border-amber-200 dark:border-amber-800/80',
     bg: 'bg-amber-50 dark:bg-amber-950/40',
-    text: 'text-amber-700 dark:text-amber-300',
+    text: 'text-amber-800 dark:text-amber-300',
     dotColor: 'amber',
     label: 'PENDING REVIEW',
   },
@@ -94,8 +94,8 @@ const statusConfig: Record<
   },
   DISMISSED: {
     border: 'border-border',
-    bg: 'bg-zinc-100 dark:bg-zinc-800/60',
-    text: 'text-zinc-600 dark:text-zinc-400',
+    bg: 'bg-surface-elevated',
+    text: 'text-muted-foreground',
     dotColor: 'gray',
     label: 'DISMISSED',
   },
@@ -133,8 +133,8 @@ export function StatusPill({
   const norm = (status || '').toUpperCase().replace(/[\s-]/g, '_');
   const cfg = statusConfig[norm] ?? {
     border: 'border-border',
-    bg: 'bg-zinc-100 dark:bg-zinc-800',
-    text: 'text-zinc-600 dark:text-zinc-400',
+    bg: 'bg-surface-elevated',
+    text: 'text-muted-foreground',
     dotColor: 'gray' as const,
     label: status,
   };

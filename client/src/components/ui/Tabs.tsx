@@ -68,7 +68,7 @@ export function Tabs({
   // Pill variant
   return (
     <div
-      className={`inline-flex items-center p-1 rounded-xl bg-zinc-100 dark:bg-zinc-800/80 border border-border ${className}`}
+      className={`inline-flex items-center p-1 rounded-xl bg-surface-elevated border border-border ${className}`}
       role="tablist"
     >
       {tabs.map((tab) => {
@@ -88,7 +88,7 @@ export function Tabs({
             {isActive && (
               <motion.div
                 layoutId="tabs-pill"
-                className="absolute inset-0 rounded-lg bg-white dark:bg-zinc-700 shadow-sm"
+                className="absolute inset-0 rounded-lg bg-surface dark:bg-zinc-700 shadow-xs border border-border/80"
                 transition={{ type: 'spring', stiffness: 500, damping: 35 }}
               />
             )}

@@ -192,7 +192,7 @@ export function TrustRing({
           r={SVG_RADIUS}
           fill="none"
           stroke="currentColor"
-          className="text-zinc-200 dark:text-zinc-800/80"
+          className="text-border dark:text-zinc-800/80"
           strokeWidth={SVG_STROKE}
         />
 

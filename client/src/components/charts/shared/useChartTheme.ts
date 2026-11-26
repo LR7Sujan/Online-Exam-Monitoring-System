@@ -81,11 +81,21 @@ export function useChartTheme(): ChartTheme {
   const isDark = resolvedTheme === 'dark';
 
   return useMemo<ChartTheme>(() => {
-    // Theme-aware tokens
-    const axisText = isDark ? '#A1A1AA' : '#71717A'; // zinc-400 vs zinc-500
-    const gridlines = isDark ? '#27272A' : '#E4E4E7'; // zinc-800 vs zinc-200
-    const axisLines = isDark ? '#27272A' : '#E4E4E7';
+    // Theme-aware tokens: cream palette for light mode (>=4.5:1 contrast)
+    const axisText = isDark ? '#A1A1AA' : '#6A6152';
+    const gridlines = isDark ? '#27272A' : '#DDD3BE';
+    const axisLines = isDark ? '#27272A' : '#DDD3BE';
     const cursorColor = isDark ? 'rgba(99, 102, 241, 0.08)' : 'rgba(99, 102, 241, 0.06)';
+
+    const seriesColors: ChartSeriesColors = {
+      indigo: '#6366F1',
+      violet: '#8B5CF6',
+      fuchsia: '#D946EF',
+      emerald: isDark ? '#10B981' : '#047857',
+      amber: isDark ? '#F59E0B' : '#B45309',
+      rose: isDark ? '#F43F5E' : '#BE123C',
+      sky: isDark ? '#0EA5E9' : '#0369A1',
+    };
 
     const barCursor = {
       fill: cursorColor,
@@ -136,8 +146,8 @@ export function useChartTheme(): ChartTheme {
       cursorColor,
       barCursor,
       lineCursor,
-      series: SERIES_COLORS,
-      colors: SERIES_COLORS,
+      series: seriesColors,
+      colors: seriesColors,
       tooltipProps,
       barTooltipProps,
       lineTooltipProps,

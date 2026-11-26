@@ -36,7 +36,7 @@ const variantStyles: Record<NeonButtonVariant, string> = {
   primary:
     'bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 hover:opacity-95 text-white font-medium shadow-sm hover:shadow-bento border border-indigo-400/30',
   secondary:
-    'bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-900 dark:text-zinc-100 font-medium border border-border shadow-sm',
+    'bg-surface-elevated hover:bg-muted text-foreground font-medium border border-border shadow-sm',
   danger:
     'bg-rose-600 hover:bg-rose-500 text-white font-medium shadow-sm hover:shadow-bento border border-rose-500/30',
   success:

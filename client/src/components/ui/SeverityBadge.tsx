@@ -21,25 +21,25 @@ const severityConfig: Record<
   LOW: {
     border: 'border-sky-200 dark:border-sky-800/80',
     bg: 'bg-sky-50 dark:bg-sky-950/40',
-    text: 'text-sky-700 dark:text-sky-300',
+    text: 'text-sky-800 dark:text-sky-300',
     icon: Info,
   },
   MEDIUM: {
     border: 'border-amber-200 dark:border-amber-800/80',
     bg: 'bg-amber-50 dark:bg-amber-950/40',
-    text: 'text-amber-700 dark:text-amber-300',
+    text: 'text-amber-800 dark:text-amber-300',
     icon: AlertTriangle,
   },
   HIGH: {
     border: 'border-orange-200 dark:border-orange-800/80',
     bg: 'bg-orange-50 dark:bg-orange-950/40',
-    text: 'text-orange-700 dark:text-orange-300',
+    text: 'text-orange-800 dark:text-orange-300',
     icon: AlertCircle,
   },
   CRITICAL: {
     border: 'border-rose-200 dark:border-rose-800/80',
     bg: 'bg-rose-50 dark:bg-rose-950/40',
-    text: 'text-rose-700 dark:text-rose-300',
+    text: 'text-rose-800 dark:text-rose-300',
     icon: ShieldAlert,
   },
 };

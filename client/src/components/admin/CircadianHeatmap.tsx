@@ -53,40 +53,40 @@ function getIndigoCellClasses(count: number, max: number): {
   if (count === 0) {
     return {
       step: 0,
-      bg: 'bg-zinc-800/25 border-zinc-700/20 dark:bg-zinc-900/40 dark:border-border text-transparent hover:border-zinc-500/40',
+      bg: 'bg-surface-elevated/70 border-border text-transparent hover:border-border-strong dark:bg-zinc-900/40 dark:border-border',
     };
   }
   const ratio = max > 0 ? count / max : 0;
   if (ratio <= 0.25) {
     return {
       step: 1,
-      bg: 'bg-indigo-100 text-indigo-700 border-indigo-200/60 dark:bg-indigo-950/70 dark:text-indigo-300 dark:border-indigo-900/40',
+      bg: 'bg-indigo-100 text-indigo-900 border-indigo-200/80 dark:bg-indigo-950/70 dark:text-indigo-300 dark:border-indigo-900/40',
     };
   }
   if (ratio <= 0.5) {
     return {
       step: 2,
-      bg: 'bg-indigo-200 text-indigo-800 border-indigo-300/70 dark:bg-indigo-900/80 dark:text-indigo-200 dark:border-indigo-700/50',
+      bg: 'bg-indigo-200 text-indigo-950 border-indigo-300/80 dark:bg-indigo-900/80 dark:text-indigo-200 dark:border-indigo-700/50',
     };
   }
   if (ratio <= 0.75) {
     return {
       step: 3,
-      bg: 'bg-indigo-400 text-white border-indigo-500/80 dark:bg-indigo-600 dark:text-white dark:border-indigo-500/60 shadow-sm',
+      bg: 'bg-indigo-600 text-white border-indigo-700 dark:bg-indigo-600 dark:text-white dark:border-indigo-500/60 shadow-sm',
     };
   }
   return {
     step: 4,
-    bg: 'bg-indigo-600 text-white border-indigo-700 dark:bg-indigo-500 dark:text-white dark:border-indigo-400 shadow-[0_0_8px_rgba(99,102,241,0.35)]',
+    bg: 'bg-indigo-700 text-white border-indigo-800 dark:bg-indigo-500 dark:text-white dark:border-indigo-400 shadow-[0_0_8px_rgba(99,102,241,0.35)]',
   };
 }
 
 const LEGEND_STEPS = [
-  { label: '0', title: 'Zero incidents (empty cell)', bg: 'bg-zinc-800/25 border-zinc-700/20 dark:bg-zinc-900/40 dark:border-border' },
-  { label: 'Low', title: 'Low incidents (1 - 25%)', bg: 'bg-indigo-100 border-indigo-200/60 dark:bg-indigo-950/70 dark:border-indigo-900/40' },
-  { label: 'Med', title: 'Medium incidents (26 - 50%)', bg: 'bg-indigo-200 border-indigo-300/70 dark:bg-indigo-900/80 dark:border-indigo-700/50' },
-  { label: 'High', title: 'High incidents (51 - 75%)', bg: 'bg-indigo-400 border-indigo-500/80 dark:bg-indigo-600 dark:border-indigo-500/60' },
-  { label: 'Peak', title: 'Peak incidents (76 - 100%)', bg: 'bg-indigo-600 border-indigo-700 dark:bg-indigo-500 dark:border-indigo-400' },
+  { label: '0', title: 'Zero incidents (empty cell)', bg: 'bg-surface-elevated border-border dark:bg-zinc-900/40 dark:border-border' },
+  { label: 'Low', title: 'Low incidents (1 - 25%)', bg: 'bg-indigo-100 border-indigo-200/80 dark:bg-indigo-950/70 dark:border-indigo-900/40' },
+  { label: 'Med', title: 'Medium incidents (26 - 50%)', bg: 'bg-indigo-200 border-indigo-300/80 dark:bg-indigo-900/80 dark:border-indigo-700/50' },
+  { label: 'High', title: 'High incidents (51 - 75%)', bg: 'bg-indigo-600 border-indigo-700 dark:bg-indigo-600 dark:border-indigo-500/60' },
+  { label: 'Peak', title: 'Peak incidents (76 - 100%)', bg: 'bg-indigo-700 border-indigo-800 dark:bg-indigo-500 dark:border-indigo-400' },
 ];
 
 function SeverityIcon({ severity, className = 'w-3.5 h-3.5' }: { severity: string; className?: string }) {

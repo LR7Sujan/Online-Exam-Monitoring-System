@@ -36,7 +36,7 @@ export function ComponentPreview({
 
   const previewThemeClass =
     previewTheme === 'light'
-      ? 'bg-slate-50 text-slate-900 border-slate-200'
+      ? 'bg-surface text-foreground border-border'
       : previewTheme === 'dark'
       ? 'bg-[#0b0c13] text-slate-100 border-border'
       : 'bg-surface-elevated/40 text-foreground border-border';
@@ -83,7 +83,7 @@ export function ComponentPreview({
                 onClick={() => setPreviewTheme('light')}
                 className={`p-1 rounded transition-colors ${
                   previewTheme === 'light'
-                    ? 'bg-white text-slate-900 shadow-xs'
+                    ? 'bg-surface text-foreground shadow-xs border border-border/80'
                     : 'text-muted-foreground hover:text-foreground'
                 }`}
                 title="Force Light preview"
@@ -95,7 +95,7 @@ export function ComponentPreview({
                 onClick={() => setPreviewTheme('dark')}
                 className={`p-1 rounded transition-colors ${
                   previewTheme === 'dark'
-                    ? 'bg-slate-900 text-white shadow-xs'
+                    ? 'bg-zinc-800 text-white shadow-xs'
                     : 'text-muted-foreground hover:text-foreground'
                 }`}
                 title="Force Dark preview"
@@ -164,7 +164,7 @@ export function ComponentPreview({
           <div className="w-full flex items-center justify-center">{children}</div>
         </div>
       ) : (
-        <div className="relative bg-[#090a10] text-slate-100 p-4 font-mono text-xs overflow-x-auto leading-relaxed border-t border-border max-h-[360px] overflow-y-auto">
+        <div className="relative bg-surface-elevated text-foreground dark:bg-[#090a10] dark:text-slate-100 p-4 font-mono text-xs overflow-x-auto leading-relaxed border-t border-border max-h-[360px] overflow-y-auto">
           <pre className="selection:bg-brand/30">
             <code>{code.trim()}</code>
           </pre>

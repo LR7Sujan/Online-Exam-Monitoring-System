@@ -37,7 +37,7 @@ export function TrustGauge({ score, minThreshold, size = 156 }: TrustGaugeProps)
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke="rgba(255,255,255,0.08)"
+          stroke="var(--border)"
           strokeWidth={strokeWidth}
         />
         <motion.circle
@@ -62,12 +62,12 @@ export function TrustGauge({ score, minThreshold, size = 156 }: TrustGaugeProps)
           cy={markerY}
           r={4.5}
           fill="#F43F5E"
-          stroke="#0A0B14"
+          stroke="var(--surface)"
           strokeWidth={2}
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-        <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+        <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
           Trust Index
         </span>
         <span
@@ -76,7 +76,7 @@ export function TrustGauge({ score, minThreshold, size = 156 }: TrustGaugeProps)
         >
           {clamped}%
         </span>
-        <span className="font-mono text-[10px] text-slate-400">
+        <span className="font-mono text-[10px] text-muted-foreground">
           MIN {minThreshold}%
         </span>
       </div>
