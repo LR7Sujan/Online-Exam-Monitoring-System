@@ -154,7 +154,9 @@
 @layer components {
   /* Telemetry Number Typography */
   .telemetry-num {
-    @apply font-mono tabular-nums tracking-tight;
+    font-family: 'Geist Mono', 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.025em;
   }
 
   /* Bento Card Surface */
