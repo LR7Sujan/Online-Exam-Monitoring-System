@@ -282,7 +282,7 @@ All seeded accounts share the default master password: **`ProctorIQ#2026`**
 
 ## 📸 Core Capabilities & Interface Showcase
 
-```
+```text
 +-----------------------------------------------------------------------------------+
 | PROCTORIQ MISSION CONTROL: ORBITAL PROCTORING CORE                                |
 +-----------------------------------------------------------------------------------+
@@ -328,7 +328,7 @@ All seeded accounts share the default master password: **`ProctorIQ#2026`**
 
 ProctorIQ enforces a strict separation of concerns where business invariants and state transitions are owned by the database engine:
 
-```
+```text
 [Candidate Browser]  ──(REST / WebSockets)──>  [Express & Socket.IO Gateway]
                                                          │
                                                (mysql2 Connection Pool)
