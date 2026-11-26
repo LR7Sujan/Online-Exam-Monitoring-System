@@ -19,7 +19,15 @@ export class LocalStorageAdapter implements StorageAdapter {
         '[SAFETY GUARD VIOLATION] LocalStorageAdapter is strictly prohibited in production. Configure STORAGE_PROVIDER="blob" or "s3".'
       );
     }
-    this.rootDir = rootDir ? path.resolve(rootDir) : path.resolve(process.cwd(), env.UPLOADS_DIR);
+    const resolvedUploadsDir = rootDir
+      ? path.resolve(rootDir)
+      : path.isAbsolute(env.UPLOADS_DIR)
+      ? env.UPLOADS_DIR
+      : (process.cwd().endsWith('server') || process.cwd().endsWith('server\\') || process.cwd().endsWith('server/')) &&
+        env.UPLOADS_DIR.startsWith('./server/')
+      ? path.resolve(process.cwd(), '..', env.UPLOADS_DIR)
+      : path.resolve(process.cwd(), env.UPLOADS_DIR);
+    this.rootDir = resolvedUploadsDir;
     if (!fs.existsSync(this.rootDir)) {
       fs.mkdirSync(this.rootDir, { recursive: true });
     }

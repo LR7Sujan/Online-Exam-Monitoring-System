@@ -598,10 +598,10 @@ export function ExamScorecardPage() {
             </div>
 
             {/* Embedded Player View */}
-            <div className="h-[420px] rounded-xl overflow-hidden border border-border">
+            <div className="w-full">
               <RecordingPlayer
                 recordingId={recording.recordingId}
-                mode="fullpage"
+                mode="embedded"
               />
             </div>
           </div>

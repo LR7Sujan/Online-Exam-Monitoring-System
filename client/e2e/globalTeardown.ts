@@ -33,7 +33,7 @@ export default async function globalTeardown(): Promise<void> {
     try {
       const files = readdirSync(uploadsTestDir);
       for (const file of files) {
-        if (file !== '.gitkeep') {
+        if (file !== '.gitkeep' && file !== 'sample_review.webm') {
           rmSync(path.join(uploadsTestDir, file), { recursive: true, force: true });
         }
       }

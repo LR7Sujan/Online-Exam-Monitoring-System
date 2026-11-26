@@ -43,7 +43,7 @@ export interface RecordingPlayerProps {
   recordingId: number;
   isOpen?: boolean;
   onClose?: () => void;
-  mode?: 'modal' | 'fullpage';
+  mode?: 'modal' | 'fullpage' | 'embedded';
 }
 
 const PLAYBACK_SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2];
@@ -70,6 +70,8 @@ export function RecordingPlayer({
   // Video State
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [currentTime, setCurrentTime] = useState<number>(0);
+  const [videoDuration, setVideoDuration] = useState<number>(0);
+  const [aspectRatio, setAspectRatio] = useState<string>('16 / 9');
   const [bufferedEnd, setBufferedEnd] = useState<number>(0);
   const [isBuffering, setIsBuffering] = useState<boolean>(false);
   const [hasError, setHasError] = useState<boolean>(false);
@@ -94,6 +96,15 @@ export function RecordingPlayer({
   const [deleteModalOpen, setDeleteModalOpen] = useState<boolean>(false);
   const [downloadModalOpen, setDownloadModalOpen] = useState<boolean>(false);
 
+  // Sync fullscreen state with document fullscreenchange
+  useEffect(() => {
+    const handleFsChange = () => {
+      setIsFullscreen(document.fullscreenElement === containerRef.current);
+    };
+    document.addEventListener('fullscreenchange', handleFsChange);
+    return () => document.removeEventListener('fullscreenchange', handleFsChange);
+  }, []);
+
   // Fetch full review metadata
   const reviewQuery = useQuery<RecordingReviewDetails>({
     queryKey: ['recording-review', recordingId],
@@ -109,6 +120,9 @@ export function RecordingPlayer({
 
   // Duration derivation (fallback to DB duration_ms if Infinity or NaN)
   const totalDurationSec = useMemo(() => {
+    if (Number.isFinite(videoDuration) && videoDuration > 0) {
+      return videoDuration;
+    }
     const rawSec = videoRef.current?.duration;
     if (rawSec && Number.isFinite(rawSec) && rawSec > 0) {
       return rawSec;
@@ -117,7 +131,7 @@ export function RecordingPlayer({
       return recording.duration_ms / 1000;
     }
     return 60; // minimum fallback
-  }, [recording?.duration_ms]);
+  }, [videoDuration, recording?.duration_ms]);
 
   // Audio track detection
   const hasAudioTrack = Boolean(recording?.has_audio);
@@ -408,6 +422,19 @@ export function RecordingPlayer({
   ]);
 
   // Video event handlers
+  const handleLoadedMetadata = () => {
+    if (videoRef.current) {
+      const dur = videoRef.current.duration;
+      if (Number.isFinite(dur) && dur > 0) {
+        setVideoDuration(dur);
+      }
+      if (videoRef.current.videoWidth && videoRef.current.videoHeight) {
+        setAspectRatio(`${videoRef.current.videoWidth} / ${videoRef.current.videoHeight}`);
+      }
+      videoRef.current.playbackRate = playbackSpeed;
+    }
+  };
+
   const handleTimeUpdate = () => {
     if (!videoRef.current || isScrubbing) return;
     setCurrentTime(videoRef.current.currentTime);
@@ -486,15 +513,25 @@ export function RecordingPlayer({
       onMouseMove={resetHideControlsTimer}
       data-testid="recording-player-container"
       className={`relative flex flex-col bg-background text-foreground select-none font-mono ${
-        mode === 'modal'
+        isFullscreen
+          ? 'fixed inset-0 z-[9999] w-screen h-screen bg-black overflow-hidden'
+          : mode === 'modal'
           ? 'fixed inset-0 z-50 overflow-hidden bg-black/90 backdrop-blur-md flex items-center justify-center p-2 sm:p-4'
+          : mode === 'embedded'
+          ? 'w-full rounded-2xl border border-border bg-surface shadow-md overflow-hidden'
           : 'w-full h-full min-h-screen'
       }`}
     >
       {/* Player Wrapper Container */}
       <div
-        className={`flex flex-col w-full h-full rounded-2xl border border-border bg-surface shadow-2xl overflow-hidden ${
-          mode === 'modal' ? 'max-w-7xl max-h-[96vh]' : 'max-w-full'
+        className={`flex flex-col w-full h-full bg-surface overflow-hidden ${
+          isFullscreen
+            ? 'h-screen max-w-none rounded-none border-none shadow-none'
+            : mode === 'modal'
+            ? 'rounded-2xl border border-border shadow-2xl max-w-7xl max-h-[96vh]'
+            : mode === 'embedded'
+            ? 'rounded-2xl shadow-none'
+            : 'max-w-full'
         }`}
       >
         {/* =================================================================== */}
@@ -560,8 +597,23 @@ export function RecordingPlayer({
               </button>
             )}
 
+            {/* Exit Fullscreen button */}
+            {isFullscreen && (
+              <button
+                type="button"
+                data-testid="exit-fullscreen-btn"
+                onClick={toggleFullscreen}
+                aria-label="Exit fullscreen"
+                title="Exit fullscreen (F or Esc)"
+                className="flex items-center gap-1 px-2.5 py-1 rounded-lg border border-border bg-surface text-muted-foreground hover:text-foreground text-xs font-bold transition-colors cursor-pointer"
+              >
+                <Minimize className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Exit Fullscreen</span>
+              </button>
+            )}
+
             {/* Close button for modal */}
-            {onClose && (
+            {onClose && mode === 'modal' && (
               <button
                 type="button"
                 onClick={onClose}
@@ -578,11 +630,18 @@ export function RecordingPlayer({
         {/* =================================================================== */}
         {/* MAIN BODY: VIDEO + SIDEBAR */}
         {/* =================================================================== */}
-        <div className="flex-1 flex flex-col lg:flex-row min-h-0 overflow-hidden">
+        <div className={`flex-1 flex flex-col lg:flex-row min-h-0 overflow-hidden ${isFullscreen ? 'h-full' : ''}`}>
           {/* VIDEO STAGE */}
           <div className="flex-1 flex flex-col bg-black relative min-h-0 overflow-hidden group">
             {/* Native Video Element */}
-            <div className="flex-1 relative flex items-center justify-center overflow-hidden">
+            <div
+              className="w-full relative flex items-center justify-center bg-black overflow-hidden"
+              style={{
+                aspectRatio: isFullscreen ? 'auto' : aspectRatio,
+                height: isFullscreen ? '100%' : undefined,
+                maxHeight: isFullscreen ? 'calc(100vh - 120px)' : '680px',
+              }}
+            >
               <video
                 ref={videoRef}
                 data-testid="review-video-element"
@@ -590,6 +649,7 @@ export function RecordingPlayer({
                 playsInline
                 preload="metadata"
                 onClick={togglePlayPause}
+                onLoadedMetadata={handleLoadedMetadata}
                 onTimeUpdate={handleTimeUpdate}
                 onProgress={handleProgress}
                 onPlay={handlePlay}
@@ -664,9 +724,10 @@ export function RecordingPlayer({
             {/* PLAYER CONTROLS OVERLAY (Auto-hiding) */}
             {/* =============================================================== */}
             <div
+              data-testid="player-controls-overlay"
               className={`transition-opacity duration-300 ${
-                showControls ? 'opacity-100' : 'opacity-0 pointer-events-none'
-              } flex flex-col bg-gradient-to-t from-black/95 via-black/70 to-transparent p-3 pt-6 space-y-2 shrink-0 z-20`}
+                showControls ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+              } flex flex-col bg-gradient-to-t from-black/95 via-black/75 to-transparent p-3 pt-6 space-y-2 shrink-0 z-20 absolute bottom-0 inset-x-0 group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto [@media(hover:none)]:opacity-100 [@media(hover:none)]:pointer-events-auto`}
             >
               {/* Scrubbing bar & Violation markers */}
               <div
@@ -941,6 +1002,7 @@ export function RecordingPlayer({
                   {/* Fullscreen */}
                   <button
                     type="button"
+                    data-testid="fullscreen-btn"
                     onClick={toggleFullscreen}
                     title="Fullscreen (F)"
                     aria-label="Toggle Fullscreen"
@@ -960,7 +1022,7 @@ export function RecordingPlayer({
           {/* =============================================================== */}
           {/* SIDE REVIEW PANEL: EVENTS & NOTES */}
           {/* =============================================================== */}
-          <div className="w-full lg:w-96 border-t lg:border-t-0 lg:border-l border-border bg-surface flex flex-col shrink-0 min-h-0 h-64 lg:h-auto">
+          <div className="w-full lg:w-80 xl:w-96 border-t lg:border-t-0 lg:border-l border-border bg-surface-elevated/40 flex flex-col shrink-0 min-h-0 h-80 lg:h-auto overflow-hidden">
             {/* Panel Tabs */}
             <div className="flex items-center border-b border-border bg-surface-elevated/50 p-1 shrink-0">
               <button

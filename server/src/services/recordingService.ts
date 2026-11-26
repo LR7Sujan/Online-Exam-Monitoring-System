@@ -93,7 +93,14 @@ export interface StorageStats {
  * Returns logical root path for recordings in current environment.
  */
 export function getRecordingsBaseDir(): string {
-  return path.resolve(process.cwd(), env.UPLOADS_DIR, 'recordings');
+  const uploadsDir =
+    path.isAbsolute(env.UPLOADS_DIR)
+      ? env.UPLOADS_DIR
+      : (process.cwd().endsWith('server') || process.cwd().endsWith('server\\') || process.cwd().endsWith('server/')) &&
+        env.UPLOADS_DIR.startsWith('./server/')
+      ? path.resolve(process.cwd(), '..', env.UPLOADS_DIR)
+      : path.resolve(process.cwd(), env.UPLOADS_DIR);
+  return path.resolve(uploadsDir, 'recordings');
 }
 
 /**
