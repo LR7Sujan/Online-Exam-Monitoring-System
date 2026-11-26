@@ -89,7 +89,7 @@ npm run db:seed
 
 | Error Code / Symptom | Root Cause | Actionable Solution |
 | :--- | :--- | :--- |
-| `connect ECONNREFUSED 127.0.0.1:3306` | MySQL service is not running or blocked on port 3306. | **Windows**: Run `Start-Service MySQL80` or `net start MySQL80` in admin PowerShell.<br>**macOS**: Run `brew services start mysql`.<br>**Linux**: Run `sudo systemctl start mysql`. |
+| `connect ECONNREFUSED 127.0.0.1:3306` | MySQL service is not running or blocked on port 3306. | Start MySQL service: **Windows**: `Start-Service MySQL80` or `net start MySQL80` (admin PowerShell) · **macOS**: `brew services start mysql` · **Linux**: `sudo systemctl start mysql`. |
 | `ER_ACCESS_DENIED_ERROR` (1045) | Incorrect `DB_USER` or `DB_PASSWORD` in `.env`. | Verify credentials in `.env`. Reset root password in MySQL shell: `ALTER USER 'root'@'localhost' IDENTIFIED BY 'proctoriq_root'; FLUSH PRIVILEGES;`. |
 | `ER_BAD_DB_ERROR` (1049) / Unknown database | Database `proctoriq` or `exam_monitoring_test` does not exist. | Create missing databases: `mysql -u root -p -e "CREATE DATABASE proctoriq; CREATE DATABASE exam_monitoring_test;"` then run `npm run db:migrate`. |
 | `DB_UNAVAILABLE` Banner on Login | Backend API cannot establish connection with MySQL. | Check backend terminal for `MySQL is not reachable at host:port`. Start MySQL service and click **Retry** on the login page banner. |
