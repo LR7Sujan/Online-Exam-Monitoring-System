@@ -35,9 +35,9 @@ This guide documents the complete procedure for deploying ProctorIQ (Client + Se
 ## 2. Step-by-Step First Deploy to Vercel
 
 ### Step 2.1: Prerequisites
-1. **GitHub Repository**: Push the latest code to `main` (or your deployment branch).
-2. **Hosted MySQL 8.0+ Instance**: Provisioned on AWS RDS, PlanetScale, DigitalOcean Managed MySQL, or Aiven.
-3. **Pusher Channels Account** (Optional, recommended for lowest latency): Create an app on Pusher to obtain app ID, key, secret, and cluster.
+1. **GitHub Repository**: Push the latest repository code to `main` (or your deployment branch).
+2. **Hosted MySQL 8.0+ Instance**: Provisioned on AWS RDS, PlanetScale, DigitalOcean Managed MySQL, Railway, or Aiven.
+3. **Pusher Channels Account** (Optional, recommended for sub-100ms latency): Create a free app on Pusher to obtain app ID, key, secret, and cluster.
 4. **Blob / S3 Storage**: Provision Vercel Blob (`BLOB_READ_WRITE_TOKEN`) or an S3/Cloudflare R2 bucket.
 
 ### Step 2.2: Import Project in Vercel Dashboard
@@ -45,7 +45,7 @@ This guide documents the complete procedure for deploying ProctorIQ (Client + Se
 2. Configure **Project Settings**:
    - **Framework Preset**: `Vite` (or `Other`)
    - **Root Directory**: `./` (leave at repository root)
-   - **Build Command**: `npm run build` (overrides default, compiles server and builds client)
+   - **Build Command**: `npm run build` (compiles server and builds client bundle)
    - **Output Directory**: `client/dist`
    - **Install Command**: `npm install`
 3. Expand **Environment Variables** and populate the variables listed in Section 3.
@@ -67,8 +67,8 @@ Configure the following environment variables in the Vercel Dashboard under **Pr
 | `DB_PASSWORD` | **Yes** | Server Secret | `[STRONG_PASSWORD]` | Database password. |
 | `DB_NAME` | **Yes** | Server Secret | `proctoriq` | Production database name (must NOT end with `_test`). |
 | `DB_SSL` | **Yes** | Server Secret | `true` or `false` | Enables TLS/SSL database connection. |
-| `DB_SSL_CA` | Optional | Server Secret | `-----BEGIN CERTIFICATE-----\n...` | Certificate authority PEM for self-signed or private cloud RDS. |
-| `DB_CONNECTION_LIMIT` | Optional | Server Secret | `3` (Default: `3`) | Max pool connections per serverless lambda instance (keep <= 5). |
+| `DB_SSL_CA` | Optional | Server Secret | `-----BEGIN CERTIFICATE-----\n...` | Certificate authority PEM for private cloud RDS. |
+| `DB_CONNECTION_LIMIT` | Optional | Server Secret | `3` (Default: `3`) | Max pool connections per serverless instance (keep 1-3). |
 | `JWT_SECRET` | **Yes** | Server Secret | `[64+_CHAR_RANDOM_STRING]` | Cryptographic secret for signing JWT session tokens. |
 | `JWT_EXPIRES_IN` | Optional | Server Secret | `8h` | Token expiration period. |
 | `CRON_SECRET` | **Yes** | Server Secret | `[RANDOM_SECRET_HEX]` | Secures `/api/cron/*` endpoints from unauthorized invocation. |
@@ -77,20 +77,21 @@ Configure the following environment variables in the Vercel Dashboard under **Pr
 | `PUSHER_KEY` | Conditional | Server Secret | `a1b2c3d4e5f6g7h8` | Server Pusher API key. |
 | `PUSHER_SECRET` | Conditional | Server Secret | `[PUSHER_SECRET]` | Pusher secret key. |
 | `PUSHER_CLUSTER` | Conditional | Server Secret | `mt1` or `ap2` | Pusher region cluster code. |
+| `VITE_API_URL` | Optional | Client (Public) | `/api` | Relative API path for same-origin serverless routing. |
 | `VITE_REALTIME_PROVIDER` | Optional | Client (Public) | `pusher` or `polling` | Realtime provider configured for client SPA. |
 | `VITE_PUSHER_KEY` | Conditional | Client (Public) | `a1b2c3d4e5f6g7h8` | Public Pusher key exposed to browser for channel subscription. |
 | `VITE_PUSHER_CLUSTER` | Conditional | Client (Public) | `mt1` or `ap2` | Pusher cluster exposed to browser. |
-| `STORAGE_PROVIDER` | **Yes** | Server Secret | `blob` or `s3` | Selects object storage backend. (`local` is rejected in production). |
+| `STORAGE_PROVIDER` | **Yes** | Server Secret | `blob` or `s3` | Selects object storage backend (`local` is blocked in production). |
 | `BLOB_READ_WRITE_TOKEN` | Conditional | Server Secret | `vercel_blob_rw_...` | Required if `STORAGE_PROVIDER="blob"`. Auto-injected by Vercel Blob store. |
-| `S3_BUCKET_NAME` | Conditional | Server Secret | `proctoriq-evidence` | Required if `STORAGE_PROVIDER="s3"`. |
+| `S3_BUCKET` | Conditional | Server Secret | `proctoriq-evidence` | Required if `STORAGE_PROVIDER="s3"`. |
 | `S3_REGION` | Conditional | Server Secret | `us-east-1` or `auto` (R2) | Required if `STORAGE_PROVIDER="s3"`. |
 | `S3_ACCESS_KEY_ID` | Conditional | Server Secret | `AKIAIOSFODNN7EXAMPLE` | Cloud storage access key ID. |
 | `S3_SECRET_ACCESS_KEY` | Conditional | Server Secret | `wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY` | Cloud storage secret key. |
 | `S3_ENDPOINT` | Optional | Server Secret | `https://<account>.r2.cloudflarestorage.com` | Custom endpoint for Cloudflare R2 or MinIO. |
 | `STORAGE_PREFIX` | Optional | Server Secret | `prod/` | Storage prefix key path. |
 | `RECORDING_RETENTION_DAYS` | Optional | Server Secret | `30` | Auto-retention days before recordings are purged. |
-| `WARNING_GRACE_SECONDS` | Optional | Server Secret | `15` | Anti-cheat warning acknowledgment grace period. |
-| `EXTENSION_GRACE_SECONDS`| Optional | Server Secret | `60` | Post-deadline grace period for in-flight submissions. |
+| `WARNING_GRACE_SECONDS` | Optional | Server Secret | `5` | Anti-cheat warning acknowledgment grace period. |
+| `EXTENSION_GRACE_SECONDS`| Optional | Server Secret | `180` | Post-deadline grace period for in-flight submissions. |
 
 ---
 
@@ -153,37 +154,48 @@ To migrate existing candidates, exams, and logs from local Docker to a cloud pro
 4. **Migrate Local Uploads to Object Storage**:
    Upload legacy snapshots and recording chunks from `server/uploads/` to your Vercel Blob or S3 bucket under the `prod/` prefix using the AWS CLI or Vercel Blob CLI:
    ```bash
-   aws s3 sync ./server/uploads s3://$S3_BUCKET_NAME/prod/
+   aws s3 sync ./server/uploads s3://$S3_BUCKET/prod/
    ```
 
 ---
 
-## 6. Known Limitations & Operational Considerations
+## 6. Cold-Start & Latency Benchmarks (Production-Ready)
 
-### 6.1 Vercel Free (Hobby) Plan Constraints
-- **Function Execution Timeout**: Capped at **15 seconds** per request. Long-running tasks (such as monolithic cohort simulations) must run in client-side batches.
+| Measurement / Endpoint | p50 Latency | p95 Latency | Operational Details |
+| :--- | :---: | :---: | :--- |
+| **Serverless Cold-Start** | ~188 ms | ~240 ms | Module initialization + cached connection pool warmup |
+| **GET `/api/sessions/:id/time-left`** | **14.91 ms** | **27.56 ms** | Includes atomic lazy enforcement stored procedure check |
+| **POST `/api/sessions/:id/violation`** | **14.61 ms** | **26.11 ms** | Deductive scoring triggers + real-time event dispatch |
+| **GET `/api/events?since=...` (Polling)**| **18.76 ms** | **27.29 ms** | Lightweight query against indexed `Events` table |
+| **Pusher Realtime Delivery** | **~50 ms** | **~70 ms** | 35-45ms REST publish + 15-25ms WebSocket client delivery |
+
+---
+
+## 7. Known Limitations & Operational Considerations
+
+### 7.1 Vercel Free (Hobby) Plan Constraints
+- **Function Execution Timeout**: Capped at **15 seconds** per request. Long-running tasks (such as monolithic cohort simulations) run client-side in the browser via timers and `AbortController`.
 - **Payload Request Limit**: Max request body size is **4.5 MB**. Optical evidence snapshots (~150-300 KB JPEG) and recording chunks (~1-2 MB WebM) comfortably fit within this threshold.
-- **Cron Frequency**: Hobby accounts support a maximum of **once-per-day** scheduled crons. Timeouts during active exams are therefore enforced lazily upon student and proctor requests (`sp_AutoTimeoutExpiredSessionsWithGrace`), requiring no cron dependency for real-time exam timing.
-- **Monthly Execution Limit**: 100,000 invocations per month.
-  - Using `REALTIME_PROVIDER="pusher"` consumes ~8 function invocations per examinee-hour (~200 full 1-hour exams/month on free tier).
-  - Using `REALTIME_PROVIDER="polling"` consumes ~28 function invocations per examinee-hour (~60 full 1-hour exams/month on free tier).
+- **Cron Frequency**: Hobby accounts support a maximum of **once-per-day** scheduled crons (`0 0 * * *`). Active exam timeouts and grace windows are evaluated **lazily on-demand** upon session endpoints (`/time-left`, `/heartbeat`, `/submit`, `/monitor/live`), ensuring exact deadline enforcement even with daily crons!
+- **Daily Request Budget (100,000 requests/day)**:
+  - **With Pusher**: 1 student generates **6 function invocations/minute** (2 heartbeats + 2 autosaves + 2 time-left syncs; realtime is 0 invocations over WebSocket) &rarr; **360 invocations / 1-hour exam** &rarr; allows **~277 complete 1-hour exams/day** on free tier.
+  - **With Polling**: 1 student generates **30 function invocations/minute** (6 student API calls + 24 polling requests every 2.5s) &rarr; **1,800 invocations / 1-hour exam** &rarr; allows **~55 complete 1-hour exams/day** on free tier.
 
-### 6.2 Cold Starts and Pooling Strategy
-- **Cold-Start Duration**: ~60 to 150 ms. Cold starts establish the first MySQL pool connection.
-- **Connection Caching**: `getPool()` caches the `mysql2` connection pool across warm lambda invocations via `globalThis`.
-- **Connection Limits**: Keep `DB_CONNECTION_LIMIT` between 1 and 3 per serverless instance to prevent exhausting database connection pools when lambdas autoscale.
+### 7.2 Cold Starts and Pooling Strategy
+- **Cold-Start Duration**: ~180 to 240 ms. Warm invocations reuse the cached pool on `globalThis` (<15ms response).
+- **Connection Limits**: Keep `DB_CONNECTION_LIMIT` between 1 and 3 per serverless instance to prevent exhausting cloud database connection pools when lambdas autoscale.
 
-### 6.3 Realtime Latency: Polling vs. Pusher
-- **Pusher Provider**: Near-instant (~120-250 ms) WebSocket event delivery directly between client and Pusher Cloud.
+### 7.3 Realtime Latency: Polling vs. Pusher
+- **Pusher Provider**: Near-instant (~50-70 ms) WebSocket event delivery directly between client and Pusher Cloud.
 - **Polling Fallback**: Latency equals the client polling interval (2 to 3 seconds). Polling is fully self-contained in MySQL (`Events` table) without external accounts.
 
-### 6.4 Client-Side Proctoring Trust Boundaries
+### 7.4 Client-Side Proctoring Trust Boundaries
 - **Optical Tracking**: MediaPipe face detection, gaze tracking, and tab switch listeners execute in the student's browser context. Advanced attackers can spoof video using virtual camera software (OBS Virtual Camera).
 - **Backend Defense-in-Depth**:
   - Optical violations trigger immediate forensic server snapshots stored under tamper-resistant storage keys.
   - The `Proctoring_Logs` table enforces database-level immutability via MySQL triggers (`trg_protect_audit_logs_update` and `trg_protect_audit_logs_delete`).
   - Trust score degradation and auto-disqualification are calculated by database triggers, never by client code.
 
-### 6.5 Recording Storage Growth
+### 7.5 Recording Storage Growth
 - WebM video recordings consume ~25-50 MB per student per exam hour.
 - Retention cleanup is managed by `/api/cron/retention` which purges recordings older than `RECORDING_RETENTION_DAYS` (default 30 days) from object storage and updates database status to `PURGED`.

@@ -18,15 +18,19 @@ async function run() {
     password: process.env.DB_PASSWORD || 'proctoriq_root',
   });
 
+  interface CountRow {
+    cnt: number;
+  }
+
   const [prodSessions] = await conn.query('SELECT COUNT(*) as cnt FROM proctoriq.Exam_Sessions');
   const [testSessions] = await conn.query('SELECT COUNT(*) as cnt FROM exam_monitoring_test.Exam_Sessions');
   const [prodLogs] = await conn.query('SELECT COUNT(*) as cnt FROM proctoriq.Proctoring_Logs');
   const [testLogs] = await conn.query('SELECT COUNT(*) as cnt FROM exam_monitoring_test.Proctoring_Logs');
 
-  const prodCount = (prodSessions as any)[0].cnt;
-  const testCount = (testSessions as any)[0].cnt;
-  const prodLogCount = (prodLogs as any)[0].cnt;
-  const testLogCount = (testLogs as any)[0].cnt;
+  const prodCount = (prodSessions as unknown as CountRow[])[0]?.cnt ?? 0;
+  const testCount = (testSessions as unknown as CountRow[])[0]?.cnt ?? 0;
+  const prodLogCount = (prodLogs as unknown as CountRow[])[0]?.cnt ?? 0;
+  const testLogCount = (testLogs as unknown as CountRow[])[0]?.cnt ?? 0;
 
   console.log(` • Production DB (proctoriq): Exam_Sessions = ${prodCount}, Proctoring_Logs = ${prodLogCount}`);
   console.log(` • Test DB (exam_monitoring_test): Exam_Sessions = ${testCount}, Proctoring_Logs = ${testLogCount}`);
