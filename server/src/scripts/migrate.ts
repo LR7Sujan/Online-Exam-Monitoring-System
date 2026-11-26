@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import type { Connection, RowDataPacket } from 'mysql2/promise';
 import mysql from 'mysql2/promise';
 import { env } from '../config/env.js';
+import { getStorageAdapter } from '../storage/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -348,6 +349,22 @@ export async function runReset(): Promise<void> {
     console.log(`[db:reset] All objects dropped in '${dbName}'. Re-running migrations and seeds...`);
   } finally {
     await conn.end();
+  }
+
+  // Clean up object storage evidence for dev/test environment during reset
+  try {
+    const adapter = getStorageAdapter();
+    const prefix = env.STORAGE_PREFIX || (dbName.endsWith('_test') ? 'test/' : '');
+    if (prefix) {
+      console.log(`[db:reset] Cleaning storage prefix '${prefix}'...`);
+      await adapter.deletePrefix(prefix);
+    } else if (dbName.endsWith('_dev')) {
+      console.log(`[db:reset] Cleaning dev storage objects...`);
+      await adapter.deletePrefix('snapshots/');
+      await adapter.deletePrefix('recordings/');
+    }
+  } catch (storageErr) {
+    console.warn('[db:reset] Storage cleanup warning:', storageErr);
   }
 
   await runMigrations();
