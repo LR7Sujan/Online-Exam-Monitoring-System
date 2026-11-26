@@ -5,20 +5,37 @@
 @tailwind utilities;
 
 @layer base {
-  /* Light Theme (default root tokens) */
+  /* Light Theme (Cream Palette - default root tokens) */
   :root {
     color-scheme: light;
-    --background: #fafafa;
-    --surface: #ffffff;
-    --surface-elevated: #f4f4f5;
-    --border: #e4e4e7;
-    --border-strong: #d4d4d8;
-    --foreground: #09090b;
-    --muted: #f4f4f5;
-    --muted-foreground: #71717a;
+    --background: #F4EFE4;
+    --surface: #FBF8F0;
+    --surface-elevated: #EFE9DB;
+    --surface-2: #EFE9DB;
+    --border: #DDD3BE;
+    --border-strong: #C9BDA4;
+    --foreground: #2A2620;
+    --muted: #EFE9DB;
+    --muted-foreground: #6A6152;
     --ring: #6366f1;
-    --dotted-grid-color: rgba(0, 0, 0, 0.06);
-    --aurora-opacity: 0.55;
+    --dotted-grid-color: rgba(60, 45, 20, 0.05);
+    --aurora-opacity: 0.25;
+
+    /* Semantic light theme tokens for WCAG AA compliance (>=4.5:1 text, >=3:1 UI) */
+    --semantic-emerald: #047857;
+    --semantic-amber: #B45309;
+    --semantic-rose: #BE123C;
+    --semantic-sky: #0369A1;
+
+    --semantic-emerald-bg: #E8F5E9;
+    --semantic-amber-bg: #FEF3C7;
+    --semantic-rose-bg: #FFE4E6;
+    --semantic-sky-bg: #E0F2FE;
+
+    --semantic-emerald-border: #A7F3D0;
+    --semantic-amber-border: #FDE68A;
+    --semantic-rose-border: #FECDD3;
+    --semantic-sky-border: #BAE6FD;
   }
 
   /* Dark Theme (applied via .dark class) */
@@ -27,6 +44,7 @@
     --background: #09090b;
     --surface: #111114;
     --surface-elevated: #18181b;
+    --surface-2: #18181b;
     --border: #27272a;
     --border-strong: #3f3f46;
     --foreground: #f4f4f5;
@@ -35,6 +53,21 @@
     --ring: #6366f1;
     --dotted-grid-color: rgba(255, 255, 255, 0.05);
     --aurora-opacity: 0.85;
+
+    --semantic-emerald: #34D399;
+    --semantic-amber: #FBBF24;
+    --semantic-rose: #FB7185;
+    --semantic-sky: #38BDF8;
+
+    --semantic-emerald-bg: rgba(6, 78, 59, 0.4);
+    --semantic-amber-bg: rgba(120, 53, 15, 0.4);
+    --semantic-rose-bg: rgba(136, 19, 55, 0.4);
+    --semantic-sky-bg: rgba(12, 74, 110, 0.4);
+
+    --semantic-emerald-border: rgba(5, 150, 105, 0.4);
+    --semantic-amber-border: rgba(217, 119, 6, 0.4);
+    --semantic-rose-border: rgba(225, 29, 72, 0.4);
+    --semantic-sky-border: rgba(2, 132, 199, 0.4);
   }
 
   *,
@@ -121,7 +154,7 @@
     background-color: var(--surface);
     border: 1px solid var(--border);
     border-radius: 20px;
-    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 8px 24px -4px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 1px 3px 0 rgba(60, 45, 20, 0.04), 0 8px 24px -4px rgba(60, 45, 20, 0.08);
   }
 
   /* Conic-gradient rotating animated border */
@@ -180,12 +213,19 @@
   pointer-events: none;
   z-index: -2;
   background:
-    radial-gradient(circle at 15% 20%, rgba(99, 102, 241, 0.12) 0%, transparent 45%),
-    radial-gradient(circle at 85% 25%, rgba(139, 92, 246, 0.10) 0%, transparent 45%),
-    radial-gradient(circle at 50% 85%, rgba(217, 70, 239, 0.08) 0%, transparent 50%);
+    radial-gradient(circle at 15% 20%, rgba(99, 102, 241, 0.06) 0%, transparent 45%),
+    radial-gradient(circle at 85% 25%, rgba(139, 92, 246, 0.05) 0%, transparent 45%),
+    radial-gradient(circle at 50% 85%, rgba(217, 70, 239, 0.04) 0%, transparent 50%);
   filter: blur(55px);
   will-change: transform;
   animation: auroraPulse 16s ease-in-out infinite;
+}
+
+.dark .aurora-backdrop {
+  background:
+    radial-gradient(circle at 15% 20%, rgba(99, 102, 241, 0.12) 0%, transparent 45%),
+    radial-gradient(circle at 85% 25%, rgba(139, 92, 246, 0.10) 0%, transparent 45%),
+    radial-gradient(circle at 50% 85%, rgba(217, 70, 239, 0.08) 0%, transparent 50%);
 }
 
 /* Accessible focus ring across all interactive elements */

@@ -25,7 +25,9 @@ export default {
         surface: {
           DEFAULT: 'var(--surface)',
           elevated: 'var(--surface-elevated)',
+          2: 'var(--surface-2)',
         },
+        'surface-2': 'var(--surface-2)',
         border: {
           DEFAULT: withColorMix('--border'),
           strong: withColorMix('--border-strong'),
@@ -125,11 +127,11 @@ export default {
         'bento-lg': '24px',
       },
       boxShadow: {
-        // Bento Layered Shadows
-        'bento-sm': '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
-        bento: '0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 8px 24px -4px rgba(0, 0, 0, 0.1)',
-        'bento-xl': '0 20px 40px -8px rgba(0, 0, 0, 0.25)',
-        'bento-card': '0 0 0 1px var(--border), 0 2px 8px -2px rgba(0, 0, 0, 0.08)',
+        // Bento Layered Shadows (warm and soft)
+        'bento-sm': '0 1px 2px 0 rgba(60, 45, 20, 0.05)',
+        bento: '0 1px 3px 0 rgba(60, 45, 20, 0.05), 0 8px 24px -4px rgba(60, 45, 20, 0.08)',
+        'bento-xl': '0 20px 40px -8px rgba(60, 45, 20, 0.16)',
+        'bento-card': '0 0 0 1px var(--border), 0 2px 8px -2px rgba(60, 45, 20, 0.08)',
       },
       animation: {
         'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',

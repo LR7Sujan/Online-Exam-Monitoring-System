@@ -9,6 +9,7 @@ All core academic integrity invariants—penalty deductions, dynamic trust score
 ## ⚡ Quick Start & Database Setup (Zero Docker Required)
 
 ProctorIQ supports two database setups with zero dependency on Docker:
+
 1. **Option A (Local MySQL 8 as a Windows Service):** Standard local MySQL 8.0+ service running natively on your OS.
 2. **Option B (Use a Hosted MySQL 8):** Any managed cloud MySQL 8.0+ provider (Aiven, AWS RDS, GCP Cloud SQL, or DigitalOcean).
 
@@ -20,13 +21,16 @@ If you are developing locally on Windows, install and run MySQL natively without
 
 1. **Install MySQL Community Server 8.0+**:
    - Run via Windows Package Manager:
+
      ```powershell
      winget install Oracle.MySQL
      ```
+
    - *Or* download the [MySQL Installer for Windows](https://dev.mysql.com/downloads/installer/) and choose **Server Only (8.0+)**.
 2. **Configure & Start as Windows Service**:
    - The installer configures a Windows Service named `MySQL80` (or `MySQL`).
    - Start or check the service from PowerShell (Run as Administrator):
+
      ```powershell
      # Check service status
      Get-Service MySQL80
@@ -35,7 +39,9 @@ If you are developing locally on Windows, install and run MySQL natively without
      Start-Service MySQL80
      # Or via cmd: net start MySQL80
      ```
+
 3. **Create Required Databases**:
+
    ```powershell
    mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS proctoriq; CREATE DATABASE IF NOT EXISTS exam_monitoring_test;"
    ```
@@ -49,11 +55,13 @@ ProctorIQ works out-of-the-box with any managed cloud MySQL 8.0+ instance:
 1. **Provision Instance**:
    Create a database on [AWS RDS](https://aws.amazon.com/rds), [Aiven](https://aiven.io), [DigitalOcean Managed Databases](https://www.digitalocean.com/products/managed-databases), or [PlanetScale](https://planetscale.com) with foreign keys and triggers enabled.
 2. **Configure `.env`**:
+
    ```env
    DATABASE_URL=mysql://dbuser:StrongPass123@db-host.provider.com:3306/proctoriq?ssl=true
    DB_SSL=true
    DB_CONNECTION_LIMIT=3
    ```
+
 3. If your provider requires a custom CA certificate, place it in `db/ca.pem` and configure `DB_SSL_CA=./db/ca.pem`.
 
 ---
@@ -135,15 +143,19 @@ npm run demo
 Automated tests and browser agents are **strictly quarantined** to a dedicated test database whose name must end with `_test`:
 
 1. **Create the test database** on your local or hosted MySQL instance:
+
    ```sql
    CREATE DATABASE exam_monitoring_test;
    ```
+
 2. **Configure `.env.test`**:
    Ensure `DB_NAME=exam_monitoring_test` in `.env.test` (and `server/.env.test`).
 3. **Reset and seed test database**:
+
    ```bash
    npm --prefix server run db:test:reset
    ```
+
 4. **Strict Safety Guard**:
    All tests and reset commands invoke `assertTestDatabaseSafety()`. If `DB_NAME` does not end with `_test` or `NODE_ENV !== 'test'`, execution is immediately aborted with a safety exception. Production data is never touched.
 
@@ -168,11 +180,14 @@ npm run db:migrate:data -- --source-db=proctoriq --target-db=proctoriq_dev --exe
 ProctorIQ deploys seamlessly to **Vercel** from a single repository with **no Docker, no long-running servers, and zero local disk writes in production**.
 
 ### 1. Provision Hosted MySQL 8.0+ Database
+
 1. Create a MySQL 8.0+ database with InnoDB support on any managed provider (e.g. [Aiven](https://aiven.io), [AWS RDS](https://aws.amazon.com/rds), [GCP Cloud SQL](https://cloud.google.com/sql), [PlanetScale](https://planetscale.com) with foreign keys enabled, or [Railway](https://railway.app)).
 2. Obtain your TLS-secured connection string (`DATABASE_URL=mysql://user:pass@host:port/proctoriq?ssl=true`).
 
 ### 2. Run Database Migrations & Seed
+
 Execute the idempotent Node.js migration runner against your cloud database:
+
 ```bash
 # Set your target cloud connection in .env
 DATABASE_URL=mysql://user:pass@cloud-host:3306/proctoriq?ssl=true DB_SSL=true npm run db:migrate
@@ -180,14 +195,17 @@ DATABASE_URL=mysql://user:pass@cloud-host:3306/proctoriq?ssl=true DB_SSL=true np
 ```
 
 ### 3. Create Pusher Channels App (Realtime Layer)
+
 1. Sign in to [Pusher](https://pusher.com) and create a Channels app (Free tier includes 200,000 messages/day and 100 concurrent connections).
 2. Note your `app_id`, `key`, `secret`, and `cluster` (e.g. `mt1`).
 
 ### 4. Create Object Storage Store
+
 - **Option A (Vercel Blob):** In the Vercel dashboard for your project, navigate to **Storage** &rarr; **Create Database** &rarr; **Blob**. Vercel will automatically provision `BLOB_READ_WRITE_TOKEN`.
 - **Option B (Cloudflare R2 / AWS S3):** Create an S3-compatible bucket and generate API credentials (`S3_BUCKET`, `S3_ENDPOINT`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`).
 
 ### 5. Set Environment Variables in Vercel
+
 In your Vercel Project Settings (&rarr; **Environment Variables**), add the following:
 
 | Variable | Scope | Description |
@@ -202,20 +220,23 @@ In your Vercel Project Settings (&rarr; **Environment Variables**), add the foll
 | `PUSHER_SECRET` | Production, Preview | Pusher Secret Key |
 | `PUSHER_CLUSTER` | Production, Preview | Pusher cluster (e.g. `mt1`) |
 | `STORAGE_PROVIDER` | Production, Preview | `blob` (Vercel Blob) or `s3` (Cloudflare R2) |
-| `BLOB_READ_WRITE_TOKEN`| Production, Preview | (Automatically added if using Vercel Blob) |
+| `BLOB_READ_WRITE_TOKEN` | Production, Preview | (Automatically added if using Vercel Blob) |
 | `VITE_API_URL` | Production, Preview | `/api` (same-origin relative URL) |
-| `VITE_REALTIME_PROVIDER`| Production, Preview | `pusher` (or `polling`) |
+| `VITE_REALTIME_PROVIDER` | Production, Preview | `pusher` (or `polling`) |
 | `VITE_PUSHER_KEY` | Production, Preview | Public Pusher Key for browser bundle |
 | `VITE_PUSHER_CLUSTER` | Production, Preview | Public Pusher Cluster (e.g. `mt1`) |
 
 ### 6. Connect GitHub Repository & Deploy
+
 1. Push your repository to GitHub.
 2. In Vercel, click **Add New...** &rarr; **Project**, select your repo.
 3. Vercel automatically detects `vercel.json` (build command `npm run build`, output directory `client/dist`, API routes under `api/index.ts`).
 4. Click **Deploy**.
 
 ### 7. Post-Deployment Smoke Test
+
 Verify system operational integrity in production:
+
 1. **API & Docs**: Visit `https://your-domain.vercel.app/api/docs` — Swagger UI loads cleanly.
 2. **Authentication**: Sign in at `/auth/login` as `admin@proctoriq.io` with master password `ProctorIQ#2026`.
 3. **Student Flow**: Open an incognito window, log in as `student@proctoriq.io`, and verify the camera feed and 4-step checklist.
@@ -223,19 +244,23 @@ Verify system operational integrity in production:
 5. **Cron Verification**: Trigger `/api/cron/timeouts` using curl with your `CRON_SECRET` Bearer header to confirm HTTP 200 response.
 
 ### 🔄 Rollback Strategy
+
 If a deployment exhibits regressions:
+
 1. Navigate to the **Deployments** tab in the Vercel Dashboard.
 2. Find the previous stable deployment and click **...** &rarr; **Instant Rollback**.
 3. Traffic transitions back in under 5 seconds with zero server restarts.
 4. Because all database migrations are backward-compatible, previous code runs against the database without schema mismatches.
 
 ### 📊 Free Tier Limits & Graceful Handling
+
 - **Vercel Functions (Serverless)**: 100,000 requests/day, 10s execution budget. All ProctorIQ API calls complete in <100ms. If limits are approached, Vercel queues or throttles; client-side retry queues prevent data loss.
 - **Vercel Cron**: Once-daily schedule on the Hobby tier (`0 0 * * *`). ProctorIQ uses **lazy enforcement** on session endpoints (`/time-left`, `/heartbeat`, `/submit`, `/monitor/live`), meaning timeouts, grace periods, and extensions are evaluated accurately even if no cron runs!
 - **Pusher Channels**: 200,000 messages/day & 100 concurrent connections. If quota is exceeded, switch `REALTIME_PROVIDER=polling` and `VITE_REALTIME_PROVIDER=polling` to fall back to database-backed event polling with zero third-party dependencies.
 - **Object Storage (Blob / S3)**: 5GB monthly bandwidth. Soft warnings trigger in the admin console at `RECORDING_MAX_STORAGE_GB=5`, and the automated retention cron cleans up recordings past `RECORDING_RETENTION_DAYS=30`.
 
 ---
+
 - 🌐 **Candidate & Mission Control UI:** [http://localhost:5173](http://localhost:5173)
 - 🔌 **Backend REST API & WebSockets:** [http://localhost:4000](http://localhost:4000)
 - 📚 **Interactive Swagger API Docs:** [http://localhost:4000/api/docs](http://localhost:4000/api/docs)
@@ -279,17 +304,20 @@ All seeded accounts share the default master password: **`ProctorIQ#2026`**
 ```
 
 ### 1. Student Examination Kiosk (`/student/session/:id`)
+
 - **4-Step Verification Stepper:** Enforces Integrity Rules agreement, optical camera stream initialization, fullscreen kiosk lock, and system telemetry validation.
 - **Client-Side Face Detection:** MediaPipe BlazeFace detection running at ~1 frame/second. Flags `NO_FACE` if missing for 5 consecutive seconds; flags `MULTIPLE_FACES` if 2+ faces detected.
 - **Persistent TrustRing HUD:** SVG circular gauge that transitions dynamically from emerald $\rightarrow$ amber $\rightarrow$ magenta as score drops, pulsing when critical.
 - **Autosave Engine:** Answers synced instantly to MySQL with optimistic UI updates and an offline retry queue.
 
 ### 2. Proctor Mission Control (`/proctor`)
+
 - **Socket.IO Real-Time Stream:** Sub-15ms broadcast latency when violations are recorded in MySQL.
 - **Interactive Student Drawer:** Detailed Recharts area chart showing trust score trajectory over time with violation markers, student IP / device fingerprint, and webcam snapshots in a lightbox.
 - **Adjudication Review Queue:** Table populated from view `vw_ViolationAuditReport`. Clicking "Dismiss" invokes MySQL trigger `trg_after_review_update`, restoring trust points and updating results in real time. Keyboard shortcuts: `C` (Confirm), `D` (Dismiss).
 
 ### 3. Administrator Portal (`/admin`)
+
 - **Executive Analytics:** Circadian violation heatmap (hour $\times$ violation type), infraction type distribution donut, time-series incident trends, and trust score distribution histogram.
 - **Dynamic Rule Calibration:** Penalty weight editor allowing instant modification of penalties (e.g. changing `TAB_SWITCH` penalty from 15 to 30 PTS). Changes take effect on the very next violation with zero code modifications.
 - **Swarm Demo Simulator (`/admin/simulator`):** Spawns $N$ configurable virtual students answering questions and triggering stochastic violations with adjustable chaos and speed sliders.
@@ -336,7 +364,8 @@ ProctorIQ enforces strict environment and data isolation to guarantee that the p
 | **Real / Dev** | Manual testing & demo simulator | `proctoriq` | `http://localhost:5173` | `http://localhost:4000` | `/server/uploads` |
 | **Test / Agent** | Vitest, E2E & Browser Agent | `exam_monitoring_test` | `http://localhost:5174` | `http://localhost:4001` | `/server/uploads-test` |
 
-### Key Isolation Controls:
+### Key Isolation Controls
+
 1. **Safety Guard**: Server startup, seed operations, and test runners (`assertTestDatabaseSafety`) refuse to execute unless `NODE_ENV === 'test'` and `DB_NAME` ends with `_test`.
 2. **Browser-Agent Testing**: Browser agents in Antigravity must always interact with `http://localhost:5174` (targeting API on port `4001`).
 3. **Automated Teardown**: Global teardown scripts reset the test database to fixture state and remove transient artifacts (`uploads-test`, `test-results`) unless `KEEP_ARTIFACTS=1`.
@@ -350,6 +379,7 @@ ProctorIQ features a multi-tiered automated verification matrix covering databas
 All test suites can be executed from the monorepo root:
 
 ### 1. Database & DBMS Invariants Verification Suite
+
 Verifies all 8 domain tables, referential foreign key cascades, domain CHECK constraints, trigger-level score deductions, anti-tamper locks, `sp_SubmitAndGradeExam` negative marking, and audit log immutability (SQLSTATE 45000):
 
 ```bash
@@ -361,6 +391,7 @@ npm run test:db
 ```
 
 ### 2. Server Unit, Integration, Security & Regression Suites
+
 Executes 144 server tests covering Zod validation, JWT RBAC, OWASP security probes (SQLi, IDOR, XSS, rate limiting), 50-student chaos load simulator, and permanent regression verification:
 
 ```bash
@@ -375,6 +406,7 @@ npm --prefix server test
 ```
 
 ### 3. End-to-End Playwright Browser Journeys
+
 Executes 29 browser tests using headless Chromium with virtual webcam emulation. Tests cover all role user journeys, fullscreen kiosk lock, devtools detection, offline answer queuing, and visual responsive audits:
 
 ```bash
@@ -386,6 +418,7 @@ npm --prefix client run test:e2e -- --ui
 ```
 
 ### 4. Google Lighthouse Production Audits
+
 Audits Performance ($\ge 85$), Accessibility ($\ge 95$), and Best Practices ($\ge 90$) across all 4 key views (`/`, `/student/session/1`, `/proctor`, `/admin`):
 
 ```bash
@@ -394,6 +427,7 @@ node client/tests/scripts/runLighthouseSuite.mjs
 ```
 
 ### 5. Static Code Quality, Typecheck & Production Build
+
 Ensures zero linting warnings, zero TypeScript errors, and verifies tree-shaken production bundles:
 
 ```bash
