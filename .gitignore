@@ -11,6 +11,7 @@ node_modules/
 dist/
 */dist/
 .vercel/
+*.tsbuildinfo
 
 # Storage, uploads & temporary media
 uploads/
@@ -36,8 +37,11 @@ npm-debug.log*
 *.sql.gz
 *.sql.tar
 *.sql.zip
+*.sql.bak
 *backup*.sql
 *dump*.sql
+dumps/
+backups/
 
 # System & OS metadata
 .DS_Store

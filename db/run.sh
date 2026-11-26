@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ============================================================================
 # ProctorIQ: Create, Migrate, and Seed MySQL 8.0+ in One Command
-# Supports local mysql CLI or Node migration runner (Zero Docker Required).
+# Supports local mysql CLI or Node migration runner.
 # ============================================================================
 set -euo pipefail
 

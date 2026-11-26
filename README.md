@@ -6,18 +6,18 @@ All core academic integrity invariants—penalty deductions, dynamic trust score
 
 ---
 
-## ⚡ Quick Start & Database Setup (Zero Docker Required)
+## ⚡ Quick Start & Database Setup
 
-ProctorIQ supports two database setups with zero dependency on Docker:
+ProctorIQ supports two flexible database configurations:
 
-1. **Option A (Local MySQL 8 as a Windows Service):** Standard local MySQL 8.0+ service running natively on your OS.
-2. **Option B (Use a Hosted MySQL 8):** Any managed cloud MySQL 8.0+ provider (Aiven, AWS RDS, GCP Cloud SQL, or DigitalOcean).
+1. **Option A (Local MySQL 8 as a Service):** Standard local MySQL 8.0+ service running natively on your OS.
+2. **Option B (Hosted Cloud MySQL 8):** Any managed cloud MySQL 8.0+ provider (Aiven, AWS RDS, GCP Cloud SQL, PlanetScale, or DigitalOcean).
 
 ---
 
 ### 1. Install MySQL 8 as a Windows Service
 
-If you are developing locally on Windows, install and run MySQL natively without Docker:
+If you are developing locally on Windows, install and run MySQL Community Server:
 
 1. **Install MySQL Community Server 8.0+**:
    - Run via Windows Package Manager:
@@ -115,7 +115,7 @@ DB_CONNECTION_LIMIT=3
 DB_SSL=false
 ```
 
-### 6. Apply Migrations & Seed Data (Docker-Free Node.js Runner)
+### 6. Apply Migrations & Seed Data (Native Node.js Runner)
 
 Run the automated Node.js migration runner (parses MySQL `DELIMITER` directives, creates tables, triggers, procedures, views, and tracks applied versions in `schema_migrations`):
 
@@ -177,7 +177,7 @@ npm run db:migrate:data -- --source-db=proctoriq --target-db=proctoriq_dev --exe
 
 ## 🚀 Production Serverless Deployment (Vercel + Hosted MySQL)
 
-ProctorIQ deploys seamlessly to **Vercel** from a single repository with **no Docker, no long-running servers, and zero local disk writes in production**.
+ProctorIQ deploys seamlessly to **Vercel** from a single repository as a **fully serverless full-stack application with zero local disk writes in production**.
 
 ### 1. Provision Hosted MySQL 8.0+ Database
 

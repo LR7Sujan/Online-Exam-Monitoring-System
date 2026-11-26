@@ -61,7 +61,7 @@ jobs:
         run: npm --prefix server run db:test:reset
 
       - name: Run Unit & API Test Suites
-        run: npm --prefix server run test:vitest
+        run: npm test
 
       - name: Verify Production Build
         run: npm run build
