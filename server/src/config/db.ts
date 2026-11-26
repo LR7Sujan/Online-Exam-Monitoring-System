@@ -216,6 +216,7 @@ export interface DbHealthResult {
   version?: string;
   triggersCount?: number;
   proceduresCount?: number;
+  pingMs?: number;
   error?: string;
 }
 
@@ -231,7 +232,9 @@ export async function testDbConnection(): Promise<boolean> {
 export async function getDbHealth(): Promise<DbHealthResult> {
   try {
     const currentPool = getPool();
+    const t0 = performance.now();
     await currentPool.query('SELECT 1');
+    const pingMs = Math.round(performance.now() - t0);
     const [versionRows] = await currentPool.query<RowDataPacket[]>('SELECT VERSION() as version');
     const versionRow = versionRows[0] as { version?: string } | undefined;
     const version = versionRow?.version ? String(versionRow.version).split('-')[0] : '8.0';
@@ -253,6 +256,7 @@ export async function getDbHealth(): Promise<DbHealthResult> {
       version,
       triggersCount,
       proceduresCount,
+      pingMs,
     };
   } catch (err: unknown) {
     const errorMsg = (err as Error)?.message || 'Database connection failed';

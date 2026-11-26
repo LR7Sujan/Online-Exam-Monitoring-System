@@ -47,6 +47,9 @@ export const serverUploadsDir = env.UPLOADS_DIR
 export function createApp() {
   const app = express();
 
+  // Trust first proxy hop (Vercel Edge, Cloudflare, ALB) for accurate client IP detection via X-Forwarded-For
+  app.set('trust proxy', 1);
+
   app.use(
     helmet({
       crossOriginResourcePolicy: { policy: 'cross-origin' },
@@ -193,6 +196,9 @@ export function createApp() {
     const payload = {
       api: 'up' as const,
       db: dbHealth.connected ? ('up' as const) : ('down' as const),
+      pingMs: dbHealth.pingMs ?? 0,
+      time: new Date().toISOString(),
+      region: process.env.VERCEL_REGION || process.env.AWS_REGION || 'local',
       realtime: env.REALTIME_PROVIDER,
       version: dbHealth.version ?? '8.0.46',
       mysqlVersion: dbHealth.version ?? '8.0.46',
