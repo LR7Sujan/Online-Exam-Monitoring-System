@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MotionConfig } from 'framer-motion';
 import { lazy, Suspense, type ReactNode } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
-import { SocketProvider } from './context/SocketContext';
+import { RealtimeProvider } from './context/RealtimeContext';
 import { ToastProvider } from './components/ui/Toast';
 import { ThemeProvider } from './context/ThemeContext';
 import { AppShell } from './components/layout/AppShell';
@@ -78,7 +78,7 @@ export function App() {
     <ThemeProvider defaultTheme="dark" storageKey="proctoriq-theme">
       <MotionConfig reducedMotion={isTest ? 'always' : 'user'}>
         <QueryClientProvider client={queryClient}>
-          <SocketProvider>
+          <RealtimeProvider>
             <ToastProvider>
               <BrowserRouter>
               <Suspense fallback={<PageSkeleton />}>
@@ -273,7 +273,7 @@ export function App() {
               </Suspense>
             </BrowserRouter>
           </ToastProvider>
-        </SocketProvider>
+        </RealtimeProvider>
       </QueryClientProvider>
     </MotionConfig>
   </ThemeProvider>

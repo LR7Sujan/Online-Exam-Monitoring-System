@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import type { Server as HttpServer } from 'node:http';
 import jwt from 'jsonwebtoken';
 import { createApp } from '../src/app.js';
-import { pool, executeSql } from '../src/config/db.js';
+import { pool, executeSql, queryRows } from '../src/config/db.js';
 import { env } from '../src/config/env.js';
 import { simulatorEngine } from '../src/services/simulator.js';
 import { setRealtimeAdapter, PollingRealtimeAdapter } from '../src/realtime/adapter.js';
@@ -181,7 +181,7 @@ describe('Sub-Phase 11.6: Realtime, Proctoring Invariants & Load Verification', 
     const s3 = await provisionTestStudent('rt3');
 
     // Get baseline cursor before triggering violation
-    const [rows] = await executeSql<RowDataPacket[]>('SELECT COALESCE(MAX(event_id), 0) AS maxCursor FROM Events');
+    const rows = await queryRows<RowDataPacket[]>('SELECT COALESCE(MAX(event_id), 0) AS maxCursor FROM Events');
     const cursorBefore = Number(rows[0]?.maxCursor ?? 0);
 
     // Trigger violation on Session 1 (Student 1) via API

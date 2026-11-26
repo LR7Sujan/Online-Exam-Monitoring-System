@@ -3,7 +3,7 @@ import type { Server as HttpServer } from 'node:http';
 import jwt from 'jsonwebtoken';
 import type Pusher from 'pusher';
 import { createApp } from '../src/app.js';
-import { pool, executeSql, testDbConnection } from '../src/config/db.js';
+import { pool, executeSql, queryRows, testDbConnection } from '../src/config/db.js';
 import { env } from '../src/config/env.js';
 import {
   PusherRealtimeAdapter,
@@ -101,7 +101,10 @@ describe('Serverless Realtime Layer: Polling & Pusher Providers', () => {
         await executeSql('DELETE FROM Exam_Sessions WHERE id IN (?, ?)', [session1Id, session2Id]);
         await executeSql('DELETE FROM Exams WHERE id = ?', [examId]);
         await executeSql('DELETE FROM Users WHERE id IN (?, ?, ?)', [proctorId, student1Id, student2Id]);
-        await executeSql('DELETE FROM Events WHERE channel LIKE "private-%"');
+        await executeSql(
+          'DELETE FROM Events WHERE channel IN (?, ?, ?, ?)',
+          [`private-user-${student1Id}`, `private-user-${student2Id}`, `private-session-${session1Id}`, `private-session-${session2Id}`]
+        );
       } catch {
         // ignore teardown error
       }
@@ -227,7 +230,7 @@ describe('Serverless Realtime Layer: Polling & Pusher Providers', () => {
       const t0 = Date.now();
 
       // Baseline cursor
-      const [rows0] = await executeSql<RowDataPacket[]>('SELECT COALESCE(MAX(event_id), 0) AS maxCursor FROM Events');
+      const rows0 = await queryRows<RowDataPacket[]>('SELECT COALESCE(MAX(event_id), 0) AS maxCursor FROM Events');
       const cursor0 = Number(rows0[0]?.maxCursor ?? 0);
 
       // Trigger a violation publication
@@ -268,7 +271,7 @@ describe('Serverless Realtime Layer: Polling & Pusher Providers', () => {
 
     it('ensures students receive only their own events and never proctor channels', async () => {
       // Baseline cursor
-      const [rows1] = await executeSql<RowDataPacket[]>('SELECT COALESCE(MAX(event_id), 0) AS maxCursor FROM Events');
+      const rows1 = await queryRows<RowDataPacket[]>('SELECT COALESCE(MAX(event_id), 0) AS maxCursor FROM Events');
       const cursor = Number(rows1[0]?.maxCursor ?? 0);
 
       // Publish violation for Student 1

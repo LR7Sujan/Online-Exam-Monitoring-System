@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "ProctorIQ thin REST + Socket.IO backend over MySQL 8.0+ DBMS logic",
+  "description": "ProctorIQ thin REST + Serverless Realtime backend over MySQL 8.0+ DBMS logic",
   "scripts": {
     "dev": "tsx watch src/dev.ts",
     "dev:api": "tsx watch src/dev.ts",

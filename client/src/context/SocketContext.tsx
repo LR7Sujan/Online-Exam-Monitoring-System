@@ -17,6 +17,7 @@ import {
 } from './SocketContextCore';
 
 export type { LiveViolationEvent, LiveSessionEvent, ConnectionState };
+export { SocketProvider as RealtimeProvider };
 
 export function SocketProvider({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
