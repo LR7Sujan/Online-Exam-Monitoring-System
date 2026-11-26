@@ -14,6 +14,7 @@ import { NeonButton } from '../ui/NeonButton';
 import { Skeleton } from '../ui/Skeleton';
 import { EmptyState, ErrorState } from '../ui/EmptyState';
 import { ParticleBurst } from '../ui/ParticleBurst';
+import { toast } from '../ui/Toast';
 import { api } from '../../lib/api';
 import { playPingSound } from '../../utils/audioAlert';
 import type { ReviewStatus, ViolationAuditRow } from '../../types/domain';
@@ -82,6 +83,7 @@ export function ReviewQueueTable({ onInspectStudent }: ReviewQueueTableProps) {
   const reviewMutation = useMutation({
     mutationFn: (vars: { logId: number; reviewStatus: ReviewStatus }) =>
       api.patch(`/proctor/logs/${vars.logId}/review`, {
+        status: vars.reviewStatus,
         reviewStatus: vars.reviewStatus,
         reviewNotes: `Reviewed via Queue (${vars.reviewStatus})`,
       }),
@@ -105,6 +107,10 @@ export function ReviewQueueTable({ onInspectStudent }: ReviewQueueTableProps) {
       queryClient.invalidateQueries({ queryKey: ['proctor-audit-report'] });
       queryClient.invalidateQueries({ queryKey: ['proctor-live-monitor'] });
       queryClient.invalidateQueries({ queryKey: ['proctor-kpis'] });
+    },
+    onError: (err: unknown) => {
+      const msg = err instanceof Error ? err.message : 'Operation failed';
+      toast.error(`Review update failed: ${msg}`);
     },
   });
 
@@ -512,26 +518,28 @@ export function ReviewQueueTable({ onInspectStudent }: ReviewQueueTableProps) {
                           <div className="flex items-center justify-end gap-1.5">
                             <button
                               type="button"
+                              disabled={reviewMutation.isPending}
                               onClick={() =>
                                 reviewMutation.mutate({
                                   logId: log.log_id,
                                   reviewStatus: 'CONFIRMED',
                                 })
                               }
-                              className="rounded-lg bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/25 transition-colors cursor-pointer"
+                              className="rounded-lg bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/25 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                               title="Confirm Violation (Key: C)"
                             >
                               Confirm [C]
                             </button>
                             <button
                               type="button"
+                              disabled={reviewMutation.isPending}
                               onClick={() =>
                                 reviewMutation.mutate({
                                   logId: log.log_id,
                                   reviewStatus: 'DISMISSED',
                                 })
                               }
-                              className="rounded-lg bg-muted border border-border px-2.5 py-1 text-[11px] font-medium text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors cursor-pointer"
+                              className="rounded-lg bg-muted border border-border px-2.5 py-1 text-[11px] font-medium text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                               title="Dismiss & Restore Points via DB trigger (Key: D)"
                             >
                               Dismiss [D]

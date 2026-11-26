@@ -58,9 +58,24 @@ axiosInstance.interceptors.response.use(
     }
     const errorData = error.response?.data as ApiEnvelope<unknown> | undefined;
     const code = errorData?.error?.code ?? error.code ?? 'REQUEST_FAILED';
-    const message = errorData?.error?.message ?? error.message ?? 'An unexpected error occurred';
+    let message = errorData?.error?.message ?? error.message ?? 'An unexpected error occurred';
     const status = error.response?.status ?? 500;
     const details = errorData?.data ?? errorData?.error?.details;
+
+    // Surface field validation error if available
+    if (details && typeof details === 'object') {
+      const d = details as Record<string, unknown>;
+      if (d.fieldErrors && typeof d.fieldErrors === 'object') {
+        const first = Object.entries(d.fieldErrors as Record<string, string[]>)[0];
+        if (first && Array.isArray(first[1]) && first[1].length > 0) {
+          message = `${first[0]}: ${first[1][0]}`;
+        }
+      } else if (Array.isArray(d) && d.length > 0 && (d[0] as { message?: string }).message) {
+        const first = d[0] as { field?: string; message?: string };
+        message = `${first.field ? `${first.field}: ` : ''}${first.message}`;
+      }
+    }
+
     return Promise.reject(new ApiClientError(code, message, status, details));
   }
 );

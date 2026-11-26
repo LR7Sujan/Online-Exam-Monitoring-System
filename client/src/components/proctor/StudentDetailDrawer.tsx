@@ -177,7 +177,9 @@ export function StudentDetailDrawer({ sessionId, onClose }: StudentDetailDrawerP
   const reviewMutation = useMutation({
     mutationFn: (vars: { logId: number; reviewStatus: ReviewStatus; notes?: string }) =>
       api.patch(`/proctor/logs/${vars.logId}/review`, {
+        status: vars.reviewStatus,
         reviewStatus: vars.reviewStatus,
+        note: vars.notes,
         reviewNotes: vars.notes ?? `Reviewed as ${vars.reviewStatus} via Proctor Console`,
       }),
     onSuccess: (_, vars) => {
@@ -190,6 +192,10 @@ export function StudentDetailDrawer({ sessionId, onClose }: StudentDetailDrawerP
       queryClient.invalidateQueries({ queryKey: ['proctor-live-monitor'] });
       queryClient.invalidateQueries({ queryKey: ['proctor-kpis'] });
       queryClient.invalidateQueries({ queryKey: ['proctor-audit-report'] });
+    },
+    onError: (err: unknown) => {
+      const msg = err instanceof Error ? err.message : 'Operation failed';
+      toast.error(`Review update failed: ${msg}`);
     },
   });
 
@@ -835,26 +841,28 @@ export function StudentDetailDrawer({ sessionId, onClose }: StudentDetailDrawerP
                               <div className="flex items-center gap-1.5 mt-1">
                                 <button
                                   type="button"
+                                  disabled={reviewMutation.isPending}
                                   onClick={() =>
                                     reviewMutation.mutate({
                                       logId: log.log_id,
                                       reviewStatus: 'CONFIRMED',
                                     })
                                   }
-                                  className="rounded-lg bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-mono font-bold text-emerald-500 hover:bg-emerald-500/25 transition-colors cursor-pointer"
+                                  className="rounded-lg bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-mono font-bold text-emerald-500 hover:bg-emerald-500/25 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                                   title="Confirm violation penalty"
                                 >
                                   Confirm
                                 </button>
                                 <button
                                   type="button"
+                                  disabled={reviewMutation.isPending}
                                   onClick={() =>
                                     reviewMutation.mutate({
                                       logId: log.log_id,
                                       reviewStatus: 'DISMISSED',
                                     })
                                   }
-                                  className="rounded-lg bg-surface-elevated border border-border px-2 py-0.5 text-[10px] font-mono font-bold text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                                  className="rounded-lg bg-surface-elevated border border-border px-2 py-0.5 text-[10px] font-mono font-bold text-muted-foreground hover:text-foreground transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                                   title="Dismiss violation & restore trust score via DB trigger"
                                 >
                                   Dismiss

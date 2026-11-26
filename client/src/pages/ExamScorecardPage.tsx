@@ -52,16 +52,69 @@ export function ExamScorecardPage() {
     enabled: sessId > 0,
   });
 
+  const [pendingLogId, setPendingLogId] = useState<number | null>(null);
+
   // Proctor Review Mutation
   const reviewMutation = useMutation({
     mutationFn: ({ logId, status }: { logId: number; status: 'CONFIRMED' | 'DISMISSED' }) =>
-      api.patch(`/proctor/logs/${logId}/review`, { status }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['session-scorecard', sessId] });
-      toast.success('Violation review status updated');
+      api.patch<Record<string, unknown>>(`/proctor/logs/${logId}/review`, { status, reviewStatus: status }),
+    onMutate: ({ logId }) => {
+      setPendingLogId(logId);
     },
-    onError: (err: Error) => {
-      toast.error(`Review update failed: ${err.message}`);
+    onSuccess: (updatedRow, vars) => {
+      setPendingLogId(null);
+      // In-place update query cache without requiring a page refresh
+      queryClient.setQueryData<ScorecardData>(['session-scorecard', sessId], (old) => {
+        if (!old) return old;
+        const targetLog = old.timeline.find(
+          (t) => (t.logId ?? Number(t.id.replace('violation-', ''))) === vars.logId
+        );
+        const penalty = targetLog?.penalty || 0;
+
+        const newTrust = typeof updatedRow?.current_trust_score === 'number'
+          ? updatedRow.current_trust_score
+          : (vars.status === 'DISMISSED'
+              ? Math.min(100, old.integrity.finalTrustScore + penalty)
+              : old.integrity.finalTrustScore);
+
+        const newIntegrityStatus = (updatedRow?.integrity_status as ScorecardData['integrity']['integrityStatus']) ??
+          (newTrust < old.integrity.minRequiredScore ? 'FLAGGED' : 'CLEAN');
+
+        const newTimeline = old.timeline.map((item) => {
+          const itemLogId = item.logId ?? Number(item.id.replace('violation-', ''));
+          if (itemLogId === vars.logId) {
+            return {
+              ...item,
+              status: vars.status,
+              reviewerName: (updatedRow?.reviewer_name as string) ?? 'Staff Reviewer',
+              reviewedAt: (updatedRow?.reviewed_at as string) ?? new Date().toISOString(),
+            };
+          }
+          return item;
+        });
+
+        return {
+          ...old,
+          integrity: {
+            ...old.integrity,
+            finalTrustScore: newTrust,
+            integrityStatus: newIntegrityStatus,
+          },
+          timeline: newTimeline,
+        };
+      });
+
+      queryClient.invalidateQueries({ queryKey: ['session-scorecard', sessId] });
+      toast.success(
+        vars.status === 'CONFIRMED'
+          ? 'Violation confirmed'
+          : 'Violation dismissed (trust points restored)'
+      );
+    },
+    onError: (err: unknown) => {
+      setPendingLogId(null);
+      const msg = err instanceof Error ? err.message : 'Operation failed';
+      toast.error(`Review update failed: ${msg}`);
     },
   });
 
@@ -386,6 +439,21 @@ export function ExamScorecardPage() {
                     </span>
                   </div>
 
+                  {/* Warning Acknowledged Line */}
+                  {item.warningAcknowledgedAt && (
+                    <div className="text-[11px] font-mono text-amber-500/90 flex items-center gap-1.5 pt-0.5">
+                      <AlertTriangle className="w-3.5 h-3.5 shrink-0 text-amber-400" />
+                      <span>
+                        Warning acknowledged at{' '}
+                        {new Date(item.warningAcknowledgedAt).toLocaleTimeString([], {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          second: '2-digit',
+                        })}
+                      </span>
+                    </div>
+                  )}
+
                   {/* Optical Evidence Snapshot */}
                   {item.snapshotUrl ? (
                     <div
@@ -408,20 +476,38 @@ export function ExamScorecardPage() {
                     </div>
                   )}
 
-                  {/* Proctor Actions */}
+                  {/* Reviewed State & Metadata (no buttons once reviewed) */}
+                  {item.type === 'VIOLATION' && item.status !== 'PENDING' && (
+                    <div className="text-[11px] font-mono text-muted-foreground pt-1.5 border-t border-border/40 flex items-center justify-between">
+                      <span className="text-muted-foreground">Reviewed:</span>
+                      <span className="font-semibold text-foreground truncate max-w-[200px]" title={item.reviewNotes ?? undefined}>
+                        {item.reviewerName || 'Staff'}
+                        {item.reviewedAt
+                          ? ` at ${new Date(item.reviewedAt).toLocaleTimeString([], {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}`
+                          : ''}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Proctor Actions (Only for PENDING violations with valid logId) */}
                   {item.type === 'VIOLATION' && item.status === 'PENDING' && (
                     <div className="flex items-center gap-2 pt-2 border-t border-border/40">
                       <button
                         type="button"
+                        disabled={reviewMutation.isPending && pendingLogId === logIdNum}
                         onClick={() => reviewMutation.mutate({ logId: logIdNum, status: 'CONFIRMED' })}
-                        className="flex-1 py-1 rounded-lg border border-rose-500/40 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1"
+                        className="flex-1 py-1 rounded-lg border border-rose-500/40 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-xs font-bold transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1"
                       >
                         <Check className="w-3.5 h-3.5" /> Confirm
                       </button>
                       <button
                         type="button"
+                        disabled={reviewMutation.isPending && pendingLogId === logIdNum}
                         onClick={() => reviewMutation.mutate({ logId: logIdNum, status: 'DISMISSED' })}
-                        className="flex-1 py-1 rounded-lg border border-emerald-500/40 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1"
+                        className="flex-1 py-1 rounded-lg border border-emerald-500/40 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-xs font-bold transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1"
                       >
                         <X className="w-3.5 h-3.5" /> Dismiss
                       </button>

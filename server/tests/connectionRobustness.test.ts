@@ -118,7 +118,7 @@ describe('Connection Robustness and Status Derivation Protocol', () => {
       try {
         await deadPool.query('SELECT 1');
         res.json({ success: true });
-      } catch (err: any) {
+      } catch {
         res.status(503).json({
           success: false,
           data: {
@@ -142,7 +142,11 @@ describe('Connection Robustness and Status Derivation Protocol', () => {
     try {
       const res = await fetch(`http://localhost:${brokenPort}/api/health-test-dead`);
       expect(res.status).toBe(503);
-      const json = await res.json() as any;
+      const json = (await res.json()) as {
+        success: boolean;
+        error: { code: string; message: string };
+        data: { api: string; db: string };
+      };
       expect(json.success).toBe(false);
       expect(json.error.code).toBe('DB_UNAVAILABLE');
       expect(json.data.api).toBe('up');

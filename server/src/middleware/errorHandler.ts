@@ -15,7 +15,12 @@ export function errorHandler(
   _next: NextFunction
 ): void {
   if (err instanceof ZodError) {
-    sendError(res, 400, 'VALIDATION_ERROR', 'Request validation failed.', err.flatten());
+    const flat = err.flatten();
+    const firstField = Object.entries(flat.fieldErrors)[0];
+    const fieldMsg = firstField
+      ? `${firstField[0]}: ${firstField[1]?.join(', ')}`
+      : flat.formErrors[0] || 'Request validation failed.';
+    sendError(res, 400, 'VALIDATION_ERROR', fieldMsg, flat);
     return;
   }
 

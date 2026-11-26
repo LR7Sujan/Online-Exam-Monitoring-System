@@ -34,6 +34,7 @@ export interface RecordingNoteRow extends RowDataPacket {
 
 export interface ReviewTimelineEvent {
   id: string;
+  logId?: number;
   type: 'VIOLATION' | 'WARNING';
   code: string;
   label: string;
@@ -43,6 +44,12 @@ export interface ReviewTimelineEvent {
   severity?: string;
   status?: string;
   snapshotUrl?: string | null;
+  reviewedBy?: number | null;
+  reviewerName?: string | null;
+  reviewedAt?: string | null;
+  reviewNotes?: string | null;
+  warningAcknowledgedAt?: string | null;
+  warningMessage?: string | null;
 }
 
 export interface RecordingReviewDetails {

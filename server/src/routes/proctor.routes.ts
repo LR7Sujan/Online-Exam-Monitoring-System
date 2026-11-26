@@ -38,10 +38,27 @@ const sessionIdParamSchema = z.object({
   sessionId: z.coerce.number().int().positive(),
 });
 
-const reviewBodySchema = z.object({
-  reviewStatus: z.enum(['CONFIRMED', 'DISMISSED']),
-  reviewNotes: z.string().trim().max(500).optional(),
-});
+const reviewBodySchema = z
+  .object({
+    status: z
+      .string()
+      .trim()
+      .transform((val) => val.toUpperCase())
+      .pipe(z.enum(['CONFIRMED', 'DISMISSED']))
+      .optional(),
+    reviewStatus: z
+      .string()
+      .trim()
+      .transform((val) => val.toUpperCase())
+      .pipe(z.enum(['CONFIRMED', 'DISMISSED']))
+      .optional(),
+    note: z.string().trim().max(500).optional(),
+    reviewNotes: z.string().trim().max(500).optional(),
+  })
+  .refine((v) => Boolean(v.status || v.reviewStatus), {
+    message: 'status (CONFIRMED | DISMISSED) is required.',
+    path: ['status'],
+  });
 
 const terminateBodySchema = z.object({
   reason: z.string().trim().min(3).max(500),
@@ -554,7 +571,9 @@ proctorRouter.patch(
   async (req: AuthenticatedRequest, res, next) => {
     try {
       const { logId } = req.params as unknown as z.infer<typeof logIdParamSchema>;
-      const { reviewStatus, reviewNotes } = req.body as z.infer<typeof reviewBodySchema>;
+      const body = req.body as z.infer<typeof reviewBodySchema>;
+      const reviewStatus = (body.status ?? body.reviewStatus)!;
+      const reviewNotes = body.note ?? body.reviewNotes ?? null;
 
       const existing = await queryRows<RowDataPacket[]>(
         'SELECT id, session_id FROM Proctoring_Logs WHERE id = ? LIMIT 1',

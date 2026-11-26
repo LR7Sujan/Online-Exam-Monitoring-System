@@ -82,12 +82,24 @@ logsRouter.use(requireAuth, requireRole('PROCTOR', 'ADMIN'));
 
 const reviewBodySchema = z
   .object({
-    status: z.enum(['CONFIRMED', 'DISMISSED']).optional(),
-    reviewStatus: z.enum(['CONFIRMED', 'DISMISSED']).optional(),
+    status: z
+      .string()
+      .trim()
+      .transform((val) => val.toUpperCase())
+      .pipe(z.enum(['CONFIRMED', 'DISMISSED']))
+      .optional(),
+    reviewStatus: z
+      .string()
+      .trim()
+      .transform((val) => val.toUpperCase())
+      .pipe(z.enum(['CONFIRMED', 'DISMISSED']))
+      .optional(),
+    note: z.string().trim().max(500).optional(),
     reviewNotes: z.string().trim().max(500).optional(),
   })
   .refine((v) => Boolean(v.status || v.reviewStatus), {
-    message: 'Either status or reviewStatus (CONFIRMED | DISMISSED) is required.',
+    message: 'status (CONFIRMED | DISMISSED) is required.',
+    path: ['status'],
   });
 
 // POST /api/logs/bulk-review
@@ -166,7 +178,8 @@ logsRouter.patch(
     try {
       const { logId } = req.params as unknown as z.infer<typeof logIdParamSchema>;
       const body = req.body as z.infer<typeof reviewBodySchema>;
-      const nextStatus = body.status ?? body.reviewStatus!;
+      const nextStatus = (body.status ?? body.reviewStatus)!;
+      const nextNotes = body.note ?? body.reviewNotes ?? null;
 
       const existing = await queryRows<RowDataPacket[]>(
         'SELECT id, session_id FROM Proctoring_Logs WHERE id = ? LIMIT 1',
@@ -185,7 +198,7 @@ logsRouter.patch(
                 reviewed_at = NOW(),
                 review_notes = ?
           WHERE id = ?`,
-        [nextStatus, req.user!.sub, body.reviewNotes ?? null, logId]
+        [nextStatus, req.user!.sub, nextNotes, logId]
       );
 
       const updated = await queryRows<RowDataPacket[]>(

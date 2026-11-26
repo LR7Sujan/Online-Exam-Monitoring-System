@@ -559,19 +559,41 @@ export async function getSessionScorecard(sessionId: number) {
   // Violations & Warnings timeline
   const violationRows = await queryRows<RowDataPacket[]>(
     `SELECT log_id, violation_code, violation_label, penalty_applied, occurred_at,
-            severity, proctor_review_status, snapshot_url, evidence_meta
+            severity, proctor_review_status, snapshot_url, evidence_meta,
+            reviewed_by, reviewer_name, reviewed_at, review_notes
        FROM vw_ViolationAuditReport
       WHERE session_id = ?
       ORDER BY occurred_at ASC`,
     [sessionId]
   );
 
+  const warningRows = await queryRows<RowDataPacket[]>(
+    `SELECT warning_id, log_id, message, issued_at, acknowledged_at, penalty_points, violation_code
+       FROM Session_Warnings
+      WHERE session_id = ?
+      ORDER BY issued_at ASC`,
+    [sessionId]
+  );
+
+  const warningsByLogId = new Map<number, RowDataPacket>();
+  const orphanedWarnings: RowDataPacket[] = [];
+  warningRows.forEach((w) => {
+    if (w.log_id) {
+      warningsByLogId.set(Number(w.log_id), w);
+    } else {
+      orphanedWarnings.push(w);
+    }
+  });
+
   const violationEvents: ReviewTimelineEvent[] = violationRows.map((v) => {
     const rawSnap = v.snapshot_url as string | null | undefined;
     const signedSnap = generateSignedSnapshotUrl(rawSnap, v.log_id as number);
     const occurredMs = new Date(v.occurred_at).getTime();
+    const matchedWarning = warningsByLogId.get(Number(v.log_id));
+
     return {
       id: `violation-${v.log_id}`,
+      logId: Number(v.log_id),
       type: 'VIOLATION',
       code: v.violation_code,
       label: v.violation_label || v.violation_code,
@@ -581,18 +603,18 @@ export async function getSessionScorecard(sessionId: number) {
       severity: v.severity,
       status: v.proctor_review_status,
       snapshotUrl: signedSnap,
+      reviewedBy: v.reviewed_by ? Number(v.reviewed_by) : null,
+      reviewerName: v.reviewer_name ? String(v.reviewer_name) : null,
+      reviewedAt: v.reviewed_at ? new Date(v.reviewed_at).toISOString() : null,
+      reviewNotes: v.review_notes ? String(v.review_notes) : null,
+      warningAcknowledgedAt: matchedWarning?.acknowledged_at
+        ? new Date(matchedWarning.acknowledged_at).toISOString()
+        : null,
+      warningMessage: matchedWarning?.message ? String(matchedWarning.message) : null,
     };
   });
 
-  const warningRows = await queryRows<RowDataPacket[]>(
-    `SELECT warning_id, message, issued_at, acknowledged_at, penalty_points, violation_code
-       FROM Session_Warnings
-      WHERE session_id = ?
-      ORDER BY issued_at ASC`,
-    [sessionId]
-  );
-
-  const warningEvents: ReviewTimelineEvent[] = warningRows.map((w, index) => {
+  const standaloneWarningEvents: ReviewTimelineEvent[] = orphanedWarnings.map((w, index) => {
     const issuedMs = new Date(w.issued_at).getTime();
     return {
       id: `warning-${w.warning_id}`,
@@ -604,10 +626,13 @@ export async function getSessionScorecard(sessionId: number) {
       occurredAt: new Date(w.issued_at).toISOString(),
       severity: 'WARNING',
       status: w.acknowledged_at ? 'ACKNOWLEDGED' : 'PENDING',
+      warningAcknowledgedAt: w.acknowledged_at
+        ? new Date(w.acknowledged_at).toISOString()
+        : null,
     };
   });
 
-  const timeline = [...violationEvents, ...warningEvents].sort((a, b) => a.timeMs - b.timeMs);
+  const timeline = [...violationEvents, ...standaloneWarningEvents].sort((a, b) => a.timeMs - b.timeMs);
 
   // Time Extension Requests
   const extRows = await queryRows<RowDataPacket[]>(
