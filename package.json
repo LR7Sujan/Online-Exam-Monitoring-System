@@ -18,7 +18,7 @@
     "db:seed": "npm --prefix server run db:seed",
     "db:reset": "npm --prefix server run db:reset",
     "db:verify": "npm --prefix server run db:verify",
-    "db:migrate:data": "npm --prefix server run db:migrate:data",
+    "db:migrate:data": "npm --prefix server run db:migrate:data --",
     "db:init": "npm --prefix server run db:init",
     "db:setup": "npm run db:init",
     "db:test:create": "npm --prefix server run db:test:create",
