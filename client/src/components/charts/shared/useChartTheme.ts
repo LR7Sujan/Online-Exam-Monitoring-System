@@ -59,7 +59,7 @@ export interface ChartTheme {
   };
 }
 
-const SERIES_COLORS: ChartSeriesColors = {
+export const SERIES_COLORS: ChartSeriesColors = {
   indigo: '#6366F1',
   violet: '#8B5CF6',
   fuchsia: '#D946EF',

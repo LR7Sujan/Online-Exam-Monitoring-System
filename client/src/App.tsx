@@ -73,9 +73,10 @@ function RequireRole({
 }
 
 export function App() {
+  const isTest = import.meta.env.MODE === 'test';
   return (
     <ThemeProvider defaultTheme="dark" storageKey="proctoriq-theme">
-      <MotionConfig reducedMotion="user">
+      <MotionConfig reducedMotion={isTest ? 'always' : 'user'}>
         <QueryClientProvider client={queryClient}>
           <SocketProvider>
             <ToastProvider>

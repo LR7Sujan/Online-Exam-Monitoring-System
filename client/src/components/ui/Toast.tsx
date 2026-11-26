@@ -86,7 +86,6 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         theme={resolvedTheme}
         position="bottom-right"
         closeButton
-        richColors
         toastOptions={{
           style: {
             borderRadius: '16px',

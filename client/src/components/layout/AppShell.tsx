@@ -383,10 +383,10 @@ export function AppShell() {
 
   const roleBadgeStyle =
     user?.role === 'ADMIN'
-      ? 'text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800/80 bg-indigo-50 dark:bg-indigo-950/40'
+      ? 'text-indigo-800 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800/80 bg-indigo-50 dark:bg-indigo-950/40'
       : user?.role === 'PROCTOR'
-        ? 'text-sky-600 dark:text-sky-400 border-sky-200 dark:border-sky-800/80 bg-sky-50 dark:bg-sky-950/40'
-        : 'text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/80 bg-emerald-50 dark:bg-emerald-950/40';
+        ? 'text-sky-800 dark:text-sky-300 border-sky-200 dark:border-sky-800/80 bg-sky-50 dark:bg-sky-950/40'
+        : 'text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/80 bg-emerald-50 dark:bg-emerald-950/40';
 
   return (
     <div className="min-h-screen h-dvh flex bg-background text-foreground overflow-x-hidden relative">

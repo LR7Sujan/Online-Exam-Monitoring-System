@@ -36,6 +36,25 @@ export function ThemeProvider({
   const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>('dark');
 
   useEffect(() => {
+    const handleStorage = () => {
+      try {
+        const stored = localStorage.getItem(storageKey);
+        if (stored === 'light' || stored === 'dark' || stored === 'system') {
+          setThemeState(stored);
+        }
+      } catch {
+        // ignore storage errors
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+    window.addEventListener('proctoriq-theme-change', handleStorage);
+    return () => {
+      window.removeEventListener('storage', handleStorage);
+      window.removeEventListener('proctoriq-theme-change', handleStorage);
+    };
+  }, [storageKey]);
+
+  useEffect(() => {
     const root = document.documentElement;
 
     const applyTheme = (isDark: boolean) => {

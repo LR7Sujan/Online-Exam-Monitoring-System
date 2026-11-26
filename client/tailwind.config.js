@@ -16,6 +16,29 @@ export default {
       borderColor: {
         DEFAULT: 'var(--border)',
         strong: 'var(--border-strong)',
+        brand: withColorMix('--brand-border'),
+      },
+      textColor: {
+        brand: withColorMix('--brand-text'),
+        safe: withColorMix('--semantic-emerald'),
+        caution: withColorMix('--semantic-amber'),
+        danger: withColorMix('--semantic-rose'),
+        info: withColorMix('--semantic-sky'),
+        'emerald-400': 'var(--semantic-emerald, #34D399)',
+        'emerald-500': 'var(--semantic-emerald, #10B981)',
+        'emerald-600': 'var(--semantic-emerald, #059669)',
+        'rose-400': 'var(--semantic-rose, #FB7185)',
+        'rose-500': 'var(--semantic-rose, #F43F5E)',
+        'rose-600': 'var(--semantic-rose, #E11D48)',
+        'amber-400': 'var(--semantic-amber, #FBBF24)',
+        'amber-500': 'var(--semantic-amber, #F59E0B)',
+        'amber-600': 'var(--semantic-amber, #D97706)',
+        'sky-400': 'var(--semantic-sky, #38BDF8)',
+        'sky-500': 'var(--semantic-sky, #0EA5E9)',
+        'sky-600': 'var(--semantic-sky, #0284C7)',
+      },
+      backgroundColor: {
+        brand: withColorMix('--brand-bg'),
       },
       colors: {
         // Aurora Bento CSS-Variable Tokens (Dual-Theme)
@@ -42,7 +65,7 @@ export default {
 
         // Aurora Brand Palette
         brand: {
-          DEFAULT: '#6366F1',
+          DEFAULT: 'var(--brand, #6366F1)',
           indigo: '#6366F1',
           violet: '#8B5CF6',
           fuchsia: '#D946EF',
@@ -50,22 +73,22 @@ export default {
 
         // Semantic Colors
         safe: {
-          DEFAULT: '#10B981',
+          DEFAULT: 'var(--semantic-emerald, #10B981)',
           light: '#34D399',
           dark: '#059669',
         },
         caution: {
-          DEFAULT: '#F59E0B',
+          DEFAULT: 'var(--semantic-amber, #F59E0B)',
           light: '#FBBF24',
           dark: '#D97706',
         },
         danger: {
-          DEFAULT: '#F43F5E',
+          DEFAULT: 'var(--semantic-rose, #F43F5E)',
           light: '#FB7185',
           dark: '#E11D48',
         },
         info: {
-          DEFAULT: '#0EA5E9',
+          DEFAULT: 'var(--semantic-sky, #0EA5E9)',
           light: '#38BDF8',
           dark: '#0284C7',
         },
