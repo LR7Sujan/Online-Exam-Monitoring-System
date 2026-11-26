@@ -67,11 +67,12 @@ export function emitViolationNew(
     payload: proctorPayload,
   });
 
-  const studentMsg = `${violationLabel}: A penalty of -${penalty} pts was deducted. New Trust Score: ${studentUpdate.trust_score}%.`;
+  const penaltyText = penalty > 0 ? ` (-${penalty} points)` : '';
+  const studentMsg = `A warning was issued during ${examTitle}: ${violationLabel.toLowerCase()} was detected${penaltyText}.`;
   void notifyStudent(studentId, {
     type: 'WARNING',
     severity,
-    title: `Warning: ${violationLabel}`,
+    title: 'Warning Issued',
     message: studentMsg,
     sessionId,
     studentName,
@@ -159,6 +160,17 @@ export function emitExamSubmitted(
     trust_score: studentPayload.trust_score,
     status: studentPayload.status,
   });
+
+  const examTitle = studentPayload.examTitle || String(proctorPayload.examTitle || 'Assessment');
+  void notifyStudent(studentId, {
+    type: 'INFO',
+    severity: 'INFO',
+    title: 'Results Available',
+    message: `Your result for ${examTitle} is ready.`,
+    sessionId,
+    examTitle,
+    payload: { sessionId },
+  });
 }
 
 export function emitSimulatorReset(payload?: Record<string, unknown>): void {
@@ -194,14 +206,17 @@ export function emitExtensionDecided(
   void adapter.publish(CHANNELS.session(sessionId), 'extension:decided', payload);
 
   const status = String(payload.status ?? 'DECIDED');
-  const minutes = Number(payload.minutesGranted ?? 0);
+  const minutes = Number(payload.minutesGranted ?? payload.grantedMinutes ?? 0);
   const examTitle = String(payload.examTitle ?? 'Assessment');
+  const isApproved = status === 'APPROVED';
 
   void notifyStudent(studentId, {
     type: 'EXTENSION',
-    severity: status === 'APPROVED' ? 'INFO' : 'HIGH',
-    title: `Time Extension ${status === 'APPROVED' ? 'Approved' : 'Rejected'}`,
-    message: `Your extension request for ${examTitle} was ${status === 'APPROVED' ? `approved (+${minutes}m)` : 'rejected'}.`,
+    severity: isApproved ? 'INFO' : 'HIGH',
+    title: isApproved ? 'Extra Time Approved' : 'Extra Time Declined',
+    message: isApproved
+      ? `Your request for ${minutes} extra minutes was approved.`
+      : 'Your request for extra time was declined.',
     sessionId,
     examTitle,
     payload,

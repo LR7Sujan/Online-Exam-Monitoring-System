@@ -1261,7 +1261,7 @@ const requestExtensionSchema = z.object({
 
 // POST /api/sessions/:sessionId/extension (STUDENT)
 sessionsRouter.post(
-  '/:sessionId/extension',
+  ['/:sessionId/extension', '/:sessionId/extensions'],
   requireAuth,
   requireRole('STUDENT'),
   validate({ params: sessionIdParamSchema, body: requestExtensionSchema }),

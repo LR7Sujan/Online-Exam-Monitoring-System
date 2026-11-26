@@ -36,6 +36,7 @@ import {
   selectLiveViolationCount,
 } from '../../store/notificationsStore';
 import { NotificationPanel } from '../notifications/NotificationPanel';
+import { StudentMessages } from '../notifications/StudentMessages';
 import { ThemeToggle } from '../ui/ThemeToggle';
 import { CommandPalette } from './CommandPalette';
 import { OverlayPanel } from '../ui/OverlayPanel';
@@ -931,8 +932,8 @@ export function AppShell() {
                   if (userMenuOpen) setUserMenuOpen(false);
                 }}
                 className="relative h-[38px] w-[38px] rounded-xl border border-border bg-surface text-muted-foreground hover:text-foreground hover:border-brand/40 transition-all shadow-xs flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-brand cursor-pointer"
-                aria-label="Notifications"
-                title="Violation Telemetry Feed"
+                aria-label={user?.role === 'STUDENT' ? 'Messages' : 'Notifications'}
+                title={user?.role === 'STUDENT' ? 'Messages' : 'Violation Telemetry Feed'}
               >
                 <Bell className="w-4 h-4" />
                 {unreadCount > 0 && (
@@ -951,10 +952,16 @@ export function AppShell() {
               <OverlayPanel
                 isOpen={notificationsOpen}
                 onClose={() => setNotificationsOpen(false)}
-                ariaLabel="Violation Telemetry Feed"
-                className="fixed sm:absolute left-3 right-3 sm:left-auto sm:right-0 top-16 sm:top-full sm:mt-2 sm:w-[420px] max-h-[70vh] flex flex-col p-0 overflow-hidden"
+                ariaLabel={user?.role === 'STUDENT' ? 'Messages' : 'Violation Telemetry Feed'}
+                className={`fixed sm:absolute left-3 right-3 sm:left-auto sm:right-0 top-16 sm:top-full sm:mt-2 ${
+                  user?.role === 'STUDENT' ? 'sm:w-[380px]' : 'sm:w-[420px]'
+                } max-h-[70vh] flex flex-col p-0 overflow-hidden`}
               >
-                <NotificationPanel onClose={() => setNotificationsOpen(false)} />
+                {user?.role === 'STUDENT' ? (
+                  <StudentMessages onClose={() => setNotificationsOpen(false)} />
+                ) : (
+                  <NotificationPanel onClose={() => setNotificationsOpen(false)} />
+                )}
               </OverlayPanel>
             </div>
 

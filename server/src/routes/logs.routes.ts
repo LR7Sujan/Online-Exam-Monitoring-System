@@ -5,6 +5,7 @@ import { executeSql, queryRows } from '../config/db.js';
 import { requireAuth, requireRole, type AuthenticatedRequest } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 import { emitSessionUpdate, emitSnapshotReady } from '../realtime/index.js';
+import { notifyStudent } from '../services/notificationService.js';
 import { generateSignedSnapshotUrl } from '../services/snapshotSigner.js';
 import { saveSnapshotImage } from './sessions.routes.js';
 import { AppError } from '../utils/errors.js';
@@ -208,8 +209,11 @@ logsRouter.patch(
       const row = updated[0];
 
       if (row) {
+        const studentId = Number(row.student_id);
+        const examTitle = String(row.exam_title ?? 'Assessment');
+
         emitSessionUpdate(
-          Number(row.student_id),
+          studentId,
           sessionId,
           {
             logId,
@@ -226,6 +230,19 @@ logsRouter.patch(
             status: String(row.session_status),
           }
         );
+
+        const isDismissed = nextStatus === 'DISMISSED';
+        void notifyStudent(studentId, {
+          type: 'INFO',
+          severity: isDismissed ? 'INFO' : 'HIGH',
+          title: 'Review Outcome',
+          message: isDismissed
+            ? `A flagged event in ${examTitle} was dismissed and your points were restored.`
+            : `A flagged event in ${examTitle} was reviewed and confirmed.`,
+          sessionId,
+          examTitle,
+          payload: { logId, status: nextStatus },
+        });
       }
 
       sendSuccess(res, row);

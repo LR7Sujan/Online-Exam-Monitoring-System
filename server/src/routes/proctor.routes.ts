@@ -5,6 +5,7 @@ import { executeSql, pool, queryRows } from '../config/db.js';
 import { requireAuth, requireRole, type AuthenticatedRequest } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 import { emitSessionTerminated, emitSessionUpdate, emitToProctors, emitToStudent } from '../realtime/index.js';
+import { notifyStudent } from '../services/notificationService.js';
 import type { AnswerOption, ExamSessionRow, QuestionRow } from '../types/api.js';
 import { AppError } from '../utils/errors.js';
 import { sendSuccess } from '../utils/response.js';
@@ -621,6 +622,20 @@ proctorRouter.patch(
         });
         emitToProctors('violation:reviewed', revPayload);
         emitToStudent(studentId, sessionId, 'violation:reviewed', revPayload);
+
+        const examTitle = String(row.exam_title ?? 'Assessment');
+        const isDismissed = reviewStatus === 'DISMISSED';
+        void notifyStudent(studentId, {
+          type: 'INFO',
+          severity: isDismissed ? 'INFO' : 'HIGH',
+          title: 'Review Outcome',
+          message: isDismissed
+            ? `A flagged event in ${examTitle} was dismissed and your points were restored.`
+            : `A flagged event in ${examTitle} was reviewed and confirmed.`,
+          sessionId,
+          examTitle,
+          payload: { logId, status: reviewStatus },
+        });
       }
 
       sendSuccess(res, updated[0]);

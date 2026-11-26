@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { api } from '../lib/api';
 
-export type NotificationType = 'VIOLATION' | 'WARNING' | 'TERMINATION' | 'EXTENSION' | 'INFO';
+export type NotificationType = 'VIOLATION' | 'WARNING' | 'TERMINATION' | 'EXTENSION' | 'INFO' | 'RESULT';
 export type NotificationSeverity = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' | 'INFO';
 
 export interface AppNotification {
