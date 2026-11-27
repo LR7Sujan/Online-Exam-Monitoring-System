@@ -8,7 +8,8 @@
       "summary",
       "kbd",
       "sub",
-      "sup"
+      "sup",
+      "div"
     ]
   }
 }

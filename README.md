@@ -314,9 +314,8 @@ Open **<http://localhost:5173>** in Google Chrome or Microsoft Edge.
 
 > [!NOTE]
 > Demo passwords are encrypted with bcrypt in `db/seed.sql`. For rapid local testing, one-click demo login buttons are provided directly on the Login page (`client/src/pages/LoginPage.tsx`), where the default local seed password is defined.
-
-> [!WARNING]
-> Always change default demo passwords and configure a unique `JWT_SECRET` prior to deploying to any shared or production environment.
+>
+> ⚠️ **Security Warning**: Always change default demo passwords and configure a unique `JWT_SECRET` prior to deploying to any shared or production environment.
 
 ---
 
