@@ -2,8 +2,6 @@
 
 ## Online Exam Monitoring & Anti-Cheating System
 
-> 📺 **Demo video:** *add your link here*
-
 A real-time exam proctoring platform with three roles (Admin, Proctor, Student). Penalties, terminations and grading are enforced **inside MySQL** with triggers, stored procedures and transactions, so results stay correct even if violations arrive from several sources at once.
 
 ---
@@ -11,7 +9,7 @@ A real-time exam proctoring platform with three roles (Admin, Proctor, Student).
 ## 🚀 Capabilities
 
 | Feature | Description |
-|---|---|
+| --- | --- |
 | 🧮 **Trust Score Engine** | Students start at 100. A database trigger deducts points per violation and auto-terminates the exam below the minimum score |
 | 👁️ **AI Detection** | Face, multiple faces, phone and speech detection, all running in the browser |
 | ⚠️ **Warning System** | One penalty, one full-screen warning, then detection resumes after the student confirms |
@@ -27,7 +25,7 @@ A real-time exam proctoring platform with three roles (Admin, Proctor, Student).
 ## 👥 Roles
 
 | Role | Can do |
-|---|---|
+| --- | --- |
 | **Admin** | Manage exams, questions, penalty rules and users. View analytics, recordings and student audit |
 | **Proctor** | Monitor live exams, review violations (Confirm / Dismiss), handle time requests, terminate sessions |
 | **Student** | Take exams, see warnings, request extra time, view results |
@@ -39,7 +37,7 @@ A real-time exam proctoring platform with three roles (Admin, Proctor, Student).
 Penalties are **not fixed**. The admin can change the points for every violation type from the **Rules & Simulator** tab in the Admin Console, and the change applies to the next violation with no code changes. They are stored in the `Violation_Types` table.
 
 | Violation | Detection |
-|---|---|
+| --- | --- |
 | Tab switch / minimize | Browser visibility event |
 | Fullscreen exit | Fullscreen event |
 | Copy / cut / paste | Clipboard events |
@@ -56,7 +54,7 @@ If the trust score drops below the exam's minimum, the exam is terminated and th
 ## 🧱 Tech Stack
 
 | Layer | Technology |
-|---|---|
+| --- | --- |
 | **Database** | MySQL 8.0+ (triggers, stored procedures, views) |
 | **Backend** | Node.js, Express, TypeScript, Zod, JWT, bcrypt |
 | **Frontend** | React, Vite, TypeScript, Tailwind CSS, Framer Motion, Recharts |
@@ -70,7 +68,7 @@ If the trust score drops below the exam's minimum, the exam is terminated and th
 ### Requirements
 
 | Requirement | Details |
-|---|---|
+| --- | --- |
 | **Node.js** | 20.6 or newer (uses native `process.loadEnvFile` and `--env-file`) |
 | **MySQL** | 8.0 or newer (must support triggers and stored procedures) |
 | **Browser** | Chrome or Edge, with camera and microphone for students |
@@ -88,7 +86,7 @@ cp .env.example .env        # Windows: copy .env.example .env
 
 Edit `.env` with your database details:
 
-```
+```env
 DB_HOST=127.0.0.1
 DB_PORT=3306
 DB_USER=your_mysql_user
@@ -105,12 +103,12 @@ npm run db:seed       # demo users and exams
 npm run dev           # starts the API and the website
 ```
 
-Open **http://localhost:5173** (API runs on **http://localhost:4000**).
+Open **<http://localhost:5173>** (API runs on **<http://localhost:4000>**).
 
 ### Demo accounts
 
 | Role | Email | Password |
-|---|---|---|
+| --- | --- | --- |
 | Admin | `admin@proctoriq.io` | *add here* |
 | Proctor | `proctor@proctoriq.io` | *add here* |
 | Student | `student@proctoriq.io` | *add here* |
@@ -145,7 +143,7 @@ npm run test:e2e
 ## 🛠️ Troubleshooting
 
 | Problem | Fix |
-|---|---|
+| --- | --- |
 | `ECONNREFUSED 127.0.0.1:3306` | MySQL isn't running. Start **MySQL80** in `services.msc` |
 | `Access denied for user` | Check `DB_USER` and `DB_PASSWORD` in `.env` |
 | `Unknown database` | Run `npm run db:migrate` |
@@ -171,7 +169,7 @@ npm run test:e2e
 ## 👤 Author
 
 | Platform | Link |
-|---|---|
+| --- | --- |
 | GitHub | *add your profile link* |
 | Contact | *add your email* |
 
