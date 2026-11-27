@@ -1,5 +1,5 @@
 # 🛡️ ProctorIQ
-### Online Exam Monitoring & Anti-Cheating System
+## Online Exam Monitoring & Anti-Cheating System
 
 > 📺 **Demo video:** *add your link here*
 
