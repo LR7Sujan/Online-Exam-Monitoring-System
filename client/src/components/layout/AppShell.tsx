@@ -383,7 +383,7 @@ export function AppShell() {
 
   const roleBadgeStyle =
     user?.role === 'ADMIN'
-      ? 'text-indigo-800 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800/80 bg-indigo-50 dark:bg-indigo-950/40'
+      ? 'text-accent border-accent/30 bg-accent-soft'
       : user?.role === 'PROCTOR'
         ? 'text-sky-800 dark:text-sky-300 border-sky-200 dark:border-sky-800/80 bg-sky-50 dark:bg-sky-950/40'
         : 'text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/80 bg-emerald-50 dark:bg-emerald-950/40';
@@ -428,7 +428,7 @@ export function AppShell() {
             className={`flex items-center gap-3 group w-full overflow-hidden ${isCollapsed ? 'justify-center' : ''
               }`}
           >
-            <div className="h-10 w-10 rounded-xl bg-gradient-to-tr from-indigo-500/20 to-fuchsia-500/20 border border-brand/40 flex items-center justify-center text-brand shadow-sm group-hover:scale-105 transition-transform shrink-0">
+            <div className="h-10 w-10 rounded-xl bg-gradient-to-tr from-accent-from/20 to-accent-to/20 border border-brand/40 flex items-center justify-center text-brand shadow-sm group-hover:scale-105 transition-transform shrink-0">
               <Shield className="w-5 h-5 text-brand" />
             </div>
             {!isCollapsed && (
@@ -978,7 +978,7 @@ export function AppShell() {
                   aria-label="User account menu"
                   title="Operator Menu"
                 >
-                  <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-brand to-violet-500 text-white flex items-center justify-center font-bold text-xs shadow-xs shrink-0">
+                  <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-accent-from to-accent-via text-accent-foreground flex items-center justify-center font-bold text-xs shadow-xs shrink-0">
                     {user.fullName.charAt(0).toUpperCase()}
                   </div>
                   <div className="hidden sm:flex flex-col text-left leading-tight">
@@ -999,7 +999,7 @@ export function AppShell() {
                 >
                   {/* Top user card: avatar + full name + email + role & ID badges */}
                   <div className="p-3 bg-surface-elevated/50 dark:bg-[#181926]/70 rounded-xl border border-border flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500/20 to-fuchsia-500/20 border border-brand/40 flex items-center justify-center font-bold text-sm text-foreground shrink-0 shadow-sm">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-accent-from/20 to-accent-to/20 border border-brand/40 flex items-center justify-center font-bold text-sm text-foreground shrink-0 shadow-sm">
                       {user.fullName.charAt(0).toUpperCase()}
                     </div>
                     <div className="flex flex-col flex-1 min-w-0">
@@ -1091,7 +1091,7 @@ export function AppShell() {
             ) : (
               <NavLink
                 to="/"
-                className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white text-xs font-semibold shadow-sm hover:opacity-95"
+                className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-accent-from to-accent-via text-accent-foreground text-xs font-semibold shadow-sm hover:opacity-95"
               >
                 Sign In
               </NavLink>
@@ -1134,7 +1134,7 @@ export function AppShell() {
               <div className="space-y-4">
                 <div className="flex items-center justify-between pb-3 border-b border-border">
                   <div className="flex items-center gap-2.5">
-                    <div className="h-9 w-9 rounded-xl bg-gradient-to-tr from-indigo-500/20 to-fuchsia-500/20 border border-brand/40 flex items-center justify-center text-brand">
+                    <div className="h-9 w-9 rounded-xl bg-gradient-to-tr from-accent-from/20 to-accent-to/20 border border-brand/40 flex items-center justify-center text-brand">
                       <Shield className="w-5 h-5 text-brand" />
                     </div>
                     <span className="font-bold text-base text-foreground">

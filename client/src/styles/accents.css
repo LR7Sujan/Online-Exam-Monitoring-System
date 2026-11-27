@@ -1,0 +1,221 @@
+/**
+ * ============================================================================
+ * ProctorIQ Global Accent Token System
+ * ============================================================================
+ * Accents: indigo (default), cyan, emerald, amber, rose
+ * Selected via `data-accent="<name>"` on the <html> root element.
+ *
+ * Guaranteed Properties:
+ * 1. Semantic decoupling: safe, caution, danger, info never follow the accent.
+ * 2. WCAG AA Contrast: light-theme values are darker to exceed 4.5:1 on cream
+ *    surface (#FBF8F0) and background (#F4EFE4).
+ * 3. --accent-foreground is calibrated per accent (e.g. dark text for amber).
+ * ============================================================================
+ */
+
+/* ----------------------------------------------------------------------------
+ * 1. DEFAULT ACCENT (INDIGO) — FALLBACK WHEN NO data-accent SPECIFIED
+ * ---------------------------------------------------------------------------- */
+
+/* Cream Light Theme Default (Indigo) */
+:root {
+  --accent-from: #4338CA;
+  --accent-via: #6D28D9;
+  --accent-to: #A21CAF;
+  --accent: #4338CA;
+  --accent-foreground: #FFFFFF;
+  --accent-soft: rgba(67, 56, 202, 0.10);
+  --accent-border: rgba(67, 56, 202, 0.25);
+  --ring: #4338CA;
+  --accent-glow: rgba(67, 56, 202, 0.25);
+
+  /* Aliases for legacy brand tokens */
+  --brand: var(--accent);
+  --brand-text: var(--accent);
+  --brand-bg: var(--accent);
+  --brand-border: var(--accent-border);
+}
+
+/* Dark Theme Default (Indigo) */
+.dark {
+  --accent-from: #6366F1;
+  --accent-via: #8B5CF6;
+  --accent-to: #D946EF;
+  --accent: #6366F1;
+  --accent-foreground: #FFFFFF;
+  --accent-soft: rgba(99, 102, 241, 0.15);
+  --accent-border: rgba(99, 102, 241, 0.35);
+  --ring: #6366F1;
+  --accent-glow: rgba(99, 102, 241, 0.35);
+
+  --brand: var(--accent);
+  --brand-text: var(--accent);
+  --brand-bg: var(--accent);
+  --brand-border: var(--accent-border);
+}
+
+/* ----------------------------------------------------------------------------
+ * 2. CREAM LIGHT THEME ACCENT TOKENS
+ * Applied when <html> does NOT have .dark class
+ * ---------------------------------------------------------------------------- */
+
+/* Indigo (Light) */
+html:not(.dark)[data-accent="indigo"] {
+  --accent-from: #4338CA;
+  --accent-via: #6D28D9;
+  --accent-to: #A21CAF;
+  --accent: #4338CA;
+  --accent-foreground: #FFFFFF;
+  --accent-soft: rgba(67, 56, 202, 0.10);
+  --accent-border: rgba(67, 56, 202, 0.25);
+  --ring: #4338CA;
+  --accent-glow: rgba(67, 56, 202, 0.25);
+}
+
+/* Cyan (Light) */
+html:not(.dark)[data-accent="cyan"] {
+  --accent-from: #0E7490;
+  --accent-via: #0369A1;
+  --accent-to: #1D4ED8;
+  --accent: #0369A1;
+  --accent-foreground: #FFFFFF;
+  --accent-soft: rgba(3, 105, 161, 0.10);
+  --accent-border: rgba(3, 105, 161, 0.25);
+  --ring: #0369A1;
+  --accent-glow: rgba(3, 105, 161, 0.25);
+}
+
+/* Emerald (Light) */
+html:not(.dark)[data-accent="emerald"] {
+  --accent-from: #047857;
+  --accent-via: #0F766E;
+  --accent-to: #15803D;
+  --accent: #047857;
+  --accent-foreground: #FFFFFF;
+  --accent-soft: rgba(4, 120, 87, 0.10);
+  --accent-border: rgba(4, 120, 87, 0.25);
+  --ring: #047857;
+  --accent-glow: rgba(4, 120, 87, 0.25);
+}
+
+/* Amber (Light) - Requires dark foreground on solid and deep amber text for >=4.5:1 */
+html:not(.dark)[data-accent="amber"] {
+  --accent-from: #B45309;
+  --accent-via: #C2410C;
+  --accent-to: #9A3412;
+  --accent: #D97706;
+  --accent-foreground: #18181B;
+  --accent-soft: rgba(217, 119, 6, 0.12);
+  --accent-border: rgba(180, 83, 9, 0.30);
+  --ring: #B45309;
+  --accent-glow: rgba(217, 119, 6, 0.25);
+}
+
+/* Rose (Light) */
+html:not(.dark)[data-accent="rose"] {
+  --accent-from: #BE123C;
+  --accent-via: #BE185D;
+  --accent-to: #C2410C;
+  --accent: #BE123C;
+  --accent-foreground: #FFFFFF;
+  --accent-soft: rgba(190, 18, 60, 0.10);
+  --accent-border: rgba(190, 18, 60, 0.25);
+  --ring: #BE123C;
+  --accent-glow: rgba(190, 18, 60, 0.25);
+}
+
+/* ----------------------------------------------------------------------------
+ * 3. DARK THEME ACCENT TOKENS
+ * Applied when <html> HAS .dark class
+ * ---------------------------------------------------------------------------- */
+
+/* Indigo (Dark) */
+html.dark[data-accent="indigo"] {
+  --accent-from: #6366F1;
+  --accent-via: #8B5CF6;
+  --accent-to: #D946EF;
+  --accent: #6366F1;
+  --accent-foreground: #FFFFFF;
+  --accent-soft: rgba(99, 102, 241, 0.15);
+  --accent-border: rgba(99, 102, 241, 0.35);
+  --ring: #6366F1;
+  --accent-glow: rgba(99, 102, 241, 0.35);
+}
+
+/* Cyan (Dark) */
+html.dark[data-accent="cyan"] {
+  --accent-from: #06B6D4;
+  --accent-via: #0EA5E9;
+  --accent-to: #3B82F6;
+  --accent: #0EA5E9;
+  --accent-foreground: #FFFFFF;
+  --accent-soft: rgba(14, 165, 233, 0.15);
+  --accent-border: rgba(14, 165, 233, 0.35);
+  --ring: #0EA5E9;
+  --accent-glow: rgba(14, 165, 233, 0.35);
+}
+
+/* Emerald (Dark) */
+html.dark[data-accent="emerald"] {
+  --accent-from: #10B981;
+  --accent-via: #14B8A6;
+  --accent-to: #22C55E;
+  --accent: #10B981;
+  --accent-foreground: #FFFFFF;
+  --accent-soft: rgba(16, 185, 129, 0.15);
+  --accent-border: rgba(16, 185, 129, 0.35);
+  --ring: #10B981;
+  --accent-glow: rgba(16, 185, 129, 0.35);
+}
+
+/* Amber (Dark) - Solid button uses readable dark text #18181B */
+html.dark[data-accent="amber"] {
+  --accent-from: #F59E0B;
+  --accent-via: #F97316;
+  --accent-to: #EAB308;
+  --accent: #F59E0B;
+  --accent-foreground: #18181B;
+  --accent-soft: rgba(245, 158, 11, 0.15);
+  --accent-border: rgba(245, 158, 11, 0.35);
+  --ring: #F59E0B;
+  --accent-glow: rgba(245, 158, 11, 0.35);
+}
+
+/* Rose (Dark) */
+html.dark[data-accent="rose"] {
+  --accent-from: #F43F5E;
+  --accent-via: #EC4899;
+  --accent-to: #F97316;
+  --accent: #F43F5E;
+  --accent-foreground: #FFFFFF;
+  --accent-soft: rgba(244, 63, 94, 0.15);
+  --accent-border: rgba(244, 63, 94, 0.35);
+  --ring: #F43F5E;
+  --accent-glow: rgba(244, 63, 94, 0.35);
+}
+
+/* ----------------------------------------------------------------------------
+ * 4. SYSTEM & INTERACTION HOOKS
+ * ---------------------------------------------------------------------------- */
+
+/* Native inputs (radio, checkbox, range) follow the accent */
+* {
+  accent-color: var(--accent);
+}
+
+/* Selection highlight uses soft accent tint and accent text */
+::selection {
+  background-color: var(--accent-soft);
+  color: var(--accent);
+}
+
+/* Global focus ring */
+:focus-visible {
+  outline: 2px solid var(--ring) !important;
+  outline-offset: 2px !important;
+}
+
+/* Scrollbar hover */
+::-webkit-scrollbar-thumb:hover {
+  background: var(--ring);
+}

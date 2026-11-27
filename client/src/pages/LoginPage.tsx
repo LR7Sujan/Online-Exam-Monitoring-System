@@ -291,7 +291,7 @@ export function LoginPage({ initialTab }: { initialTab?: AuthTab }) {
         className="rounded-3xl border border-border dark:border-border bg-surface/85 backdrop-blur-2xl p-5 sm:p-6 shadow-layered-lg shadow-black/20 dark:shadow-black/40 space-y-3.5 relative overflow-hidden"
       >
         {/* Top ambient highlight line */}
-        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500" />
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-accent-from via-accent-via to-accent-to" />
 
         {/* Unified Segmented Switch: Sign in | Create account */}
         <div className="grid grid-cols-2 gap-1 p-1 rounded-xl bg-surface-elevated border border-border">
@@ -300,14 +300,14 @@ export function LoginPage({ initialTab }: { initialTab?: AuthTab }) {
             onClick={() => handleTabSwitch('signin')}
             className={`relative py-1.5 px-3 text-xs font-semibold rounded-lg transition-colors select-none text-center cursor-pointer ${
               activeTab === 'signin'
-                ? 'text-white shadow-sm'
+                ? 'text-accent-foreground shadow-sm'
                 : 'text-muted-foreground hover:text-foreground'
             }`}
           >
             {activeTab === 'signin' && (
               <motion.div
                 layoutId="authSegmentedSwitchPill"
-                className="absolute inset-0 rounded-lg bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500"
+                className="absolute inset-0 rounded-lg bg-gradient-to-r from-accent-from via-accent-via to-accent-to"
                 transition={{ type: 'spring', stiffness: 450, damping: 35 }}
               />
             )}
@@ -319,14 +319,14 @@ export function LoginPage({ initialTab }: { initialTab?: AuthTab }) {
             onClick={() => handleTabSwitch('register')}
             className={`relative py-1.5 px-3 text-xs font-semibold rounded-lg transition-colors select-none text-center cursor-pointer ${
               activeTab === 'register'
-                ? 'text-white shadow-sm'
+                ? 'text-accent-foreground shadow-sm'
                 : 'text-muted-foreground hover:text-foreground'
             }`}
           >
             {activeTab === 'register' && (
               <motion.div
                 layoutId="authSegmentedSwitchPill"
-                className="absolute inset-0 rounded-lg bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500"
+                className="absolute inset-0 rounded-lg bg-gradient-to-r from-accent-from via-accent-via to-accent-to"
                 transition={{ type: 'spring', stiffness: 450, damping: 35 }}
               />
             )}
@@ -416,14 +416,14 @@ export function LoginPage({ initialTab }: { initialTab?: AuthTab }) {
                       onClick={() => handleRoleTabClick(role)}
                       className={`relative py-1.5 px-2 text-xs font-semibold rounded-lg transition-colors select-none text-center cursor-pointer ${
                         isActive
-                          ? 'text-white shadow-sm'
+                          ? 'text-accent-foreground shadow-sm'
                           : 'text-muted-foreground hover:text-foreground'
                       }`}
                     >
                       {isActive && (
                         <motion.div
                           layoutId="activeRoleTabPill"
-                          className="absolute inset-0 rounded-lg bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500"
+                          className="absolute inset-0 rounded-lg bg-gradient-to-r from-accent-from via-accent-via to-accent-to"
                           transition={{ type: 'spring', stiffness: 450, damping: 35 }}
                         />
                       )}
@@ -508,7 +508,7 @@ export function LoginPage({ initialTab }: { initialTab?: AuthTab }) {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full mt-1 py-2.5 px-4 rounded-xl font-semibold text-xs text-white bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 hover:from-indigo-600 hover:via-violet-600 hover:to-fuchsia-600 shadow-md shadow-brand/20 hover:shadow-lg hover:shadow-brand/30 active:scale-[0.99] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full mt-1 py-2.5 px-4 rounded-xl font-semibold text-xs text-accent-foreground bg-gradient-to-r from-accent-from via-accent-via to-accent-to hover:opacity-95 shadow-md shadow-accent/20 hover:shadow-lg hover:shadow-accent/30 active:scale-[0.99] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? (
                   <span className="inline-flex items-center gap-2">
@@ -738,7 +738,7 @@ export function LoginPage({ initialTab }: { initialTab?: AuthTab }) {
             <button
               type="submit"
               disabled={loading}
-              className="w-full mt-1 py-2.5 px-4 rounded-xl font-semibold text-xs text-white bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 hover:from-indigo-600 hover:via-violet-600 hover:to-fuchsia-600 shadow-md shadow-brand/20 hover:shadow-lg hover:shadow-brand/30 active:scale-[0.99] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full mt-1 py-2.5 px-4 rounded-xl font-semibold text-xs text-accent-foreground bg-gradient-to-r from-accent-from via-accent-via to-accent-to hover:opacity-95 shadow-md shadow-accent/20 hover:shadow-lg hover:shadow-accent/30 active:scale-[0.99] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? (
                 <span className="inline-flex items-center gap-2">

@@ -1,11 +1,17 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 
 export type Theme = 'light' | 'dark' | 'system';
+export type AccentColor = 'indigo' | 'cyan' | 'emerald' | 'amber' | 'rose';
+
+// eslint-disable-next-line react-refresh/only-export-components
+export const ACCENT_COLORS: AccentColor[] = ['indigo', 'cyan', 'emerald', 'amber', 'rose'];
 
 export interface ThemeContextValue {
   theme: Theme;
   setTheme: (theme: Theme) => void;
   resolvedTheme: 'light' | 'dark';
+  accent: AccentColor;
+  setAccent: (accent: AccentColor) => void;
 }
 
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
@@ -14,12 +20,16 @@ export interface ThemeProviderProps {
   children: React.ReactNode;
   defaultTheme?: Theme;
   storageKey?: string;
+  defaultAccent?: AccentColor;
+  accentStorageKey?: string;
 }
 
 export function ThemeProvider({
   children,
   defaultTheme = 'dark',
   storageKey = 'proctoriq-theme',
+  defaultAccent = 'indigo',
+  accentStorageKey = 'proctoriq-accent',
 }: ThemeProviderProps) {
   const [theme, setThemeState] = useState<Theme>(() => {
     try {
@@ -33,14 +43,30 @@ export function ThemeProvider({
     return defaultTheme;
   });
 
+  const [accent, setAccentState] = useState<AccentColor>(() => {
+    try {
+      const stored = localStorage.getItem(accentStorageKey) as AccentColor;
+      if (ACCENT_COLORS.includes(stored)) {
+        return stored;
+      }
+    } catch {
+      // fallback if localStorage is blocked
+    }
+    return defaultAccent;
+  });
+
   const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>('dark');
 
   useEffect(() => {
     const handleStorage = () => {
       try {
-        const stored = localStorage.getItem(storageKey);
-        if (stored === 'light' || stored === 'dark' || stored === 'system') {
-          setThemeState(stored);
+        const storedTheme = localStorage.getItem(storageKey);
+        if (storedTheme === 'light' || storedTheme === 'dark' || storedTheme === 'system') {
+          setThemeState(storedTheme);
+        }
+        const storedAccent = localStorage.getItem(accentStorageKey) as AccentColor;
+        if (ACCENT_COLORS.includes(storedAccent)) {
+          setAccentState(storedAccent);
         }
       } catch {
         // ignore storage errors
@@ -52,7 +78,12 @@ export function ThemeProvider({
       window.removeEventListener('storage', handleStorage);
       window.removeEventListener('proctoriq-theme-change', handleStorage);
     };
-  }, [storageKey]);
+  }, [storageKey, accentStorageKey]);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    root.setAttribute('data-accent', accent);
+  }, [accent]);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -103,8 +134,17 @@ export function ThemeProvider({
     setThemeState(newTheme);
   };
 
+  const setAccent = (newAccent: AccentColor) => {
+    try {
+      localStorage.setItem(accentStorageKey, newAccent);
+    } catch {
+      // ignore
+    }
+    setAccentState(newAccent);
+  };
+
   return (
-    <ThemeContext.Provider value={{ theme, setTheme, resolvedTheme }}>
+    <ThemeContext.Provider value={{ theme, setTheme, resolvedTheme, accent, setAccent }}>
       {children}
     </ThemeContext.Provider>
   );

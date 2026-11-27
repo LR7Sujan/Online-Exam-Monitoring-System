@@ -159,12 +159,12 @@ export function SidebarStatusCard({ isCollapsed = false }: SidebarStatusCardProp
           />
           {user && (
             <span
-              className={`absolute -top-1 -right-1 w-4 h-4 rounded-full text-[9px] font-mono font-bold flex items-center justify-center border border-border text-white ${
+              className={`absolute -top-1 -right-1 w-4 h-4 rounded-full text-[9px] font-mono font-bold flex items-center justify-center border border-border ${
                 user.role === 'ADMIN'
-                  ? 'bg-indigo-600'
+                  ? 'bg-accent text-accent-foreground'
                   : user.role === 'PROCTOR'
-                  ? 'bg-sky-600'
-                  : 'bg-emerald-600'
+                  ? 'bg-sky-600 text-white'
+                  : 'bg-emerald-600 text-white'
               }`}
             >
               {user.role[0]}

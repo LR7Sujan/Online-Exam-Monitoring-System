@@ -168,7 +168,7 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
                         onSelect={() => runCommand(() => navigate('/admin/exams'))}
                         className="flex items-center gap-3 px-3 py-2 rounded-xl text-foreground hover:bg-muted cursor-pointer transition-colors"
                       >
-                        <FileText className="w-4 h-4 text-violet-500" />
+                        <FileText className="w-4 h-4 text-accent" />
                         <span>Exam Catalog & Configuration</span>
                       </Command.Item>
                       <Command.Item
@@ -192,7 +192,7 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
                     onSelect={() => runCommand(() => navigate('/styleguide'))}
                     className="flex items-center gap-3 px-3 py-2 rounded-xl text-foreground hover:bg-muted cursor-pointer transition-colors"
                   >
-                    <Palette className="w-4 h-4 text-fuchsia-500" />
+                    <Palette className="w-4 h-4 text-accent" />
                     <span>Component Styleguide</span>
                   </Command.Item>
                 </Command.Group>

@@ -100,7 +100,7 @@ export function TrustRing({
 
   useEffect(() => {
     if (clamped > prevScoreRef.current + 1) {
-      const sparkColors = ['#10B981', '#34D399', '#6366F1', '#8B5CF6', '#FBBF24'];
+      const sparkColors = ['#10B981', '#34D399', '#38BDF8', '#FBBF24'];
       const burstCount = 14;
       const newParticles: Particle[] = Array.from({ length: burstCount }, (_, i) => {
         const pAngle = (i / burstCount) * 2 * Math.PI + (Math.random() - 0.5) * 0.4;

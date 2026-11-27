@@ -1,4 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Geist:wght@100..900&family=Geist+Mono:wght@100..900&display=swap');
+@import './styles/accents.css';
 
 @tailwind base;
 @tailwind components;
@@ -17,11 +18,6 @@
     --foreground: #2A2620;
     --muted: #EFE9DB;
     --muted-foreground: #6A6152;
-    --brand: #4338CA;
-    --brand-text: #4338CA;
-    --brand-bg: #4338CA;
-    --brand-border: #818CF8;
-    --ring: #4338CA;
     --dotted-grid-color: rgba(60, 45, 20, 0.05);
     --aurora-opacity: 0.25;
 
@@ -54,11 +50,6 @@
     --foreground: #f4f4f5;
     --muted: #27272a;
     --muted-foreground: #a1a1aa;
-    --brand: #4F46E5;
-    --brand-text: #A5B4FC;
-    --brand-bg: #4F46E5;
-    --brand-border: #6366F1;
-    --ring: #6366f1;
     --dotted-grid-color: rgba(255, 255, 255, 0.05);
     --aurora-opacity: 0.85;
 
@@ -117,11 +108,11 @@
 @layer utilities {
   /* Aurora Brand Gradient Utilities */
   .bg-brand-gradient {
-    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #d946ef 100%);
+    background: linear-gradient(135deg, var(--accent-from) 0%, var(--accent-via) 50%, var(--accent-to) 100%);
   }
 
   .text-brand-gradient {
-    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #d946ef 100%);
+    background: linear-gradient(135deg, var(--accent-from) 0%, var(--accent-via) 50%, var(--accent-to) 100%);
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
@@ -186,10 +177,10 @@
     border-radius: inherit;
     background: conic-gradient(
       from 0deg at 50% 50%,
-      #6366f1 0deg,
-      #8b5cf6 120deg,
-      #d946ef 240deg,
-      #6366f1 360deg
+      var(--accent-from) 0deg,
+      var(--accent-via) 120deg,
+      var(--accent-to) 240deg,
+      var(--accent-from) 360deg
     );
     animation: rotateConic 8s linear infinite;
     -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
@@ -230,9 +221,9 @@
   pointer-events: none;
   z-index: -2;
   background:
-    radial-gradient(circle at 15% 20%, rgba(99, 102, 241, 0.06) 0%, transparent 45%),
-    radial-gradient(circle at 85% 25%, rgba(139, 92, 246, 0.05) 0%, transparent 45%),
-    radial-gradient(circle at 50% 85%, rgba(217, 70, 239, 0.04) 0%, transparent 50%);
+    radial-gradient(circle at 15% 20%, color-mix(in srgb, var(--accent-from) 6%, transparent) 0%, transparent 45%),
+    radial-gradient(circle at 85% 25%, color-mix(in srgb, var(--accent-via) 5%, transparent) 0%, transparent 45%),
+    radial-gradient(circle at 50% 85%, color-mix(in srgb, var(--accent-to) 4%, transparent) 0%, transparent 50%);
   filter: blur(55px);
   will-change: transform;
   animation: auroraPulse 16s ease-in-out infinite;
@@ -240,9 +231,9 @@
 
 .dark .aurora-backdrop {
   background:
-    radial-gradient(circle at 15% 20%, rgba(99, 102, 241, 0.12) 0%, transparent 45%),
-    radial-gradient(circle at 85% 25%, rgba(139, 92, 246, 0.10) 0%, transparent 45%),
-    radial-gradient(circle at 50% 85%, rgba(217, 70, 239, 0.08) 0%, transparent 50%);
+    radial-gradient(circle at 15% 20%, color-mix(in srgb, var(--accent-from) 14%, transparent) 0%, transparent 45%),
+    radial-gradient(circle at 85% 25%, color-mix(in srgb, var(--accent-via) 11%, transparent) 0%, transparent 45%),
+    radial-gradient(circle at 50% 85%, color-mix(in srgb, var(--accent-to) 9%, transparent) 0%, transparent 50%);
 }
 
 /* Accessible focus ring across all interactive elements */

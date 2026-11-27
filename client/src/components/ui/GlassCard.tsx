@@ -18,7 +18,7 @@ export interface GlassCardProps extends React.HTMLAttributes<HTMLDivElement> {
 const glowClasses: Record<GlassGlow, string> = {
   none: '',
   cyan: 'border-sky-500/30 dark:border-sky-500/40 shadow-[0_0_24px_rgba(14,165,233,0.12)]',
-  violet: 'border-violet-500/30 dark:border-violet-500/40 shadow-[0_0_24px_rgba(139,92,246,0.12)]',
+  violet: 'border-accent/30 dark:border-accent/40 shadow-[0_0_24px_var(--accent-glow)]',
   magenta: 'border-rose-500/35 dark:border-rose-500/45 shadow-[0_0_24px_rgba(244,63,94,0.15)]',
   emerald: 'border-emerald-500/30 dark:border-emerald-500/40 shadow-[0_0_24px_rgba(16,185,129,0.12)]',
   amber: 'border-amber-500/30 dark:border-amber-500/40 shadow-[0_0_24px_rgba(245,158,11,0.12)]',
@@ -27,7 +27,7 @@ const glowClasses: Record<GlassGlow, string> = {
 const hoverGlowClasses: Record<GlassGlow, string> = {
   none: 'hover:border-border-strong',
   cyan: 'hover:border-sky-400 dark:hover:border-sky-400/60 hover:shadow-[0_0_28px_rgba(14,165,233,0.2)]',
-  violet: 'hover:border-violet-400 dark:hover:border-violet-400/60 hover:shadow-[0_0_28px_rgba(139,92,246,0.2)]',
+  violet: 'hover:border-accent/60 dark:hover:border-accent/70 hover:shadow-[0_0_28px_var(--accent-glow)]',
   magenta: 'hover:border-rose-400 dark:hover:border-rose-400/60 hover:shadow-[0_0_28px_rgba(244,63,94,0.22)]',
   emerald: 'hover:border-emerald-400 dark:hover:border-emerald-400/60 hover:shadow-[0_0_28px_rgba(16,185,129,0.2)]',
   amber: 'hover:border-amber-400 dark:hover:border-amber-400/60 hover:shadow-[0_0_28px_rgba(245,158,11,0.2)]',

@@ -123,7 +123,7 @@ export function ChartTooltip({
               item.fill ||
               (typeof item.payload?.fill === 'string' ? item.payload.fill : undefined) ||
               (typeof item.payload?.color === 'string' ? item.payload.color : undefined) ||
-              '#6366F1';
+              'var(--accent)';
 
             // Raw Name & Value
             const rawName = item.name ?? String(item.dataKey ?? `Series ${index + 1}`);

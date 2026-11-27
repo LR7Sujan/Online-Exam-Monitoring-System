@@ -34,10 +34,10 @@ const VIOLATION_COLORS = [
   '#f43f5e', // rose-500
   '#fb923c', // orange-400
   '#facc15', // yellow-400
-  '#a855f7', // purple-500
+  'var(--accent-via)', // accent via
   '#38bdf8', // sky-400
   '#ec4899', // pink-500
-  '#6366f1', // indigo-500
+  'var(--accent-from)', // accent from
   '#14b8a6', // teal-500
 ];
 
@@ -201,8 +201,8 @@ export function StudentProfilePage() {
                       <stop offset="95%" stopColor="#10b981" stopOpacity={0.1} />
                     </linearGradient>
                     <linearGradient id="trustGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.8} />
-                      <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0.1} />
+                      <stop offset="5%" stopColor="var(--accent)" stopOpacity={0.8} />
+                      <stop offset="95%" stopColor="var(--accent)" stopOpacity={0.1} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.gridlines} />
@@ -230,9 +230,9 @@ export function StudentProfilePage() {
                     type="monotone"
                     name="Trust %"
                     dataKey="trustScore"
-                    stroke="#8b5cf6"
+                    stroke="var(--accent)"
                     strokeWidth={2.5}
-                    dot={{ r: 4, fill: '#8b5cf6' }}
+                    dot={{ r: 4, fill: 'var(--accent)' }}
                     activeDot={{ r: 6 }}
                   />
                 </LineChart>

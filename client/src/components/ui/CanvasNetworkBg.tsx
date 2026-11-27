@@ -30,7 +30,8 @@ export function CanvasNetworkBg({ className = '' }: { className?: string }) {
 
     const particleCount = Math.min(width > 768 ? 65 : 30, 80);
     const connectionDistance = 140;
-    const colors = ['#22D3EE', '#8B5CF6', '#10B981', '#F43F5E'];
+    const accentHex = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#4F46E5';
+    const colors = ['#22D3EE', accentHex, '#10B981', '#F43F5E'];
 
     const particles: Particle[] = Array.from({ length: particleCount }, () => ({
       x: Math.random() * width,

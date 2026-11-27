@@ -596,7 +596,7 @@ export function AdminDashboardPage({
 
               {/* Stored Procedures */}
               <div className="rounded-2xl border border-border bg-surface p-5 space-y-3 shadow-sm">
-                <h4 className="font-bold text-violet-500 text-xs uppercase tracking-wider">
+                <h4 className="font-bold text-accent text-xs uppercase tracking-wider">
                   Transactional Stored Procedures
                 </h4>
                 <div className="space-y-2">

@@ -634,7 +634,7 @@ export const SimulatorPage: React.FC = () => {
               disabled={isRunning}
               value={studentCount}
               onChange={(e) => setStudentCount(Number(e.target.value))}
-              className="w-full accent-indigo-500 cursor-pointer disabled:opacity-50"
+              className="w-full accent-accent cursor-pointer disabled:opacity-50"
             />
             <div className="flex justify-between text-[10px] font-mono text-muted-foreground">
               <span>1</span>

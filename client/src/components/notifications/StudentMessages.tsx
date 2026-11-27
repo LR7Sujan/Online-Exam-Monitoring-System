@@ -120,7 +120,7 @@ export function StudentMessages({ onClose }: StudentMessagesProps) {
 
     if (title.includes('reminder') || title.includes('opens')) {
       return (
-        <div className="w-8 h-8 rounded-full bg-violet-500/15 border border-violet-500/25 flex items-center justify-center shrink-0 text-violet-400">
+        <div className="w-8 h-8 rounded-full bg-accent-soft border border-accent/25 flex items-center justify-center shrink-0 text-accent">
           <Calendar className="w-4 h-4" />
         </div>
       );

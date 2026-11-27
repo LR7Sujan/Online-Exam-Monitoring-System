@@ -8,7 +8,7 @@ export interface ParticleBurstProps {
   className?: string;
 }
 
-const DEFAULT_COLORS = ['#10B981', '#6366F1', '#8B5CF6', '#D946EF', '#38BDF8'];
+const DEFAULT_COLORS = ['#10B981', '#34D399', '#FBBF24', '#38BDF8', '#F43F5E'];
 
 export function ParticleBurst({
   count = 20,

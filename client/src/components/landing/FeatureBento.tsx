@@ -19,7 +19,7 @@ const FEATURES: FeatureItem[] = [
     badge: 'WebSocket Engine',
     desc: 'Sub-20ms WebSocket telemetry streaming webcam presence, window focus, clipboard snooping, and DevTools detection live to proctors.',
     detail: 'Bi-directional proctoring socket cluster with automatic reconnection & heartbeat ping.',
-    accent: 'text-indigo-500 bg-indigo-500/10 border-indigo-500/20',
+    accent: 'text-accent bg-accent-soft border-accent',
     colSpan: 1,
   },
   {
@@ -39,7 +39,7 @@ const FEATURES: FeatureItem[] = [
     badge: 'MediaPipe Vision',
     desc: 'Continuous client-side neural tracking for facial presence, 5-second absence (NO_FACE), and unauthorized multi-person flags (MULTIPLE_FACES).',
     detail: 'Zero server video streaming: 100% edge detection protecting student biometric privacy.',
-    accent: 'text-violet-500 bg-violet-500/10 border-violet-500/20',
+    accent: 'text-accent bg-accent-soft border-accent',
     colSpan: 1,
   },
   {
@@ -49,7 +49,7 @@ const FEATURES: FeatureItem[] = [
     badge: 'ACID Guaranteed',
     desc: 'Cryptographically verified, immutable event logs and final grade evaluations locked with row-level SELECT ... FOR UPDATE transactions.',
     detail: 'No duplicate grading guarantees, tamper-resistant snapshots, and full viva auditability.',
-    accent: 'text-fuchsia-500 bg-fuchsia-500/10 border-fuchsia-500/20',
+    accent: 'text-accent bg-accent-soft border-accent',
     colSpan: 1,
   },
 ];
@@ -59,7 +59,7 @@ export function FeatureBento() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <span className="text-[11px] font-mono uppercase tracking-wider text-indigo-400 dark:text-indigo-400 font-semibold flex items-center gap-1.5">
+          <span className="text-[11px] font-mono uppercase tracking-wider text-accent font-semibold flex items-center gap-1.5">
             <Sparkles className="w-3.5 h-3.5" />
             Core Capabilities
           </span>

@@ -42,7 +42,7 @@ export function FullscreenExitOverlay({ isOpen, onReEnter }: FullscreenExitOverl
           <button
             type="button"
             onClick={onReEnter}
-            className="w-full py-2.5 px-4 rounded-xl font-semibold text-xs text-white bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 hover:opacity-95 shadow-md shadow-brand/20 active:scale-[0.99] transition-all flex items-center justify-center gap-2 cursor-pointer"
+            className="w-full py-2.5 px-4 rounded-xl font-semibold text-xs text-accent-foreground bg-gradient-to-r from-accent-from via-accent-via to-accent-to hover:opacity-95 shadow-md shadow-accent/20 active:scale-[0.99] transition-all flex items-center justify-center gap-2 cursor-pointer"
           >
             <Maximize2 className="w-4 h-4" />
             <span>Re-enter Fullscreen & Continue</span>

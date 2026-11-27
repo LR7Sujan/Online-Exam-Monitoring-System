@@ -762,7 +762,7 @@ export function RecordingPlayer({
                     ? ev.severity === 'CRITICAL' || ev.severity === 'HIGH'
                       ? 'bg-rose-500'
                       : 'bg-amber-400'
-                    : 'bg-violet-400';
+                    : 'bg-accent';
 
                   return (
                     <button
@@ -1088,7 +1088,7 @@ export function RecordingPlayer({
                                 className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
                                   isViolation
                                     ? 'bg-rose-500/15 text-rose-500 border border-rose-500/30'
-                                    : 'bg-violet-500/15 text-violet-400 border border-violet-500/30'
+                                    : 'bg-accent/15 text-accent border border-accent/30'
                                 }`}
                               >
                                 {ev.code}

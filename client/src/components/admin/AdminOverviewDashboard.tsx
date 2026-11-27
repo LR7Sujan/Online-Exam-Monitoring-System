@@ -136,13 +136,13 @@ interface DashboardData {
 
 // Brand gradient & semantic donut palette
 const DONUT_COLORS = [
-  '#6366F1', // Brand Indigo
-  '#8B5CF6', // Violet
-  '#D946EF', // Fuchsia
-  '#0EA5E9', // Sky (Info)
-  '#F59E0B', // Amber (Caution)
-  '#F43F5E', // Rose (Danger)
-  '#10B981', // Emerald (Safe)
+  'var(--accent-from)', // Brand Accent From
+  'var(--accent-via)',  // Brand Accent Via
+  'var(--accent-to)',   // Brand Accent To
+  '#0EA5E9',            // Sky (Info)
+  '#F59E0B',            // Amber (Caution)
+  '#F43F5E',            // Rose (Danger)
+  '#10B981',            // Emerald (Safe)
 ];
 
 export function AdminOverviewDashboard() {
@@ -225,8 +225,8 @@ export function AdminOverviewDashboard() {
   const histogramData = [
     { range: '0-49%', count: Number(data?.trustHistogram?.bucket_0_49 ?? 0), fill: '#F43F5E' },
     { range: '50-69%', count: Number(data?.trustHistogram?.bucket_50_69 ?? 0), fill: '#F59E0B' },
-    { range: '70-84%', count: Number(data?.trustHistogram?.bucket_70_84 ?? 0), fill: '#8B5CF6' },
-    { range: '85-99%', count: Number(data?.trustHistogram?.bucket_85_99 ?? 0), fill: '#6366F1' },
+    { range: '70-84%', count: Number(data?.trustHistogram?.bucket_70_84 ?? 0), fill: 'var(--accent-via)' },
+    { range: '85-99%', count: Number(data?.trustHistogram?.bucket_85_99 ?? 0), fill: 'var(--accent-from)' },
     { range: '100%', count: Number(data?.trustHistogram?.bucket_100 ?? 0), fill: '#10B981' },
   ];
   const totalHistogramCandidates = histogramData.reduce((acc, h) => acc + h.count, 0);
@@ -249,7 +249,7 @@ export function AdminOverviewDashboard() {
           label="Registered Students"
           value={kpis.totalStudents}
           accent="violet"
-          icon={<Users className="w-5 h-5 text-violet-500" />}
+          icon={<Users className="w-5 h-5 text-accent" />}
           changeLabel="biometric verified"
         />
         <StatCard
@@ -372,8 +372,8 @@ export function AdminOverviewDashboard() {
                 >
                   <defs>
                     <linearGradient id="violationsGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#6366F1" stopOpacity={0.4} />
-                      <stop offset="95%" stopColor="#8B5CF6" stopOpacity={0.0} />
+                      <stop offset="5%" stopColor="var(--accent-from)" stopOpacity={0.4} />
+                      <stop offset="95%" stopColor="var(--accent-via)" stopOpacity={0.0} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.gridlines} opacity={0.6} vertical={false} />
@@ -433,14 +433,14 @@ export function AdminOverviewDashboard() {
                   <Area
                     type="monotone"
                     dataKey="violation_count"
-                    stroke="#6366F1"
+                    stroke="var(--accent)"
                     strokeWidth={2}
                     fill="url(#violationsGrad)"
                     dot={false}
                     activeDot={{
                       r: 5,
-                      fill: '#6366F1',
-                      stroke: '#FFFFFF',
+                      fill: 'var(--accent)',
+                      stroke: 'var(--accent-foreground)',
                       strokeWidth: 2,
                     }}
                   />
@@ -458,7 +458,7 @@ export function AdminOverviewDashboard() {
         >
           <div>
             <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
-              <PieChartIcon className="w-4 h-4 text-violet-500" />
+              <PieChartIcon className="w-4 h-4 text-accent" />
               <span>Violation Distribution</span>
             </h3>
             <p className="text-[11px] font-mono text-muted-foreground">

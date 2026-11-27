@@ -26,7 +26,7 @@ const badgeStyles: Record<string, string> = {
   CRITICAL: 'border-rose-300 bg-rose-50 text-rose-800 dark:border-rose-500/60 dark:bg-rose-500/20 dark:text-rose-200',
 
   // Roles
-  ADMIN: 'border-violet-300 bg-violet-50 text-violet-800 dark:border-violet-400/40 dark:bg-violet-400/15 dark:text-violet-200',
+  ADMIN: 'border-accent/30 bg-accent-soft text-accent dark:border-accent/40 dark:bg-accent-soft dark:text-accent',
   PROCTOR: 'border-sky-300 bg-sky-50 text-sky-800 dark:border-cyan-400/40 dark:bg-cyan-400/15 dark:text-cyan-200',
   STUDENT: 'border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-400/40 dark:bg-emerald-400/15 dark:text-emerald-200',
 };

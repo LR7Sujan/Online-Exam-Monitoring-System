@@ -34,7 +34,7 @@ interface Ripple {
 // Linear / Vercel high-trust design variants
 const variantStyles: Record<NeonButtonVariant, string> = {
   primary:
-    'bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 hover:opacity-95 text-white font-medium shadow-sm hover:shadow-bento border border-indigo-400/30',
+    'bg-gradient-to-r from-accent-from via-accent-via to-accent-to hover:opacity-95 text-accent-foreground font-medium shadow-sm hover:shadow-bento border border-accent/30',
   secondary:
     'bg-surface-elevated hover:bg-muted text-foreground font-medium border border-border shadow-sm',
   danger:

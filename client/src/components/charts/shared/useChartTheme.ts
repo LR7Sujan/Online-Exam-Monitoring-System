@@ -5,6 +5,10 @@ export interface ChartSeriesColors {
   indigo: string;
   violet: string;
   fuchsia: string;
+  accent: string;
+  accentFrom: string;
+  accentVia: string;
+  accentTo: string;
   emerald: string;
   amber: string;
   rose: string;
@@ -60,9 +64,13 @@ export interface ChartTheme {
 }
 
 export const SERIES_COLORS: ChartSeriesColors = {
-  indigo: '#6366F1',
-  violet: '#8B5CF6',
-  fuchsia: '#D946EF',
+  indigo: 'var(--accent-from)',
+  violet: 'var(--accent-via)',
+  fuchsia: 'var(--accent-to)',
+  accent: 'var(--accent)',
+  accentFrom: 'var(--accent-from)',
+  accentVia: 'var(--accent-via)',
+  accentTo: 'var(--accent-to)',
   emerald: '#10B981',
   amber: '#F59E0B',
   rose: '#F43F5E',
@@ -85,12 +93,16 @@ export function useChartTheme(): ChartTheme {
     const axisText = isDark ? '#A1A1AA' : '#6A6152';
     const gridlines = isDark ? '#27272A' : '#DDD3BE';
     const axisLines = isDark ? '#27272A' : '#DDD3BE';
-    const cursorColor = isDark ? 'rgba(99, 102, 241, 0.08)' : 'rgba(99, 102, 241, 0.06)';
+    const cursorColor = isDark ? 'color-mix(in srgb, var(--accent) 12%, transparent)' : 'color-mix(in srgb, var(--accent) 8%, transparent)';
 
     const seriesColors: ChartSeriesColors = {
-      indigo: '#6366F1',
-      violet: '#8B5CF6',
-      fuchsia: '#D946EF',
+      indigo: 'var(--accent-from)',
+      violet: 'var(--accent-via)',
+      fuchsia: 'var(--accent-to)',
+      accent: 'var(--accent)',
+      accentFrom: 'var(--accent-from)',
+      accentVia: 'var(--accent-via)',
+      accentTo: 'var(--accent-to)',
       emerald: isDark ? '#10B981' : '#047857',
       amber: isDark ? '#F59E0B' : '#B45309',
       rose: isDark ? '#F43F5E' : '#BE123C',
@@ -103,7 +115,7 @@ export function useChartTheme(): ChartTheme {
     };
 
     const lineCursor = {
-      stroke: isDark ? 'rgba(99, 102, 241, 0.35)' : 'rgba(99, 102, 241, 0.25)',
+      stroke: isDark ? 'color-mix(in srgb, var(--accent) 40%, transparent)' : 'color-mix(in srgb, var(--accent) 30%, transparent)',
       strokeDasharray: '3 3',
       strokeWidth: 1,
     };

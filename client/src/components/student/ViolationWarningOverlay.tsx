@@ -392,7 +392,7 @@ export function ViolationWarningOverlay({
                   className={`w-full py-2.5 px-4 rounded-xl font-bold text-xs transition-all shadow-md flex items-center justify-center gap-2 ${
                     ackCountdown > 0
                       ? 'bg-muted text-muted-foreground cursor-not-allowed border border-border opacity-70'
-                      : 'text-white bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 hover:opacity-95 active:scale-[0.99] cursor-pointer shadow-indigo-500/20'
+                      : 'text-accent-foreground bg-gradient-to-r from-accent-from via-accent-via to-accent-to hover:opacity-95 active:scale-[0.99] cursor-pointer shadow-accent/20'
                   }`}
                 >
                   <span>

@@ -22,7 +22,7 @@ export function AuthLayout({ children }: AuthLayoutProps) {
 
       {/* Top ambient decorative glow */}
       <div className="absolute -top-32 -left-32 w-96 h-96 rounded-full bg-brand/10 blur-3xl pointer-events-none" />
-      <div className="absolute -bottom-32 -right-32 w-96 h-96 rounded-full bg-violet-600/10 blur-3xl pointer-events-none" />
+      <div className="absolute -bottom-32 -right-32 w-96 h-96 rounded-full bg-accent/10 blur-3xl pointer-events-none" />
 
       {/* Theme Toggle in Top Right */}
       <div className="absolute top-4 right-4 sm:top-5 sm:right-6 lg:top-6 lg:right-8 z-30">
@@ -37,7 +37,7 @@ export function AuthLayout({ children }: AuthLayoutProps) {
             {/* Top Brand Logo */}
             <div>
               <Link to="/" className="inline-flex items-center gap-2.5 group">
-                <div className="h-9 w-9 rounded-xl bg-gradient-to-tr from-indigo-500 via-violet-500 to-fuchsia-500 flex items-center justify-center text-white shadow-md shadow-brand/20 transition-transform group-hover:scale-105">
+                <div className="h-9 w-9 rounded-xl bg-gradient-to-tr from-accent-from via-accent-via to-accent-to flex items-center justify-center text-accent-foreground shadow-md shadow-accent/20 transition-transform group-hover:scale-105">
                   <ShieldCheck className="h-5 w-5" />
                 </div>
                 <div className="flex items-center gap-2">
@@ -66,7 +66,7 @@ export function AuthLayout({ children }: AuthLayoutProps) {
             <div className="space-y-1.5">
               <h1 className="text-2xl sm:text-3xl xl:text-4xl font-extrabold tracking-tight text-foreground leading-[1.15]">
                 Mission Control for{' '}
-                <span className="bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 bg-clip-text text-transparent">
+                <span className="bg-gradient-to-r from-accent-from via-accent-via to-accent-to bg-clip-text text-transparent">
                   Zero-Trust
                 </span>{' '}
                 Assessments
@@ -99,7 +99,7 @@ export function AuthLayout({ children }: AuthLayoutProps) {
               </div>
 
               <div className="flex items-start gap-3">
-                <div className="h-6 w-6 rounded-lg bg-violet-500/10 border border-violet-500/30 flex items-center justify-center text-violet-500 shrink-0 mt-0.5">
+                <div className="h-6 w-6 rounded-lg bg-accent/10 border border-accent/30 flex items-center justify-center text-accent shrink-0 mt-0.5">
                   <Lock className="w-3.5 h-3.5" />
                 </div>
                 <div>
@@ -119,7 +119,7 @@ export function AuthLayout({ children }: AuthLayoutProps) {
                 &ldquo;ProctorIQ transformed high-stakes remote evaluations. The DBMS-level guarantees give our faculty 100% confidence with zero subjective disputes.&rdquo;
               </p>
               <div className="flex items-center gap-2 pt-0.5 text-[11px] text-muted-foreground">
-                <div className="h-4 w-4 rounded-full bg-gradient-to-tr from-brand to-violet-500 flex items-center justify-center text-white font-bold text-[8px]">
+                <div className="h-4 w-4 rounded-full bg-gradient-to-tr from-accent-from to-accent-via flex items-center justify-center text-accent-foreground font-bold text-[8px]">
                   EV
                 </div>
                 <span>Dr. Elena Vance — Chief Academic Officer</span>

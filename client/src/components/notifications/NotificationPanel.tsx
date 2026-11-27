@@ -250,7 +250,7 @@ export function NotificationPanel({ onClose }: NotificationPanelProps) {
                       <Shield className="w-3.5 h-3.5 text-sky-400 shrink-0" />
                     )}
                     {item.severity === 'INFO' && (
-                      <Info className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                      <Info className="w-3.5 h-3.5 text-accent shrink-0" />
                     )}
                     <SeverityBadge severity={item.severity || 'MEDIUM'} size="sm" />
                     {isUnread && (

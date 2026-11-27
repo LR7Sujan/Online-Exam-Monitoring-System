@@ -49,7 +49,7 @@ export function TrustRingSection() {
                 max="100"
                 value={trustScore}
                 onChange={(e) => setTrustScore(Number(e.target.value))}
-                className="w-full accent-indigo-500 cursor-pointer"
+                className="w-full accent-accent cursor-pointer"
                 data-testid="styleguide-score-slider"
               />
               <div className="flex justify-between text-[10px] font-mono text-muted-foreground">

@@ -51,7 +51,7 @@ export function KpiStrip({ kpis }: KpiStripProps) {
         label="Warnings Pending"
         value={warningsCount}
         accent="violet"
-        icon={<ShieldAlert className="w-5 h-5 text-violet-500" />}
+        icon={<ShieldAlert className="w-5 h-5 text-accent" />}
         changeLabel="pending acknowledgment"
         sparklineData={[1, 2, 2, 3, 2, 4, warningsCount]}
       />

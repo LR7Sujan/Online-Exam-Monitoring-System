@@ -28,11 +28,11 @@ const accentConfig: Record<
     border: 'border-sky-200 dark:border-sky-800/80',
   },
   violet: {
-    stroke: '#8B5CF6',
-    fill: 'rgba(139, 92, 246, 0.15)',
-    text: 'text-violet-800 dark:text-violet-400',
-    bg: 'bg-violet-50 dark:bg-violet-950/40',
-    border: 'border-violet-200 dark:border-violet-800/80',
+    stroke: 'var(--accent)',
+    fill: 'var(--accent-soft)',
+    text: 'text-accent',
+    bg: 'bg-accent-soft',
+    border: 'border-accent/30',
   },
   magenta: {
     stroke: '#F43F5E',

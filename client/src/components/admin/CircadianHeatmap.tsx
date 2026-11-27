@@ -60,33 +60,33 @@ function getIndigoCellClasses(count: number, max: number): {
   if (ratio <= 0.25) {
     return {
       step: 1,
-      bg: 'bg-indigo-100 text-indigo-900 border-indigo-200/80 dark:bg-indigo-950/70 dark:text-indigo-300 dark:border-indigo-900/40',
+      bg: 'bg-accent/15 text-accent border-accent/25 dark:bg-accent/20 dark:text-accent dark:border-accent/30',
     };
   }
   if (ratio <= 0.5) {
     return {
       step: 2,
-      bg: 'bg-indigo-200 text-indigo-950 border-indigo-300/80 dark:bg-indigo-900/80 dark:text-indigo-200 dark:border-indigo-700/50',
+      bg: 'bg-accent/35 text-foreground border-accent/40 dark:bg-accent/40 dark:text-foreground dark:border-accent/50',
     };
   }
   if (ratio <= 0.75) {
     return {
       step: 3,
-      bg: 'bg-indigo-600 text-white border-indigo-700 dark:bg-indigo-600 dark:text-white dark:border-indigo-500/60 shadow-sm',
+      bg: 'bg-accent/70 text-accent-foreground border-accent/80 dark:bg-accent/70 dark:text-accent-foreground dark:border-accent/80 shadow-sm',
     };
   }
   return {
     step: 4,
-    bg: 'bg-indigo-700 text-white border-indigo-800 dark:bg-indigo-500 dark:text-white dark:border-indigo-400 shadow-[0_0_8px_rgba(99,102,241,0.35)]',
+    bg: 'bg-accent text-accent-foreground border-accent dark:bg-accent dark:text-accent-foreground dark:border-accent shadow-[0_0_8px_var(--accent-glow)]',
   };
 }
 
 const LEGEND_STEPS = [
   { label: '0', title: 'Zero incidents (empty cell)', bg: 'bg-surface-elevated border-border dark:bg-zinc-900/40 dark:border-border' },
-  { label: 'Low', title: 'Low incidents (1 - 25%)', bg: 'bg-indigo-100 border-indigo-200/80 dark:bg-indigo-950/70 dark:border-indigo-900/40' },
-  { label: 'Med', title: 'Medium incidents (26 - 50%)', bg: 'bg-indigo-200 border-indigo-300/80 dark:bg-indigo-900/80 dark:border-indigo-700/50' },
-  { label: 'High', title: 'High incidents (51 - 75%)', bg: 'bg-indigo-600 border-indigo-700 dark:bg-indigo-600 dark:border-indigo-500/60' },
-  { label: 'Peak', title: 'Peak incidents (76 - 100%)', bg: 'bg-indigo-700 border-indigo-800 dark:bg-indigo-500 dark:border-indigo-400' },
+  { label: 'Low', title: 'Low incidents (1 - 25%)', bg: 'bg-accent/15 border-accent/25' },
+  { label: 'Med', title: 'Medium incidents (26 - 50%)', bg: 'bg-accent/35 border-accent/40' },
+  { label: 'High', title: 'High incidents (51 - 75%)', bg: 'bg-accent/70 border-accent/80' },
+  { label: 'Peak', title: 'Peak incidents (76 - 100%)', bg: 'bg-accent border-accent' },
 ];
 
 function SeverityIcon({ severity, className = 'w-3.5 h-3.5' }: { severity: string; className?: string }) {
@@ -96,7 +96,7 @@ function SeverityIcon({ severity, className = 'w-3.5 h-3.5' }: { severity: strin
     case 'HIGH':
       return <AlertTriangle className={`${className} text-amber-500`} />;
     case 'MEDIUM':
-      return <Shield className={`${className} text-indigo-400`} />;
+      return <Shield className={`${className} text-accent`} />;
     default:
       return <Info className={`${className} text-emerald-500`} />;
   }
@@ -374,8 +374,8 @@ export function CircadianHeatmap({
                       style={{ height: `${barHeightPercent}%` }}
                       className={`w-full max-w-[14px] rounded-t-[2px] transition-all duration-150 ${
                         isColActive
-                          ? 'bg-brand dark:bg-indigo-400'
-                          : 'bg-indigo-500/25 dark:bg-indigo-400/25 hover:bg-indigo-500/50'
+                          ? 'bg-accent'
+                          : 'bg-accent/25 hover:bg-accent/50'
                       }`}
                     />
                   </div>

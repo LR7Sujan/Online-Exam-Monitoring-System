@@ -17,8 +17,11 @@ export default {
         DEFAULT: 'var(--border)',
         strong: 'var(--border-strong)',
         brand: withColorMix('--brand-border'),
+        accent: withColorMix('--accent-border'),
       },
       textColor: {
+        accent: withColorMix('--accent'),
+        'accent-foreground': 'var(--accent-foreground)',
         brand: withColorMix('--brand-text'),
         safe: withColorMix('--semantic-emerald'),
         caution: withColorMix('--semantic-amber'),
@@ -38,9 +41,30 @@ export default {
         'sky-600': 'var(--semantic-sky, #0284C7)',
       },
       backgroundColor: {
+        accent: withColorMix('--accent'),
+        'accent-soft': 'var(--accent-soft)',
         brand: withColorMix('--brand-bg'),
       },
+      gradientColorStops: {
+        'accent-from': 'var(--accent-from)',
+        'accent-via': 'var(--accent-via)',
+        'accent-to': 'var(--accent-to)',
+      },
+      ringColor: {
+        accent: 'var(--ring)',
+      },
       colors: {
+        // Global Accent Tokens
+        accent: {
+          DEFAULT: withColorMix('--accent'),
+          foreground: 'var(--accent-foreground)',
+          soft: 'var(--accent-soft)',
+          border: 'var(--accent-border)',
+          from: 'var(--accent-from)',
+          via: 'var(--accent-via)',
+          to: 'var(--accent-to)',
+          glow: 'var(--accent-glow)',
+        },
         // Aurora Bento CSS-Variable Tokens (Dual-Theme)
         background: 'var(--background)',
         foreground: 'var(--foreground)',

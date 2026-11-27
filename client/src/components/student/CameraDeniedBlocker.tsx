@@ -85,7 +85,7 @@ export const CameraDeniedBlocker: React.FC<CameraDeniedBlockerProps> = ({
           <button
             type="button"
             onClick={onRetry}
-            className="py-2.5 px-5 rounded-xl font-semibold text-xs text-white bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 hover:opacity-95 shadow-md shadow-brand/20 active:scale-[0.99] transition-all flex items-center gap-2 cursor-pointer"
+            className="py-2.5 px-5 rounded-xl font-semibold text-xs text-accent-foreground bg-gradient-to-r from-accent-from via-accent-via to-accent-to hover:opacity-95 shadow-md shadow-accent/20 active:scale-[0.99] transition-all flex items-center gap-2 cursor-pointer"
           >
             <RefreshCw className="w-4 h-4" />
             <span>Retry Hardware Verification</span>

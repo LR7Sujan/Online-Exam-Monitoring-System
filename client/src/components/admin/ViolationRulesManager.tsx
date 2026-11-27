@@ -32,7 +32,7 @@ function getViolationIcon(code: string) {
     case 'VOICE_DETECTED':
       return <Mic className="w-3.5 h-3.5 text-amber-400 shrink-0" />;
     case 'MULTIPLE_FACES':
-      return <Users className="w-3.5 h-3.5 text-purple-400 shrink-0" />;
+      return <Users className="w-3.5 h-3.5 text-accent shrink-0" />;
     case 'NO_FACE':
       return <Camera className="w-3.5 h-3.5 text-sky-400 shrink-0" />;
     case 'TAB_SWITCH':
@@ -234,7 +234,7 @@ export function ViolationRulesManager() {
 
           <div className="flex items-center justify-between">
             <h4 className="text-sm font-bold text-foreground flex items-center gap-2">
-              <Sliders className="w-4 h-4 text-violet-500" />
+              <Sliders className="w-4 h-4 text-accent" />
               <span>Configured Penalty Rules</span>
             </h4>
             <span className="text-[10px] font-mono text-muted-foreground">

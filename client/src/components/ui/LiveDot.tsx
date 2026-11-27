@@ -30,9 +30,9 @@ const colorMap: Record<LiveDotColor, { dot: string; ping: string; ring: string }
     ring: 'ring-2 ring-amber-500/20',
   },
   violet: {
-    dot: 'bg-violet-500',
-    ping: 'bg-violet-400',
-    ring: 'ring-2 ring-violet-500/20',
+    dot: 'bg-accent',
+    ping: 'bg-accent',
+    ring: 'ring-2 ring-accent/20',
   },
   gray: {
     dot: 'bg-zinc-400',

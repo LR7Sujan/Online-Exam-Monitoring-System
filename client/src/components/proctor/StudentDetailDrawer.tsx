@@ -514,7 +514,7 @@ export function StudentDetailDrawer({ sessionId, onClose }: StudentDetailDrawerP
             {/* 3. Session Technical Info (IP, Device Fingerprint, Latency) */}
             <div className="rounded-2xl border border-border bg-surface-elevated/70 p-4 space-y-3 font-mono text-xs">
               <h4 className="font-bold uppercase tracking-wider text-foreground flex items-center gap-2">
-                <Laptop className="w-4 h-4 text-violet-500" />
+                <Laptop className="w-4 h-4 text-accent" />
                 <span>Client Telemetry & Kiosk State</span>
               </h4>
 

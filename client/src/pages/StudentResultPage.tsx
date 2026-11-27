@@ -102,7 +102,7 @@ export function StudentResultPage() {
           <button
             type="button"
             onClick={() => navigate('/student')}
-            className="py-2.5 px-5 rounded-xl font-semibold text-xs text-white bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 hover:opacity-95 shadow-sm transition-all cursor-pointer"
+            className="py-2.5 px-5 rounded-xl font-semibold text-xs text-accent-foreground bg-gradient-to-r from-accent-from via-accent-via to-accent-to hover:opacity-95 shadow-sm transition-all cursor-pointer"
           >
             Return to Candidate Console
           </button>
@@ -168,7 +168,7 @@ export function StudentResultPage() {
                 ? 'bg-gradient-to-r from-rose-500 to-red-600'
                 : integrityStatus === 'FLAGGED'
                 ? 'bg-gradient-to-r from-amber-500 to-orange-500'
-                : 'bg-gradient-to-r from-emerald-500 via-teal-500 to-indigo-500'
+                : 'bg-gradient-to-r from-emerald-500 via-teal-500 to-accent'
             }`}
           />
 

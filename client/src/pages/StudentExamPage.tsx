@@ -969,7 +969,7 @@ export function StudentExamPage() {
                           <div
                             className={`w-8 h-8 rounded-xl font-mono text-xs font-bold flex items-center justify-center transition-all ${
                               isSelected
-                                ? 'bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 text-white shadow-sm'
+                                ? 'bg-gradient-to-r from-accent-from via-accent-via to-accent-to text-accent-foreground shadow-sm'
                                 : 'bg-surface-elevated border border-border text-muted-foreground'
                             }`}
                           >
@@ -1168,7 +1168,7 @@ export function StudentExamPage() {
           className={`py-2 px-4 rounded-xl text-xs font-semibold text-white transition-all flex items-center gap-1.5 cursor-pointer shadow-sm ${
             currentIndex === questions.length - 1
               ? 'bg-gradient-to-r from-emerald-500 to-teal-600 hover:opacity-95'
-              : 'bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 hover:opacity-95'
+              : 'bg-gradient-to-r from-accent-from via-accent-via to-accent-to text-accent-foreground hover:opacity-95'
           }`}
         >
           <span>{currentIndex === questions.length - 1 ? 'Review & Submit' : 'Next Question'}</span>

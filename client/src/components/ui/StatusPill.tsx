@@ -102,9 +102,9 @@ const statusConfig: Record<
 
   // Roles
   ADMIN: {
-    border: 'border-indigo-200 dark:border-indigo-800/80',
-    bg: 'bg-indigo-50 dark:bg-indigo-950/40',
-    text: 'text-indigo-700 dark:text-indigo-300',
+    border: 'border-accent/30',
+    bg: 'bg-accent-soft',
+    text: 'text-accent',
     dotColor: 'cyan',
     label: 'ADMINISTRATOR',
   },

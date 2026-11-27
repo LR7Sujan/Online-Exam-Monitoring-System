@@ -481,7 +481,7 @@ export function ReviewQueueTable({ onInspectStudent }: ReviewQueueTableProps) {
                           key={trust}
                           animate={
                             animScore
-                              ? { scale: [1, 1.35, 1], color: ['#10B981', '#6366F1', '#10B981'] }
+                              ? { scale: [1, 1.35, 1], color: ['#10B981', 'var(--accent)', '#10B981'] }
                               : {}
                           }
                           className={`font-bold ${

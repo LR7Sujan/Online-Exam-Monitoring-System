@@ -103,7 +103,7 @@ export function PreExamChecklistModal({
         }
 
         // Facial silhouette
-        ctx.strokeStyle = '#6366F1';
+        ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#4F46E5';
         ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.arc(160, 95, 42, 0, Math.PI * 2);
@@ -334,7 +334,7 @@ export function PreExamChecklistModal({
       header={
         <div>
           {/* Top highlight bar */}
-          <div className="h-1 bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500" />
+          <div className="h-1 bg-gradient-to-r from-accent-from via-accent-via to-accent-to" />
 
           {/* Header */}
           <div className="flex items-center justify-between p-5 border-b border-border bg-surface-elevated/50">
@@ -374,7 +374,7 @@ export function PreExamChecklistModal({
                   onClick={() => setCurrentStep(s.step)}
                   className={`flex items-center gap-2 py-1.5 px-3 rounded-xl text-xs font-mono transition-all cursor-pointer ${
                     currentStep === s.step
-                      ? 'bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 text-white font-bold shadow-sm'
+                      ? 'bg-gradient-to-r from-accent-from via-accent-via to-accent-to text-accent-foreground font-bold shadow-sm'
                       : s.completed
                       ? 'bg-emerald-500/15 text-emerald-500 border border-emerald-500/30'
                       : 'bg-surface-elevated text-muted-foreground hover:text-foreground border border-border'
@@ -410,7 +410,7 @@ export function PreExamChecklistModal({
               <button
                 type="button"
                 onClick={() => setCurrentStep((c) => (c + 1) as StepKey)}
-                className="py-2 px-4 rounded-xl text-xs font-semibold text-white bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 hover:opacity-95 shadow-sm transition-all flex items-center gap-1.5 cursor-pointer"
+                className="py-2 px-4 rounded-xl text-xs font-semibold text-accent-foreground bg-gradient-to-r from-accent-from via-accent-via to-accent-to hover:opacity-95 shadow-sm transition-all flex items-center gap-1.5 cursor-pointer"
               >
                 <span>Continue</span>
                 <ArrowRight className="w-4 h-4" />
@@ -482,7 +482,7 @@ export function PreExamChecklistModal({
                     type="checkbox"
                     checked={rulesAccepted}
                     onChange={(e) => setRulesAccepted(e.target.checked)}
-                    className="mt-0.5 accent-indigo-600 w-4 h-4 cursor-pointer"
+                    className="mt-0.5 accent-accent w-4 h-4 cursor-pointer"
                   />
                   <span className="text-xs text-foreground leading-relaxed select-none">
                     {checkboxConsentText}
@@ -535,7 +535,7 @@ export function PreExamChecklistModal({
                         type="button"
                         onClick={startCamera}
                         data-testid="activate-webcam-button"
-                        className="py-2 px-4 rounded-xl text-xs font-semibold text-white bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 hover:opacity-95 shadow-sm transition-all flex items-center gap-2 mx-auto cursor-pointer"
+                        className="py-2 px-4 rounded-xl text-xs font-semibold text-accent-foreground bg-gradient-to-r from-accent-from via-accent-via to-accent-to hover:opacity-95 shadow-sm transition-all flex items-center gap-2 mx-auto cursor-pointer"
                       >
                         <Camera className="w-4 h-4" />
                         <span>Authorize Camera & Microphone</span>
@@ -606,7 +606,7 @@ export function PreExamChecklistModal({
                     <button
                       type="button"
                       onClick={triggerFullscreen}
-                      className="py-2.5 px-5 rounded-xl font-semibold text-xs text-white bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 hover:opacity-95 shadow-md shadow-brand/20 active:scale-[0.99] transition-all flex items-center gap-2 mx-auto cursor-pointer"
+                      className="py-2.5 px-5 rounded-xl font-semibold text-xs text-accent-foreground bg-gradient-to-r from-accent-from via-accent-via to-accent-to hover:opacity-95 shadow-md shadow-accent/20 active:scale-[0.99] transition-all flex items-center gap-2 mx-auto cursor-pointer"
                     >
                       <Maximize2 className="w-4 h-4" />
                       <span>Enter Lockdown Fullscreen</span>

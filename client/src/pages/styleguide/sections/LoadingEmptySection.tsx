@@ -260,7 +260,7 @@ type DemoStatus = 'loading' | 'loaded' | 'empty' | 'error';
                       data-testid={`btn-state-${st}`}
                       onClick={() => dispatch({ type: 'SELECT_STATUS', status: st })}
                       className={`h-8 px-3.5 rounded-lg text-xs font-mono font-medium transition-all cursor-pointer flex items-center gap-1.5 ${isSelected
-                        ? 'bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 text-white font-semibold shadow-sm'
+                        ? 'bg-gradient-to-r from-accent-from via-accent-via to-accent-to text-accent-foreground font-semibold shadow-sm'
                         : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
                         }`}
                     >
@@ -400,7 +400,7 @@ type DemoStatus = 'loading' | 'loaded' | 'empty' | 'error';
                       >
                         {/* Student Name & Email */}
                         <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-brand to-violet-500 text-white font-bold text-xs flex items-center justify-center shrink-0 shadow-xs">
+                          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-accent-from to-accent-via text-accent-foreground font-bold text-xs flex items-center justify-center shrink-0 shadow-xs">
                             {row.name.charAt(0)}
                           </div>
                           <div className="min-w-0 truncate">
@@ -504,7 +504,7 @@ type DemoStatus = 'loading' | 'loaded' | 'empty' | 'error';
                 data-testid="tab-skeleton"
                 onClick={() => setStandaloneMode('skeleton')}
                 className={`h-7 px-3 rounded-lg text-xs font-mono font-medium transition-all cursor-pointer ${standaloneMode === 'skeleton'
-                  ? 'bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 text-white font-semibold shadow-sm'
+                  ? 'bg-gradient-to-r from-accent-from via-accent-via to-accent-to text-accent-foreground font-semibold shadow-sm'
                   : 'text-muted-foreground hover:text-foreground'
                   }`}
               >
@@ -515,7 +515,7 @@ type DemoStatus = 'loading' | 'loaded' | 'empty' | 'error';
                 data-testid="tab-content"
                 onClick={() => setStandaloneMode('content')}
                 className={`h-7 px-3 rounded-lg text-xs font-mono font-medium transition-all cursor-pointer ${standaloneMode === 'content'
-                  ? 'bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 text-white font-semibold shadow-sm'
+                  ? 'bg-gradient-to-r from-accent-from via-accent-via to-accent-to text-accent-foreground font-semibold shadow-sm'
                   : 'text-muted-foreground hover:text-foreground'
                   }`}
               >
@@ -624,7 +624,7 @@ type DemoStatus = 'loading' | 'loaded' | 'empty' | 'error';
                   </div>
                   <div className="p-2 rounded-xl bg-surface-elevated/70 border border-border flex items-center justify-between">
                     <span className="flex items-center gap-2 text-muted-foreground">
-                      <Cpu className="w-3.5 h-3.5 text-violet-500" /> MediaPipe Neural Lock
+                      <Cpu className="w-3.5 h-3.5 text-accent" /> MediaPipe Neural Lock
                     </span>
                     <span className="font-semibold text-foreground">60 FPS Edge Vision</span>
                   </div>

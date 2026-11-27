@@ -370,7 +370,7 @@ export function StudentDashboardPage() {
                       ) : isInProgress ? (
                         <button
                           type="button"
-                          className="w-full py-2.5 px-4 rounded-xl font-semibold text-xs text-white bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 hover:opacity-95 shadow-md shadow-brand/20 active:scale-[0.99] transition-all flex items-center justify-center gap-2 cursor-pointer"
+                          className="w-full py-2.5 px-4 rounded-xl font-semibold text-xs text-accent-foreground bg-gradient-to-r from-accent-from via-accent-via to-accent-to hover:opacity-95 shadow-md shadow-accent/20 active:scale-[0.99] transition-all flex items-center justify-center gap-2 cursor-pointer"
                           onClick={() => navigate(`/student/session/${exam.session_id}`)}
                         >
                           <Play className="w-4 h-4 fill-current" />
@@ -390,7 +390,7 @@ export function StudentDashboardPage() {
                         <button
                           type="button"
                           disabled={!isWindowOpen}
-                          className="w-full py-2.5 px-4 rounded-xl font-semibold text-xs text-white bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 hover:opacity-95 shadow-md shadow-brand/20 active:scale-[0.99] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="w-full py-2.5 px-4 rounded-xl font-semibold text-xs text-accent-foreground bg-gradient-to-r from-accent-from via-accent-via to-accent-to hover:opacity-95 shadow-md shadow-accent/20 active:scale-[0.99] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                           onClick={() => handleStartClick(exam)}
                         >
                           <Play className="w-4 h-4 fill-current" />

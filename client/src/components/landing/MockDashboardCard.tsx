@@ -102,7 +102,7 @@ export function MockDashboardCard() {
   return (
     <div className="relative rounded-2xl border border-border bg-surface p-4 sm:p-5 shadow-sm overflow-hidden select-none w-full">
       {/* Subtle top brand glow accent */}
-      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 opacity-80" />
+      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-accent-from via-accent-via to-accent-to opacity-80" />
 
       {/* Header telemetry pill */}
       <div className="flex items-center justify-between pb-3 border-b border-border">
@@ -161,7 +161,7 @@ export function MockDashboardCard() {
 
         <div className="p-2 rounded-xl bg-surface-elevated/60 border border-border">
           <div className="text-[10px] font-mono uppercase text-muted-foreground">DB Lock</div>
-          <div className="text-base sm:text-lg font-bold font-mono text-indigo-400 dark:text-indigo-400 tracking-tight">ACID</div>
+          <div className="text-base sm:text-lg font-bold font-mono text-accent tracking-tight">ACID</div>
           <div className="text-[9px] text-muted-foreground font-mono">FOR UPDATE</div>
         </div>
       </div>
@@ -182,7 +182,7 @@ export function MockDashboardCard() {
         <div className="relative rounded-xl border border-border bg-background/90 p-2.5 overflow-hidden">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500/20 to-violet-500/30 border border-brand/30 flex items-center justify-center text-brand font-bold text-xs shrink-0">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-accent-from/20 to-accent-via/30 border border-brand/30 flex items-center justify-center text-brand font-bold text-xs shrink-0">
                 AI
               </div>
               <div className="min-w-0">

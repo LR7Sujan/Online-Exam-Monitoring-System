@@ -88,7 +88,7 @@ export function LandingPage() {
           <div className="space-y-2.5">
             <h1 className="text-3xl sm:text-4xl lg:text-[clamp(2rem,3.2vw,3rem)] font-extrabold tracking-tight text-foreground leading-[1.12]">
               Mission Control for{' '}
-              <span className="bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-accent-from via-accent-via to-accent-to bg-clip-text text-transparent">
                 ProctorIQ
               </span>
             </h1>
@@ -102,7 +102,7 @@ export function LandingPage() {
             <button
               type="button"
               onClick={() => navigate(dashboardTarget)}
-              className="py-2.5 px-5 rounded-xl font-semibold text-sm text-white bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 hover:from-indigo-600 hover:via-violet-600 hover:to-fuchsia-600 shadow-md shadow-brand/20 hover:shadow-lg hover:shadow-brand/30 active:scale-[0.99] transition-all flex items-center gap-2 cursor-pointer"
+              className="py-2.5 px-5 rounded-xl font-semibold text-sm text-accent-foreground bg-gradient-to-r from-accent-from via-accent-via to-accent-to hover:opacity-95 shadow-md shadow-accent/20 hover:shadow-lg active:scale-[0.99] transition-all flex items-center gap-2 cursor-pointer"
             >
               <span>Open my dashboard</span>
               <ArrowRight className="w-4 h-4" />
@@ -126,7 +126,7 @@ export function LandingPage() {
               </div>
             </div>
             <div>
-              <div className="text-xl sm:text-2xl font-bold font-mono text-violet-500">Triggers</div>
+              <div className="text-xl sm:text-2xl font-bold font-mono text-accent">Triggers</div>
               <div className="text-xs text-muted-foreground font-mono leading-tight whitespace-normal mt-0.5">
                 Auto-Deduct &amp; Lockout
               </div>
@@ -153,7 +153,7 @@ export function LandingPage() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 sm:gap-6">
           {STATS.map((stat, i) => (
             <div key={i} className="space-y-1 text-center sm:text-left">
-              <div className="text-2xl sm:text-3xl font-extrabold font-mono tracking-tight text-foreground bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 bg-clip-text text-transparent">
+              <div className="text-2xl sm:text-3xl font-extrabold font-mono tracking-tight text-foreground bg-gradient-to-r from-accent-from via-accent-via to-accent-to bg-clip-text text-transparent">
                 {stat.value}
               </div>
               <div className="text-sm font-semibold text-foreground">{stat.label}</div>
@@ -175,7 +175,7 @@ export function LandingPage() {
       {/* ============================================================== */}
       <section id="how-it-works" className="space-y-6 pt-2">
         <div className="text-center max-w-2xl mx-auto space-y-1.5">
-          <span className="text-xs font-mono font-semibold uppercase tracking-wider text-violet-500">
+          <span className="text-xs font-mono font-semibold uppercase tracking-wider text-accent">
             Streamlined Pipeline
           </span>
           <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
@@ -233,7 +233,7 @@ export function LandingPage() {
       <section id="security" className="space-y-5 pt-2">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <div className="flex items-center gap-2 font-mono text-xs uppercase tracking-wider text-indigo-400 font-semibold">
+            <div className="flex items-center gap-2 font-mono text-xs uppercase tracking-wider text-accent font-semibold">
               <Cpu className="h-4 w-4" />
               <span>Deterministic Enforcement</span>
             </div>
@@ -279,7 +279,7 @@ export function LandingPage() {
       {/* 6. FINAL CTA SECTION                                           */}
       {/* ============================================================== */}
       <section className="p-6 sm:p-8 rounded-2xl border border-brand/40 bg-gradient-to-r from-surface via-surface-elevated to-surface shadow-sm text-center max-w-4xl mx-auto space-y-4 relative overflow-hidden">
-        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500" />
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-accent-from via-accent-via to-accent-to" />
         <div className="h-10 w-10 rounded-xl bg-brand/10 border border-brand/30 flex items-center justify-center text-brand mx-auto shadow-sm">
           <Terminal className="w-5 h-5 animate-pulse" />
         </div>
@@ -296,7 +296,7 @@ export function LandingPage() {
           <button
             type="button"
             onClick={() => navigate(dashboardTarget)}
-            className="py-2.5 px-5 rounded-xl font-semibold text-sm text-white bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 hover:from-indigo-600 hover:via-violet-600 hover:to-fuchsia-600 shadow-md shadow-brand/20 hover:shadow-lg transition-all flex items-center gap-2 cursor-pointer"
+            className="py-2.5 px-5 rounded-xl font-semibold text-sm text-accent-foreground bg-gradient-to-r from-accent-from via-accent-via to-accent-to hover:opacity-95 shadow-md shadow-accent/20 hover:shadow-lg transition-all flex items-center gap-2 cursor-pointer"
           >
             <span>Open my dashboard</span>
             <ArrowRight className="w-4 h-4" />
