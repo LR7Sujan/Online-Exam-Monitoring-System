@@ -124,7 +124,7 @@ export function AccentPicker({
 
   if (variant === 'inline') {
     return (
-      <div className={`space-y-1.5 ${className}`}>
+      <div data-accent-picker className={`space-y-1.5 ${className}`}>
         {showLabel && (
           <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/70 font-semibold select-none">
             ACCENT
@@ -149,7 +149,7 @@ export function AccentPicker({
   };
 
   return (
-    <div ref={containerRef} className={`relative inline-block ${className}`}>
+    <div data-accent-picker ref={containerRef} className={`relative inline-block ${className}`}>
       <button
         ref={triggerRef}
         type="button"

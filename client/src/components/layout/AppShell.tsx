@@ -202,26 +202,41 @@ export function AppShell() {
     };
   }, [styleguideFlyoutOpen]);
 
-  // Keep sidebar nav at scrollTop 0 on route change, unless active item is outside visible area
+  // Keep sidebar nav at scrollTop 0 on load and route change, unless active item is outside visible area
   useEffect(() => {
     if (!sidebarNavRef.current) return;
     const nav = sidebarNavRef.current;
-    const activeEl = nav.querySelector<HTMLElement>('[data-nav-active="true"]');
-    if (!activeEl) {
-      nav.scrollTop = 0;
-      return;
-    }
-    const navRect = nav.getBoundingClientRect();
-    const elRect = activeEl.getBoundingClientRect();
-    const isVisible = elRect.top >= navRect.top && elRect.bottom <= navRect.bottom;
-    if (!isVisible) {
-      if (elRect.top < navRect.top) {
-        nav.scrollTop -= (navRect.top - elRect.top + 8);
-      } else if (elRect.bottom > navRect.bottom) {
-        nav.scrollTop += (elRect.bottom - navRect.bottom + 8);
+
+    const adjustScroll = () => {
+      const activeEl = nav.querySelector<HTMLElement>('[data-nav-active="true"]');
+      if (!activeEl) {
+        nav.scrollTop = 0;
+        return;
       }
-    }
-  }, [location.pathname]);
+
+      const currentScroll = nav.scrollTop;
+      const navRect = nav.getBoundingClientRect();
+      const elRect = activeEl.getBoundingClientRect();
+
+      // Position of element relative to the un-scrolled top of nav content
+      const elTopInContent = (elRect.top - navRect.top) + currentScroll;
+      const elBottomInContent = elTopInContent + elRect.height;
+
+      // If active item fits in the visible view at scrollTop = 0, stay/reset to top
+      if (elTopInContent >= 0 && elBottomInContent <= nav.clientHeight) {
+        nav.scrollTop = 0;
+      } else if (elBottomInContent > nav.clientHeight) {
+        // Active item is below the initial fold; scroll only enough to reveal it
+        nav.scrollTop = elBottomInContent - nav.clientHeight + 12;
+      } else {
+        nav.scrollTop = 0;
+      }
+    };
+
+    adjustScroll();
+    const frameId = requestAnimationFrame(adjustScroll);
+    return () => cancelAnimationFrame(frameId);
+  }, [location.pathname, isCollapsed]);
 
   // Dynamic route document.title updates
   useEffect(() => {
@@ -719,19 +734,7 @@ export function AppShell() {
         </nav>
 
         {/* Footer Pinned to Bottom (mt-auto) */}
-        <div className="mt-auto p-3 border-t border-border bg-surface dark:bg-[#0c0d14] shrink-0 space-y-3">
-          {!isCollapsed ? (
-            <div className="px-1">
-              <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/70 font-semibold select-none mb-2 block">
-                ACCENT
-              </span>
-              <AccentPicker variant="inline" />
-            </div>
-          ) : (
-            <div className="flex justify-center mb-1">
-              <AccentPicker variant="popover" placement="right" />
-            </div>
-          )}
+        <div className={`mt-auto shrink-0 border-t border-border bg-surface dark:bg-[#0c0d14] ${isCollapsed ? 'p-2' : 'p-3'}`}>
           <SidebarStatusCard isCollapsed={isCollapsed} />
         </div>
       </motion.aside>
