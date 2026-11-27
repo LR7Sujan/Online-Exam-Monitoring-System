@@ -1,10 +1,37 @@
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { ErrorState } from './EmptyState';
 
 export interface SkeletonProps extends React.HTMLAttributes<HTMLDivElement> {
   variant?: 'rect' | 'circle' | 'text';
   width?: string | number;
   height?: string | number;
   className?: string;
+}
+
+/**
+ * Universal bounded loading hook.
+ * Skeletons have a maximum of 8 seconds before the error state appears.
+ */
+export function useBoundedLoading(
+  isLoading: boolean,
+  timeoutMs: number = 8000
+): { isTimedOut: boolean; resetTimeout: () => void } {
+  const [isTimedOut, setIsTimedOut] = useState(false);
+
+  useEffect(() => {
+    if (!isLoading) {
+      setIsTimedOut(false);
+      return;
+    }
+    const timer = setTimeout(() => {
+      setIsTimedOut(true);
+    }, timeoutMs);
+    return () => clearTimeout(timer);
+  }, [isLoading, timeoutMs]);
+
+  const resetTimeout = useCallback(() => setIsTimedOut(false), []);
+
+  return { isTimedOut, resetTimeout };
 }
 
 export function Skeleton({
@@ -105,9 +132,36 @@ export function SkeletonTable({
   );
 }
 
-export function PageSkeleton() {
+export function PageSkeleton({
+  onRetry,
+  timeoutMs = 8000,
+}: {
+  onRetry?: () => void;
+  timeoutMs?: number;
+} = {}) {
+  const [timedOut, setTimedOut] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setTimedOut(true);
+    }, timeoutMs);
+    return () => clearTimeout(timer);
+  }, [timeoutMs]);
+
+  if (timedOut) {
+    return (
+      <div className="max-w-7xl w-full mx-auto p-4 sm:p-6" data-testid="bounded-loading-error">
+        <ErrorState
+          title="Loading Timed Out"
+          description="The server is not reachable. Check that the API and MySQL are running"
+          onRetry={onRetry ?? (() => window.location.reload())}
+        />
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-6 max-w-7xl w-full mx-auto p-4 sm:p-6" aria-hidden="true">
+    <div className="space-y-6 max-w-7xl w-full mx-auto p-4 sm:p-6" aria-hidden="true" data-testid="page-skeleton">
       <div className="flex items-center justify-between pb-4 border-b border-border">
         <div className="space-y-2">
           <Skeleton variant="text" className="w-48 h-6" />

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import {
   Keyboard,
   RotateCcw,
@@ -11,7 +11,7 @@ import { SeverityBadge } from '../ui/SeverityBadge';
 import { StatusPill } from '../ui/StatusPill';
 import { EvidenceImage } from '../ui/EvidenceImage';
 import { NeonButton } from '../ui/NeonButton';
-import { Skeleton } from '../ui/Skeleton';
+import { Skeleton, useBoundedLoading } from '../ui/Skeleton';
 import { EmptyState, ErrorState } from '../ui/EmptyState';
 import { ParticleBurst } from '../ui/ParticleBurst';
 import { toast } from '../ui/Toast';
@@ -48,8 +48,11 @@ export function ReviewQueueTable({ onInspectStudent }: ReviewQueueTableProps) {
       params.set('limit', '100');
       return api.get<ViolationAuditRow[]>(`/proctor/audit-report?${params.toString()}`);
     },
-    refetchInterval: 12000,
+    placeholderData: keepPreviousData,
+    refetchInterval: () => (typeof document !== 'undefined' && document.hidden ? false : 12000),
   });
+
+  const { isTimedOut } = useBoundedLoading(auditQuery.isLoading);
 
   const logs = auditQuery.data ?? [];
 
@@ -322,7 +325,7 @@ export function ReviewQueueTable({ onInspectStudent }: ReviewQueueTableProps) {
             </thead>
 
             <tbody className="divide-y divide-border">
-              {auditQuery.isLoading ? (
+              {auditQuery.isLoading && !isTimedOut ? (
                 Array.from({ length: 6 }).map((_, i) => (
                   <tr key={`skeleton-${i}`}>
                     <td className="p-3.5 text-center">
@@ -358,12 +361,12 @@ export function ReviewQueueTable({ onInspectStudent }: ReviewQueueTableProps) {
                     </td>
                   </tr>
                 ))
-              ) : auditQuery.isError ? (
+              ) : auditQuery.isError || isTimedOut ? (
                 <tr>
                   <td colSpan={10} className="p-8">
                     <ErrorState
                       title="Failed to Load Violation Audit Report"
-                      description="Unable to fetch incident telemetry from MySQL. Verify server connection and retry."
+                      description={isTimedOut ? "The server is not reachable. Check that the API and MySQL are running" : (auditQuery.error?.message || "The server is not reachable. Check that the API and MySQL are running")}
                       onRetry={() => auditQuery.refetch()}
                     />
                   </td>

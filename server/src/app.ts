@@ -2,6 +2,7 @@ import path from 'path';
 import fs from 'node:fs';
 import { fileURLToPath } from 'url';
 import express from 'express';
+import compression from 'compression';
 import helmet from 'helmet';
 import jwt from 'jsonwebtoken';
 import type { RowDataPacket } from 'mysql2/promise';
@@ -50,6 +51,7 @@ export function createApp() {
   // Trust first proxy hop (Vercel Edge, Cloudflare, ALB) for accurate client IP detection via X-Forwarded-For
   app.set('trust proxy', 1);
 
+  app.use(compression());
   app.use(
     helmet({
       crossOriginResourcePolicy: { policy: 'cross-origin' },

@@ -87,7 +87,7 @@ export interface ErrorStateProps {
 
 export function ErrorState({
   title = 'Failed to Load Data',
-  description = 'An error occurred while connecting to the telemetry service. Please retry.',
+  description = 'The server is not reachable. Check that the API and MySQL are running',
   onRetry,
   className = '',
 }: ErrorStateProps) {

@@ -7,12 +7,12 @@ import { ToastProvider } from './components/ui/Toast';
 import { ThemeProvider } from './context/ThemeContext';
 import { AccentProvider } from './context/AccentContext';
 import { AppShell } from './components/layout/AppShell';
-import { LoginPage } from './pages/LoginPage';
 import { PageSkeleton } from './components/ui/Skeleton';
 import { useAuthStore } from './store/authStore';
 import type { UserRole } from './types/domain';
 
-// Lazy-loaded heavy pages and dashboard routes
+// Lazy-loaded routes for code splitting
+const LoginPage = lazy(() => import('./pages/LoginPage').then((m) => ({ default: m.LoginPage })));
 const LandingPage = lazy(() => import('./pages/LandingPage').then((m) => ({ default: m.LandingPage })));
 
 // Lazy-loaded Styleguide documentation routes
@@ -47,9 +47,18 @@ const NotFoundPage = lazy(() => import('./pages/NotFoundPage').then((m) => ({ de
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      retry: 1,
-      staleTime: 5000,
+      retry: (failureCount, error: unknown) => {
+        const err = error as { status?: number };
+        if (err?.status && err.status >= 400 && err.status < 500) return false;
+        return failureCount < 1;
+      },
+      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 2000),
+      staleTime: 30000,
       refetchOnWindowFocus: false,
+      refetchIntervalInBackground: false,
+    },
+    mutations: {
+      retry: 0,
     },
   },
 });

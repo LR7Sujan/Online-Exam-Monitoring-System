@@ -107,6 +107,7 @@ async function getViolationsOverTime(days: 7 | 30): Promise<{
 // GET /api/analytics/dashboard — comprehensive admin overview intelligence
 analyticsRouter.get('/dashboard', async (req, res, next) => {
   try {
+    res.setHeader('Cache-Control', 'private, max-age=15');
     const { days } = daysQuerySchema.parse(req.query);
 
     // 1. KPI cards: total exams, students, sessions, cheating rate
@@ -234,6 +235,7 @@ analyticsRouter.get('/violations-over-time', async (req, res, next) => {
 // GET /api/analytics/overview — queries vw_ExamAnalytics
 analyticsRouter.get('/overview', async (_req, res, next) => {
   try {
+    res.setHeader('Cache-Control', 'private, max-age=15');
     const exams = await queryRows<RowDataPacket[]>(
       'SELECT * FROM vw_ExamAnalytics ORDER BY exam_id ASC'
     );
@@ -269,6 +271,7 @@ const heatmapQuerySchema = z.object({
 
 analyticsRouter.get('/heatmap', async (req, res, next) => {
   try {
+    res.setHeader('Cache-Control', 'private, max-age=15');
     const { days } = heatmapQuerySchema.parse(req.query);
     let rows: RowDataPacket[];
     if (days === '7' || days === '30') {

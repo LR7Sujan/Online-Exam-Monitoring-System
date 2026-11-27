@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import {
   Clock,
   Play,
@@ -14,7 +14,7 @@ import { StatusPill } from '../components/ui/StatusPill';
 import { Tabs } from '../components/ui/Tabs';
 import { PreExamChecklistModal } from '../components/student/PreExamChecklistModal';
 import { ErrorState } from '../components/ui/EmptyState';
-import { Skeleton } from '../components/ui/Skeleton';
+import { Skeleton, useBoundedLoading } from '../components/ui/Skeleton';
 import { api } from '../lib/api';
 import { useAuthStore } from '../store/authStore';
 import { mediaSession } from '../proctoring/mediaSession';
@@ -64,8 +64,11 @@ export function StudentDashboardPage() {
   const examsQuery = useQuery({
     queryKey: ['student-exams'],
     queryFn: () => api.get<ExamItem[]>('/exams/available'),
-    refetchInterval: 10000,
+    placeholderData: keepPreviousData,
+    refetchInterval: () => (typeof document !== 'undefined' && document.hidden ? false : 10000),
   });
+
+  const { isTimedOut: isExamsTimedOut } = useBoundedLoading(examsQuery.isLoading);
 
   const startMutation = useMutation({
     mutationFn: (examId: number) =>
@@ -205,7 +208,7 @@ export function StudentDashboardPage() {
       </div>
 
       {/* Exam Grid */}
-      {examsQuery.isLoading ? (
+      {examsQuery.isLoading && !isExamsTimedOut ? (
         <div className="grid gap-6 md:grid-cols-2">
           {[1, 2, 3, 4].map((i) => (
             <div key={i} className="rounded-2xl border border-border bg-surface p-6 space-y-4">
@@ -222,10 +225,10 @@ export function StudentDashboardPage() {
             </div>
           ))}
         </div>
-      ) : examsQuery.isError ? (
+      ) : examsQuery.isError || isExamsTimedOut ? (
         <ErrorState
           title="Unable to Load Assessments"
-          description="Failed to retrieve examination schedule from server. Please retry."
+          description={isExamsTimedOut ? "The server is not reachable. Check that the API and MySQL are running" : (examsQuery.error?.message || "The server is not reachable. Check that the API and MySQL are running")}
           onRetry={() => examsQuery.refetch()}
         />
       ) : filteredExams.length === 0 ? (

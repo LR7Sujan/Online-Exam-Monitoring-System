@@ -238,6 +238,16 @@ export function AppShell() {
     return () => cancelAnimationFrame(frameId);
   }, [location.pathname, isCollapsed]);
 
+  const prefetchRoute = (to: string) => {
+    if (to.startsWith('/admin/simulator')) import('../../pages/SimulatorPage');
+    else if (to.startsWith('/admin/students') || to.startsWith('/proctor/students')) import('../../pages/StudentAuditListPage');
+    else if (to.startsWith('/admin')) import('../../pages/AdminDashboardPage');
+    else if (to.startsWith('/proctor')) import('../../pages/ProctorDashboardPage');
+    else if (to.startsWith('/student')) import('../../pages/StudentDashboardPage');
+    else if (to.startsWith('/home')) import('../../pages/LandingPage');
+    else if (to.startsWith('/styleguide')) import('../../pages/styleguide/StyleguideLayout');
+  };
+
   // Dynamic route document.title updates
   useEffect(() => {
     const ROUTE_TITLES: Record<string, string> = {
@@ -546,6 +556,8 @@ export function AppShell() {
                         to={item.to}
                         title={item.label}
                         data-nav-active={isActive ? 'true' : undefined}
+                        onMouseEnter={() => prefetchRoute(item.to)}
+                        onFocus={() => prefetchRoute(item.to)}
                         onClick={() => {
                           if (hasChildren) {
                             setExpandedGroups((prev) => ({ ...prev, [item.to]: true }));
@@ -643,6 +655,8 @@ export function AppShell() {
                       <NavLink
                         to={item.to}
                         data-nav-active={isActive ? 'true' : undefined}
+                        onMouseEnter={() => prefetchRoute(item.to)}
+                        onFocus={() => prefetchRoute(item.to)}
                         onClick={() => {
                           if (hasChildren) {
                             setExpandedGroups((prev) => ({ ...prev, [item.to]: true }));

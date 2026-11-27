@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Users,
@@ -59,6 +59,7 @@ export function StudentAuditListPage() {
   const { data, isLoading, isError, error, refetch } = useQuery<StudentListResponse>({
     queryKey: ['students-audit-list', queryParams],
     queryFn: () => api.get<StudentListResponse>('/students', { params: queryParams }),
+    placeholderData: keepPreviousData,
   });
 
   const students = data?.students ?? [];

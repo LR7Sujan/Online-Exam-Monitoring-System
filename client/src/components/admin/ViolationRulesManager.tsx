@@ -100,6 +100,7 @@ export function ViolationRulesManager() {
   const query = useQuery({
     queryKey: ['admin-violation-types'],
     queryFn: () => api.get<ViolationType[]>('/violation-types'),
+    staleTime: 5 * 60 * 1000,
   });
 
   const violationTypes = query.data ?? [];

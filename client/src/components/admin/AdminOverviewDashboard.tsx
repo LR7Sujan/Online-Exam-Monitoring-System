@@ -29,7 +29,7 @@ import {
 } from 'recharts';
 import { StatCard } from '../ui/StatCard';
 import { StatusPill } from '../ui/StatusPill';
-import { SkeletonCard } from '../ui/Skeleton';
+import { SkeletonCard, useBoundedLoading } from '../ui/Skeleton';
 import { ErrorState } from '../ui/EmptyState';
 import { ChartTooltip, useChartTheme } from '../charts/shared';
 import { CircadianHeatmap } from './CircadianHeatmap';
@@ -154,10 +154,12 @@ export function AdminOverviewDashboard() {
     queryKey: ['admin-overview-dashboard', daysWindow],
     queryFn: () => api.get<DashboardData>(`/analytics/dashboard?days=${daysWindow}`),
     placeholderData: keepPreviousData,
-    refetchInterval: 20000,
+    refetchInterval: () => (typeof document !== 'undefined' && document.hidden ? false : 20000),
   });
 
-  if (query.isLoading) {
+  const { isTimedOut } = useBoundedLoading(query.isLoading);
+
+  if (query.isLoading && !isTimedOut) {
     return (
       <div className="space-y-6">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -173,11 +175,11 @@ export function AdminOverviewDashboard() {
     );
   }
 
-  if (query.isError) {
+  if (query.isError || isTimedOut) {
     return (
       <ErrorState
         title="Failed to Load Operational Telemetry"
-        description="Could not aggregate metrics from MySQL telemetry views. Please verify database connection and retry."
+        description={isTimedOut ? "The server is not reachable. Check that the API and MySQL are running" : (query.error?.message || "The server is not reachable. Check that the API and MySQL are running")}
         onRetry={() => query.refetch()}
       />
     );

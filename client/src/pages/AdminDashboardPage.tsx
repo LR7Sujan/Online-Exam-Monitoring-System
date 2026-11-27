@@ -76,6 +76,7 @@ export function AdminDashboardPage({
   const examsQuery = useQuery({
     queryKey: ['admin-exams-overview'],
     queryFn: () => api.get<ExamItem[]>('/exams'),
+    staleTime: 5 * 60 * 1000,
   });
 
   const examDetailQuery = useQuery({

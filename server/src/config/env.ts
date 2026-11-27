@@ -78,7 +78,7 @@ const envSchema = z.object({
   DB_USER: z.string().min(1).default('root'),
   DB_PASSWORD: z.string().default('proctoriq_root'),
   DB_NAME: z.string().min(1).default(isTestEnv ? 'exam_monitoring_test' : 'proctoriq'),
-  DB_CONNECTION_LIMIT: z.coerce.number().int().min(1).max(100).default(isTestEnv ? 30 : 3),
+  DB_CONNECTION_LIMIT: z.coerce.number().int().min(1).max(100).default(isTestEnv ? 30 : 15),
   DB_SSL: z
     .union([z.boolean(), z.string()])
     .transform((val) => {

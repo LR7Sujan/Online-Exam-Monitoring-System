@@ -205,42 +205,45 @@
   }
 }
 
-/* Subtle Animated Aurora Layer with Zero Layout Thrashing */
+/* Subtle Low-Cost Aurora Layer with Zero Layout Thrashing */
 @keyframes auroraPulse {
-
   0%,
   100% {
     transform: translate3d(0, 0, 0) scale(1);
     opacity: var(--aurora-opacity, 0.7);
   }
-
   50% {
-    transform: translate3d(-1.5%, 2%, 0) scale(1.05);
-    opacity: calc(var(--aurora-opacity, 0.7) * 1.15);
+    transform: translate3d(-1%, 1%, 0) scale(1.02);
+    opacity: calc(var(--aurora-opacity, 0.7) * 1.08);
   }
 }
 
 .aurora-backdrop {
   position: fixed;
-  inset: -15%;
-  width: 130%;
-  height: 130%;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   pointer-events: none;
   z-index: -2;
   background:
-    radial-gradient(circle at 15% 20%, color-mix(in srgb, var(--accent-from) 6%, transparent) 0%, transparent 45%),
-    radial-gradient(circle at 85% 25%, color-mix(in srgb, var(--accent-via) 5%, transparent) 0%, transparent 45%),
-    radial-gradient(circle at 50% 85%, color-mix(in srgb, var(--accent-to) 4%, transparent) 0%, transparent 50%);
-  filter: blur(55px);
-  will-change: transform;
-  animation: auroraPulse 16s ease-in-out infinite;
+    radial-gradient(circle at 15% 20%, color-mix(in srgb, var(--accent-from) 7%, transparent) 0%, transparent 50%),
+    radial-gradient(circle at 85% 25%, color-mix(in srgb, var(--accent-via) 6%, transparent) 0%, transparent 50%),
+    radial-gradient(circle at 50% 85%, color-mix(in srgb, var(--accent-to) 5%, transparent) 0%, transparent 60%);
+  will-change: opacity;
+  animation: auroraPulse 20s ease-in-out infinite;
 }
 
 .dark .aurora-backdrop {
   background:
-    radial-gradient(circle at 15% 20%, color-mix(in srgb, var(--accent-from) 14%, transparent) 0%, transparent 45%),
-    radial-gradient(circle at 85% 25%, color-mix(in srgb, var(--accent-via) 11%, transparent) 0%, transparent 45%),
-    radial-gradient(circle at 50% 85%, color-mix(in srgb, var(--accent-to) 9%, transparent) 0%, transparent 50%);
+    radial-gradient(circle at 15% 20%, color-mix(in srgb, var(--accent-from) 14%, transparent) 0%, transparent 50%),
+    radial-gradient(circle at 85% 25%, color-mix(in srgb, var(--accent-via) 11%, transparent) 0%, transparent 50%),
+    radial-gradient(circle at 50% 85%, color-mix(in srgb, var(--accent-to) 9%, transparent) 0%, transparent 60%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aurora-backdrop {
+    animation: none !important;
+  }
 }
 
 /* Accessible focus ring across all interactive elements */

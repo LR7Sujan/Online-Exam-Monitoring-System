@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import {
   CheckCircle2,
   Clock,
@@ -18,7 +18,7 @@ import { LiveFeedSidebar, type LiveViolationItem } from '../components/proctor/L
 import { StudentDetailDrawer } from '../components/proctor/StudentDetailDrawer';
 import { ReviewQueueTable } from '../components/proctor/ReviewQueueTable';
 import { TimeExtensionRequestsDrawer } from '../components/proctor/TimeExtensionRequestsDrawer';
-import { SkeletonCard } from '../components/ui/Skeleton';
+import { SkeletonCard, useBoundedLoading } from '../components/ui/Skeleton';
 import { EmptyState, ErrorState } from '../components/ui/EmptyState';
 import { api } from '../lib/api';
 import { getSocket } from '../lib/socket';
@@ -88,14 +88,16 @@ export function ProctorDashboardPage({ initialTab = 'monitor' }: { initialTab?: 
   const kpiQuery = useQuery({
     queryKey: ['proctor-kpis'],
     queryFn: () => api.get<ProctorKpiData>('/proctor/kpis'),
-    refetchInterval: 10000,
+    placeholderData: keepPreviousData,
+    refetchInterval: () => (typeof document !== 'undefined' && document.hidden ? false : 10000),
   });
 
   // 2. Fetch Exams for Filter Dropdown
   const examsQuery = useQuery({
     queryKey: ['proctor-exams-list'],
     queryFn: () => api.get<ExamItem[]>('/exams'),
-    staleTime: 60000,
+    staleTime: 5 * 60 * 1000,
+    placeholderData: keepPreviousData,
   });
 
   // 3. Fetch Live Monitor Grid Sessions from SQL View vw_LiveSessions
@@ -109,14 +111,18 @@ export function ProctorDashboardPage({ initialTab = 'monitor' }: { initialTab?: 
       }
       return api.get<ProctorLiveMonitorRow[]>(`/proctor/live-monitor?${params.toString()}`);
     },
-    refetchInterval: 10000,
+    placeholderData: keepPreviousData,
+    refetchInterval: () => (typeof document !== 'undefined' && document.hidden ? false : 10000),
   });
+
+  const { isTimedOut: isMonitorTimedOut } = useBoundedLoading(monitorQuery.isLoading);
 
   // 3b. Fetch Time Extension Requests for Indicator Badge
   const extensionsQuery = useQuery({
     queryKey: ['proctor-extensions'],
     queryFn: () => api.get<TimeExtensionRequest[]>('/monitor/extensions'),
-    refetchInterval: 6000,
+    placeholderData: keepPreviousData,
+    refetchInterval: () => (typeof document !== 'undefined' && document.hidden ? false : 6000),
   });
   const pendingExtensionsCount = (extensionsQuery.data ?? []).filter((r) => r.status === 'PENDING').length;
 
@@ -714,16 +720,16 @@ export function ProctorDashboardPage({ initialTab = 'monitor' }: { initialTab?: 
               {/* Student Tiles Grid (2 cols on md, 2 or 3 cols on xl) */}
               <div className="lg:col-span-2 xl:col-span-3">
                 <h2 className="sr-only">Active Candidate Surveillance Grid</h2>
-                {monitorQuery.isLoading ? (
+                {monitorQuery.isLoading && !isMonitorTimedOut ? (
                   <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
                     {[1, 2, 3, 4, 5, 6].map((i) => (
                       <SkeletonCard key={i} />
                     ))}
                   </div>
-                ) : monitorQuery.isError ? (
+                ) : monitorQuery.isError || isMonitorTimedOut ? (
                   <ErrorState
                     title="Failed to Load Live Candidate Telemetry"
-                    description="Could not establish connection with proctor monitoring API. Please retry."
+                    description={isMonitorTimedOut ? "The server is not reachable. Check that the API and MySQL are running" : (monitorQuery.error?.message || "The server is not reachable. Check that the API and MySQL are running")}
                     onRetry={() => monitorQuery.refetch()}
                   />
                 ) : rawSessions.length === 0 ? (

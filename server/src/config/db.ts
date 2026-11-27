@@ -229,12 +229,25 @@ export async function testDbConnection(): Promise<boolean> {
   }
 }
 
-export async function getDbHealth(): Promise<DbHealthResult> {
+let cachedDbMeta: { version: string; triggersCount: number; proceduresCount: number } | null = null;
+
+export async function getDbHealth(quick: boolean = true): Promise<DbHealthResult> {
   try {
     const currentPool = getPool();
     const t0 = performance.now();
     await currentPool.query('SELECT 1');
     const pingMs = Math.round(performance.now() - t0);
+
+    if (quick && cachedDbMeta) {
+      return {
+        connected: true,
+        version: cachedDbMeta.version,
+        triggersCount: cachedDbMeta.triggersCount,
+        proceduresCount: cachedDbMeta.proceduresCount,
+        pingMs,
+      };
+    }
+
     const [versionRows] = await currentPool.query<RowDataPacket[]>('SELECT VERSION() as version');
     const versionRow = versionRows[0] as { version?: string } | undefined;
     const version = versionRow?.version ? String(versionRow.version).split('-')[0] : '8.0';
@@ -250,6 +263,8 @@ export async function getDbHealth(): Promise<DbHealthResult> {
       [env.DB_NAME]
     );
     const proceduresCount = Number(procRows[0]?.cnt ?? 0);
+
+    cachedDbMeta = { version, triggersCount, proceduresCount };
 
     return {
       connected: true,

@@ -20,7 +20,6 @@ export class ApiClientError extends Error {
 
 export const axiosInstance = axios.create({
   baseURL: API_BASE,
-  timeout: 15000,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -31,11 +30,31 @@ axiosInstance.interceptors.request.use((config) => {
   if (token && config.headers) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+
+  // Enforce AbortController timeout: 10s for reads, 20s for uploads/mutations
+  const method = (config.method ?? 'GET').toUpperCase();
+  const isRead = method === 'GET' || method === 'HEAD' || method === 'OPTIONS';
+  const defaultTimeout = isRead ? 10000 : 20000;
+  const timeoutMs = config.timeout || defaultTimeout;
+  config.timeout = timeoutMs;
+
+  if (!config.signal) {
+    const controller = new AbortController();
+    config.signal = controller.signal;
+    const timer = setTimeout(() => {
+      controller.abort();
+    }, timeoutMs);
+    (config as unknown as Record<string, unknown>).__timeoutTimer = timer;
+  }
+
   return config;
 });
 
 axiosInstance.interceptors.response.use(
   (response: AxiosResponse<ApiEnvelope<unknown>>) => {
+    if ((response.config as unknown as Record<string, unknown>)?.__timeoutTimer) {
+      clearTimeout((response.config as unknown as Record<string, unknown>).__timeoutTimer as ReturnType<typeof setTimeout>);
+    }
     const payload = response.data;
     if (payload && typeof payload === 'object' && 'success' in payload) {
       if (!payload.success) {
@@ -50,16 +69,38 @@ axiosInstance.interceptors.response.use(
     return response;
   },
   (error) => {
+    if ((error.config as unknown as Record<string, unknown>)?.__timeoutTimer) {
+      clearTimeout((error.config as unknown as Record<string, unknown>).__timeoutTimer as ReturnType<typeof setTimeout>);
+    }
     if (error.response?.status === 401) {
       const token = useAuthStore.getState().token;
       if (token) {
         useAuthStore.getState().logout();
       }
     }
+
+    const isNetworkOrTimeout =
+      error.code === 'ECONNABORTED' ||
+      error.code === 'ERR_NETWORK' ||
+      error.code === 'ERR_CANCELED' ||
+      error.name === 'CanceledError' ||
+      error.message?.includes('Network Error') ||
+      error.message?.includes('timeout') ||
+      error.message?.includes('aborted') ||
+      error.response?.status === 502 ||
+      error.response?.status === 503 ||
+      error.response?.status === 504;
+
     const errorData = error.response?.data as ApiEnvelope<unknown> | undefined;
-    const code = errorData?.error?.code ?? error.code ?? 'REQUEST_FAILED';
-    let message = errorData?.error?.message ?? error.message ?? 'An unexpected error occurred';
-    const status = error.response?.status ?? 500;
+    const code = isNetworkOrTimeout
+      ? 'SERVER_UNREACHABLE'
+      : (errorData?.error?.code ?? error.code ?? 'REQUEST_FAILED');
+
+    let message = isNetworkOrTimeout
+      ? 'The server is not reachable. Check that the API and MySQL are running'
+      : (errorData?.error?.message ?? error.message ?? 'An unexpected error occurred');
+
+    const status = isNetworkOrTimeout ? (error.response?.status ?? 503) : (error.response?.status ?? 500);
     const details = errorData?.data ?? errorData?.error?.details;
 
     // Surface field validation error if available

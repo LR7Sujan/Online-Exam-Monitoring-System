@@ -124,12 +124,17 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
   }, [queryClient]);
 
   useEffect(() => {
+    // Poll /api/health only every 15s while socket is down/disconnected, paused on hidden tab
+    if (connectionState === 'connected') return;
+
     pollHealth();
-    const isDegraded = apiStatus === 'down' || dbStatus === 'down' || connectionState === 'disconnected';
-    const intervalMs = isDegraded ? 5000 : 15000;
-    const interval = setInterval(pollHealth, intervalMs);
+    const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && !document.hidden) {
+        pollHealth();
+      }
+    }, 15000);
     return () => clearInterval(interval);
-  }, [pollHealth, apiStatus, dbStatus, connectionState]);
+  }, [pollHealth, connectionState]);
 
   // Measure latency
   const measureLatency = useCallback((s: SocketLike) => {

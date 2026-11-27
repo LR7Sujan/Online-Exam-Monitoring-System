@@ -17,7 +17,7 @@ import {
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { TrustRing } from '../components/ui/TrustRing';
-import { LiveDot, Skeleton, ErrorState } from '../components/ui';
+import { LiveDot, Skeleton, ErrorState, useBoundedLoading } from '../components/ui';
 import { Modal } from '../components/ui/Modal';
 import { useProctoring, type ViolationReportResponse } from '../hooks/useProctoring';
 import { useFaceDetection } from '../hooks/useFaceDetection';
@@ -620,7 +620,9 @@ export function StudentExamPage() {
   const isCriticalRisk = trustScore < minTrustScore;
   const isWarningRisk = trustScore < 80;
 
-  if (sessionQuery.isLoading) {
+  const boundedLoading = useBoundedLoading(sessionQuery.isLoading, 8000);
+
+  if (sessionQuery.isLoading && !boundedLoading.isTimedOut) {
     return (
       <div className="min-h-screen bg-background text-foreground flex flex-col p-6 max-w-5xl mx-auto space-y-6">
         <div className="flex items-center justify-between border-b border-border pb-4">
@@ -644,14 +646,17 @@ export function StudentExamPage() {
     );
   }
 
-  if (sessionQuery.isError) {
+  if (sessionQuery.isError || boundedLoading.isTimedOut) {
     return (
       <div className="min-h-screen bg-background text-foreground flex items-center justify-center p-6">
         <div className="max-w-md w-full">
           <ErrorState
             title="Failed to Load Examination Session"
-            description="Could not securely initialize assessment telemetry and questions. Please check connection and retry."
-            onRetry={() => sessionQuery.refetch()}
+            description="The server is not reachable. Check that the API and MySQL are running."
+            onRetry={() => {
+              boundedLoading.resetTimeout();
+              sessionQuery.refetch();
+            }}
           />
         </div>
       </div>
