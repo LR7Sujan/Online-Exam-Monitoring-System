@@ -65,67 +65,301 @@ If the trust score drops below the exam's minimum, the exam is terminated and th
 
 ## ⚡ Quick Start
 
-### Requirements
+### 1. Prerequisites
 
-| Requirement | Details |
-| --- | --- |
-| **Node.js** | 20.6 or newer (uses native `process.loadEnvFile` and `--env-file`) |
-| **MySQL** | 8.0 or newer (must support triggers and stored procedures) |
-| **Browser** | Chrome or Edge, with camera and microphone for students |
+Ensure your system meets the following verified runtime and tooling requirements:
 
-> On Windows, install MySQL Community Server as a service and check in `services.msc` that **MySQL80** is running.
+| Requirement | Supported Version | Verification Command | Notes |
+| --- | --- | --- | --- |
+| **Node.js** | `>= 20.6.0` | `node -v` | Required for native `process.loadEnvFile()` and `--env-file` support |
+| **MySQL** | `>= 8.0` (8.0 or 8.4 LTS) | `mysql --version` | Needs triggers, stored procedures, and views support |
+| **npm** | `>= 9.0.0` | `npm -v` | Installed with Node.js (`package-lock.json` lockfile) |
+| **Browser** | Chromium (Chrome, Edge `>= 110`) | About > Version | Webcam & mic permissions required for MediaPipe and audio detection |
 
-### Run the project
-
-```bash
-git clone <your-repository-url>
-cd <project-folder>
-npm install && npm --prefix server install && npm --prefix client install
-cp .env.example .env        # Windows: copy .env.example .env
-```
-
-Edit `.env` with your database details:
-
-```env
-DB_HOST=127.0.0.1
-DB_PORT=3306
-DB_USER=your_mysql_user
-DB_PASSWORD=your_mysql_password
-DB_NAME=proctoriq
-JWT_SECRET=use-a-long-random-string
-```
-
-Then create the database and start the app:
-
-```bash
-npm run db:migrate    # tables, triggers, procedures, views
-npm run db:seed       # demo users and exams
-npm run dev           # starts the API and the website
-```
-
-Open **<http://localhost:5173>** (API runs on **<http://localhost:4000>**).
-
-### Demo accounts
-
-| Role | Email | Password |
-| --- | --- | --- |
-| Admin | `admin@proctoriq.io` | *add here* |
-| Proctor | `proctor@proctoriq.io` | *add here* |
-| Student | `student@proctoriq.io` | *add here* |
-
-> ⚠️ Change all demo passwords before putting the site online. Never commit `.env` or database dumps.
+> [!NOTE]
+> Students must grant camera and microphone access. Browsers only permit media devices on `localhost` or secure HTTPS origins.
 
 ---
 
-## 🧪 Testing
+### 2. Install & Configure MySQL
 
-Tests use a separate database whose name ends in `_test`, so they never touch real data.
+ProctorIQ requires a running MySQL 8.0+ server instance.
+
+#### Windows
+
+1. Download and run the **MySQL Community Server (or MySQL Installer)** from [MySQL Downloads](https://dev.mysql.com/downloads/installer/).
+2. Install MySQL as a Windows Service (the default service name is **`MySQL80`** or **`MySQL84`**).
+3. Verify that the service is running via Windows Services (`services.msc`) or PowerShell:
+
+   ```powershell
+   Get-Service -Name MySQL*
+   ```
+
+4. If stopped, start it via `net start MySQL84` or `net start MySQL80`.
+
+#### macOS & Linux
+
+- **macOS (Homebrew)**:
+
+  ```bash
+  brew install mysql && brew services start mysql
+  ```
+
+- **Linux (Ubuntu/Debian)**:
+
+  ```bash
+  sudo apt update && sudo apt install -y mysql-server && sudo systemctl start mysql
+  ```
+
+#### Grant Permissions to a Dedicated User (Optional)
+
+If you prefer not to use `root`, create a dedicated user and grant privileges for both development and testing databases:
+
+```sql
+CREATE USER 'proctoriq_user'@'localhost' IDENTIFIED BY 'your_mysql_password';
+GRANT ALL PRIVILEGES ON proctoriq.* TO 'proctoriq_user'@'localhost';
+GRANT ALL PRIVILEGES ON exam_monitoring_test.* TO 'proctoriq_user'@'localhost';
+FLUSH PRIVILEGES;
+```
+
+> [!TIP]
+> If MySQL binary logging is active and trigger creation fails with error `1418`, execute:
+> `SET GLOBAL log_bin_trust_function_creators = 1;` in your MySQL console.
+
+---
+
+### 3. Clone & Install Dependencies
+
+Clone the repository and install the dependencies.
+
+> [!IMPORTANT]
+> This repository is organized as a monorepo with distinct packages for the root runner, backend server, and frontend client. You must install dependencies across all three directories.
 
 ```bash
+# Clone repository
+git clone <your-repository-url>
+cd <project-folder>
+
+# Install root, server, and client dependencies
+npm install && npm --prefix server install && npm --prefix client install
+```
+
+---
+
+### 4. Configure Environment Variables
+
+Create your local `.env` configuration file from the provided example template:
+
+```bash
+# Linux / macOS
+cp .env.example .env
+
+# Windows (Command Prompt)
+copy .env.example .env
+
+# Windows (PowerShell)
+Copy-Item .env.example .env
+```
+
+#### Core Local Development Variables
+
+Update `.env` with your local database credentials and a secure JWT secret:
+
+```env
+# Server Runtime
+PORT=4000
+NODE_ENV=development
+
+# MySQL Database Connection
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_USER=root
+DB_PASSWORD=your_mysql_password
+DB_NAME=proctoriq
+
+# Authentication
+JWT_SECRET=replace_with_a_secure_random_secret_key
+
+# Service Providers (local defaults require zero external APIs)
+REALTIME_PROVIDER=polling
+STORAGE_PROVIDER=local
+RECORDING_RETENTION_DAYS=30
+```
+
+#### Client-Exposed Variables (Vite)
+
+Variables prefixed with `VITE_` are bundled into the client browser application:
+
+- `VITE_API_URL=/api`: Base path for API requests (proxied to `http://localhost:4000` by Vite in dev mode).
+- `VITE_BACKEND_ORIGIN=http://localhost:4000`: Backend origin used to load static recordings and media assets.
+
+#### Generate a Secure `JWT_SECRET`
+
+You can generate a cryptographically secure 256-bit random key using Node.js:
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+---
+
+### 5. Initialize the Database
+
+Run the automated migration and seed scripts in the following order:
+
+```bash
+# 1. Apply base schema, triggers, procedures, views, and incremental migrations
+npm run db:migrate
+
+# 2. Seed penalty rule definitions, demo accounts, and sample exams
+npm run db:seed
+```
+
+#### What Each Command Creates
+
+1. `npm run db:migrate`:
+   - Creates the `proctoriq` database if it does not already exist.
+   - Executes `db/schema.sql` (core tables: `Users`, `Exams`, `Questions`, `Exam_Sessions`, `Violations`, `Audit_Log`, triggers, stored procedures).
+   - Sequentially applies all 17 migrations from `db/migrations/` (indexes, views, session tokens, audit security, foreign key cascades).
+2. `npm run db:seed`:
+   - Populates `Violation_Types` with configurable penalties and thresholds.
+   - Creates demo accounts (Admin, Proctor, Student).
+   - Sets up initial sample exams with question banks and shuffled options.
+
+---
+
+### 6. Start the Development Servers
+
+Start both the backend Express API and the Vite frontend simultaneously:
+
+```bash
+npm run dev
+```
+
+#### Processes and Ports
+
+- **Frontend Client**: Vite dev server runs on **<http://localhost:5173>**.
+- **Backend API**: Express server with `tsx watch` runs on **<http://localhost:4000>**.
+- **Proxy**: Vite automatically proxies `/api` and `/uploads` requests from port 5173 to port 4000.
+
+#### Expected Terminal Output
+
+When the servers are ready, you will see output similar to:
+
+```text
+[server] Server listening on port 4000 (polling fallback)
+[server] Database connected: proctoriq
+[client]   VITE v6.4.1  ready in 420 ms
+[client]   ➜  Local:   http://localhost:5173/
+[client]   ➜  Network: use --host to expose
+```
+
+---
+
+### 7. Sign In with Demo Accounts
+
+Open **<http://localhost:5173>** in Google Chrome or Microsoft Edge.
+
+| Role | Email | Password | Landing Page |
+| --- | --- | --- | --- |
+| **Admin** | `admin@proctoriq.io` | *add here* | `/admin` (Analytics, Exam Management, Rules, Simulator) |
+| **Proctor** | `proctor@proctoriq.io` | *add here* | `/proctor` (Live Candidate Monitor, Violation Review) |
+| **Student** | `student@proctoriq.io` | *add here* | `/student` (Student Exam Portal & Past Scorecards) |
+
+> [!NOTE]
+> Demo passwords are encrypted with bcrypt in `db/seed.sql`. For rapid local testing, one-click demo login buttons are provided directly on the Login page (`client/src/pages/LoginPage.tsx`), where the default local seed password is defined.
+>
+> ⚠️ **Security Warning**: Always change default demo passwords and configure a unique `JWT_SECRET` prior to deploying to any shared or production environment.
+
+---
+
+### 8. Verify the Installation
+
+Confirm everything is functioning correctly by checking these three items:
+
+1. **API Health Endpoint**:
+   Visit `<http://localhost:4000/api/health>` in your browser or run:
+
+   ```bash
+   curl http://localhost:4000/api/health
+   ```
+
+   Expected response:
+
+   ```json
+   {"success":true,"data":{"api":"up","db":"up","status":"ok"}}
+   ```
+
+2. **Student Authentication**:
+   Open `<http://localhost:5173>`, click **Student Demo** on the login page, and verify immediate redirect to the `/student` dashboard displaying assigned exams.
+3. **Sidebar Connectivity Indicator**:
+   Observe the bottom-left sidebar status indicator. It should show a green dot and **"Connected"**, confirming active heartbeat polling and WebSocket synchronization.
+
+---
+
+### 9. Run the Test Suites
+
+ProctorIQ features automated unit, integration, and end-to-end test suites.
+
+```bash
+# 1. Reset and initialize the isolated test database
 npm run db:test:reset
+
+# 2. Run backend & frontend unit and integration tests
 npm test
+
+# 3. Run Playwright end-to-end browser tests
 npm run test:e2e
 ```
+
+#### Test Database Safety Isolation
+
+- Automated test runs strictly target `exam_monitoring_test` on test API port `4001` and client port `5174`.
+- The codebase enforces `assertTestDatabaseSafety()` in `server/src/config/env.ts`: any destructive test script or teardown operation is blocked immediately if `NODE_ENV !== 'test'` or the target database name does not end with `_test`.
+- Your primary development database (`proctoriq`) is completely protected from test wipes.
+
+---
+
+### 10. Production Build & Deployment
+
+#### Compiling for Production
+
+```bash
+# Builds server to /server/dist and client to /client/dist
+npm run build
+```
+
+#### Running the Production Server
+
+```bash
+npm --prefix server start
+```
+
+The compiled Express production server serves the backend API and can serve the compiled client static assets directly from `client/dist`.
+
+#### Serverless Deployment (Vercel)
+
+The project includes root `vercel.json` and `api/index.ts` adapters. When deploying to Vercel:
+
+- Backend Express routes are mapped serverlessly via `@vercel/node`.
+- Static frontend assets from `client/dist` are deployed to the Edge CDN.
+- Configure all required variables from `.env.example` in your Vercel Project Settings.
+
+---
+
+### 11. Troubleshooting & Common Pitfalls
+
+| Problem | Exact Error / Symptom | Root Cause | Solution |
+| --- | --- | --- | --- |
+| **MySQL Not Running** | `ECONNREFUSED 127.0.0.1:3306` | MySQL service is stopped or not listening on port 3306. | Windows: Start **`MySQL80`** or **`MySQL84`** in `services.msc` or run `net start MySQL84`.<br>macOS: `brew services start mysql`<br>Linux: `sudo systemctl start mysql` |
+| **Invalid Database Credentials** | `ER_ACCESS_DENIED_ERROR: Access denied for user '...'@'...'` | `DB_USER` or `DB_PASSWORD` in `.env` is incorrect. | Update `DB_USER` and `DB_PASSWORD` in `.env` with correct MySQL credentials. Verify with `mysql -u <user> -p`. |
+| **Missing Database** | `ER_BAD_DB_ERROR: Unknown database 'proctoriq'` | Migrations have not yet been executed. | Run `npm run db:migrate` followed by `npm run db:seed`. The migration script creates the database automatically if missing. |
+| **Port Conflict** | `listen EADDRINUSE: address already in use :::4000` | Port `4000` or `5173` is occupied by another process. | Find and terminate the process:<br>**Windows**: `netstat -ano \| findstr :4000` then `taskkill /PID <PID> /F`<br>**macOS/Linux**: `lsof -i :4000` then `kill -9 <PID>` |
+| **Missing `.env` File** | `TypeError: Cannot read properties of undefined` or missing DB config | `.env` was not created before starting the application. | Copy `.env.example` to `.env` (`copy .env.example .env`) and set your database password. |
+| **Missing Dependencies** | `Error: Cannot find module '...'` | Node dependencies are missing in root, client, or server. | Re-run `npm install && npm --prefix server install && npm --prefix client install`. |
+| **Trigger Creation Privilege** | `ER_BINLOG_CREATE_ROUTINE_NEED_SUPER` (Error 1418) | Binary logging is enabled and function/trigger creation requires superuser trust. | Log into MySQL as root/admin and run:<br>`SET GLOBAL log_bin_trust_function_creators = 1;` |
+| **Camera / Mic Denied** | `NotAllowedError: Permission denied` | Browser blocked webcam/mic or page is not on `localhost`/HTTPS. | Click the permissions/tune icon next to the URL in Chrome/Edge, set Camera and Microphone to **Allow**, and refresh. |
+| **Sidebar Disconnected** | Red **DISCONNECTED** badge in sidebar | Frontend cannot reach `http://localhost:4000/api/health`. | Ensure backend server is running (`npm run dev`) and MySQL database is connected. Check browser devtools Network tab. |
 
 ---
 
@@ -137,18 +371,6 @@ npm run test:e2e
 - Recordings are visible to Admin and Proctor only, every view is logged, and files are deleted after the retention period
 - Audio is analyzed on the student's device and is **never recorded or uploaded**
 - Students accept a consent notice before the camera and microphone are used
-
----
-
-## 🛠️ Troubleshooting
-
-| Problem | Fix |
-| --- | --- |
-| `ECONNREFUSED 127.0.0.1:3306` | MySQL isn't running. Start **MySQL80** in `services.msc` |
-| `Access denied for user` | Check `DB_USER` and `DB_PASSWORD` in `.env` |
-| `Unknown database` | Run `npm run db:migrate` |
-| Sidebar shows **DISCONNECTED** | Make sure both the API and MySQL are running |
-| Camera or microphone blocked | Allow permissions. This needs `localhost` or HTTPS |
 
 ---
 
