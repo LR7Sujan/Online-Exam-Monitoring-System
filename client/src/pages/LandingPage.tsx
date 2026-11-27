@@ -196,7 +196,7 @@ export function LandingPage() {
               >
                 <div className="space-y-3.5">
                   <div className="flex items-center justify-between">
-                    <span className="text-2xl font-mono font-extrabold text-brand/30">
+                    <span className="text-2xl font-mono font-extrabold text-foreground/30 select-none" aria-hidden="true">
                       {step.step}
                     </span>
                     <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono border border-border bg-surface-elevated text-muted-foreground font-semibold">

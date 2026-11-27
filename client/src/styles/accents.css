@@ -41,11 +41,11 @@
   --accent-from: #6366F1;
   --accent-via: #8B5CF6;
   --accent-to: #D946EF;
-  --accent: #6366F1;
-  --accent-foreground: #FFFFFF;
+  --accent: #818CF8;
+  --accent-foreground: #09090B;
   --accent-soft: rgba(99, 102, 241, 0.15);
   --accent-border: rgba(99, 102, 241, 0.35);
-  --ring: #6366F1;
+  --ring: #818CF8;
   --accent-glow: rgba(99, 102, 241, 0.35);
 
   --brand: var(--accent);
@@ -72,56 +72,56 @@ html:not(.dark)[data-accent="indigo"] {
   --accent-glow: rgba(67, 56, 202, 0.25);
 }
 
-/* Cyan (Light) */
+/* Cyan (Light) - Sky-800 (#075985) ensures >= 7.4:1 contrast on cream */
 html:not(.dark)[data-accent="cyan"] {
   --accent-from: #0E7490;
-  --accent-via: #0369A1;
+  --accent-via: #075985;
   --accent-to: #1D4ED8;
-  --accent: #0369A1;
+  --accent: #075985;
   --accent-foreground: #FFFFFF;
-  --accent-soft: rgba(3, 105, 161, 0.10);
-  --accent-border: rgba(3, 105, 161, 0.25);
-  --ring: #0369A1;
-  --accent-glow: rgba(3, 105, 161, 0.25);
+  --accent-soft: rgba(7, 89, 133, 0.10);
+  --accent-border: rgba(7, 89, 133, 0.25);
+  --ring: #075985;
+  --accent-glow: rgba(7, 89, 133, 0.25);
 }
 
-/* Emerald (Light) */
+/* Emerald (Light) - Emerald-800 (#065F46) ensures >= 6.3:1 contrast on cream */
 html:not(.dark)[data-accent="emerald"] {
-  --accent-from: #047857;
+  --accent-from: #065F46;
   --accent-via: #0F766E;
   --accent-to: #15803D;
-  --accent: #047857;
+  --accent: #065F46;
   --accent-foreground: #FFFFFF;
-  --accent-soft: rgba(4, 120, 87, 0.10);
-  --accent-border: rgba(4, 120, 87, 0.25);
-  --ring: #047857;
-  --accent-glow: rgba(4, 120, 87, 0.25);
+  --accent-soft: rgba(6, 95, 70, 0.10);
+  --accent-border: rgba(6, 95, 70, 0.25);
+  --ring: #065F46;
+  --accent-glow: rgba(6, 95, 70, 0.25);
 }
 
-/* Amber (Light) - Requires dark foreground on solid and deep amber text for >=4.5:1 */
+/* Amber (Light) - Amber-800 (#92400E) ensures 5.47:1 contrast on cream and button */
 html:not(.dark)[data-accent="amber"] {
-  --accent-from: #B45309;
+  --accent-from: #9A3412;
   --accent-via: #C2410C;
-  --accent-to: #9A3412;
-  --accent: #D97706;
-  --accent-foreground: #18181B;
-  --accent-soft: rgba(217, 119, 6, 0.12);
-  --accent-border: rgba(180, 83, 9, 0.30);
-  --ring: #B45309;
-  --accent-glow: rgba(217, 119, 6, 0.25);
+  --accent-to: #B45309;
+  --accent: #92400E;
+  --accent-foreground: #FFFFFF;
+  --accent-soft: rgba(146, 64, 14, 0.10);
+  --accent-border: rgba(146, 64, 14, 0.28);
+  --ring: #92400E;
+  --accent-glow: rgba(146, 64, 14, 0.25);
 }
 
-/* Rose (Light) */
+/* Rose (Light) - Rose-800 (#9F1239) ensures >= 7.6:1 contrast on cream */
 html:not(.dark)[data-accent="rose"] {
-  --accent-from: #BE123C;
+  --accent-from: #9F1239;
   --accent-via: #BE185D;
-  --accent-to: #C2410C;
-  --accent: #BE123C;
+  --accent-to: #9A3412;
+  --accent: #9F1239;
   --accent-foreground: #FFFFFF;
-  --accent-soft: rgba(190, 18, 60, 0.10);
-  --accent-border: rgba(190, 18, 60, 0.25);
-  --ring: #BE123C;
-  --accent-glow: rgba(190, 18, 60, 0.25);
+  --accent-soft: rgba(159, 18, 57, 0.10);
+  --accent-border: rgba(159, 18, 57, 0.25);
+  --ring: #9F1239;
+  --accent-glow: rgba(159, 18, 57, 0.25);
 }
 
 /* ----------------------------------------------------------------------------
@@ -134,50 +134,50 @@ html.dark[data-accent="indigo"] {
   --accent-from: #6366F1;
   --accent-via: #8B5CF6;
   --accent-to: #D946EF;
-  --accent: #6366F1;
-  --accent-foreground: #FFFFFF;
+  --accent: #818CF8;
+  --accent-foreground: #09090B;
   --accent-soft: rgba(99, 102, 241, 0.15);
   --accent-border: rgba(99, 102, 241, 0.35);
-  --ring: #6366F1;
+  --ring: #818CF8;
   --accent-glow: rgba(99, 102, 241, 0.35);
 }
 
-/* Cyan (Dark) */
+/* Cyan (Dark) - Uses dark text #09090B on buttons for >= 8.6:1 contrast */
 html.dark[data-accent="cyan"] {
   --accent-from: #06B6D4;
   --accent-via: #0EA5E9;
   --accent-to: #3B82F6;
-  --accent: #0EA5E9;
-  --accent-foreground: #FFFFFF;
+  --accent: #38BDF8;
+  --accent-foreground: #09090B;
   --accent-soft: rgba(14, 165, 233, 0.15);
   --accent-border: rgba(14, 165, 233, 0.35);
-  --ring: #0EA5E9;
+  --ring: #38BDF8;
   --accent-glow: rgba(14, 165, 233, 0.35);
 }
 
-/* Emerald (Dark) */
+/* Emerald (Dark) - Uses dark text #09090B on buttons for >= 9.2:1 contrast */
 html.dark[data-accent="emerald"] {
   --accent-from: #10B981;
   --accent-via: #14B8A6;
   --accent-to: #22C55E;
-  --accent: #10B981;
-  --accent-foreground: #FFFFFF;
+  --accent: #34D399;
+  --accent-foreground: #09090B;
   --accent-soft: rgba(16, 185, 129, 0.15);
   --accent-border: rgba(16, 185, 129, 0.35);
-  --ring: #10B981;
+  --ring: #34D399;
   --accent-glow: rgba(16, 185, 129, 0.35);
 }
 
-/* Amber (Dark) - Solid button uses readable dark text #18181B */
+/* Amber (Dark) - Uses dark text #18181B on buttons for >= 9.4:1 contrast */
 html.dark[data-accent="amber"] {
   --accent-from: #F59E0B;
   --accent-via: #F97316;
   --accent-to: #EAB308;
-  --accent: #F59E0B;
+  --accent: #FBBF24;
   --accent-foreground: #18181B;
   --accent-soft: rgba(245, 158, 11, 0.15);
   --accent-border: rgba(245, 158, 11, 0.35);
-  --ring: #F59E0B;
+  --ring: #FBBF24;
   --accent-glow: rgba(245, 158, 11, 0.35);
 }
 
@@ -186,11 +186,11 @@ html.dark[data-accent="rose"] {
   --accent-from: #F43F5E;
   --accent-via: #EC4899;
   --accent-to: #F97316;
-  --accent: #F43F5E;
-  --accent-foreground: #FFFFFF;
+  --accent: #FB7185;
+  --accent-foreground: #09090B;
   --accent-soft: rgba(244, 63, 94, 0.15);
   --accent-border: rgba(244, 63, 94, 0.35);
-  --ring: #F43F5E;
+  --ring: #FB7185;
   --accent-glow: rgba(244, 63, 94, 0.35);
 }
 

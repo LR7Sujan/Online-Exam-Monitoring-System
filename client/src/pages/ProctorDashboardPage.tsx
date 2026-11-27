@@ -540,7 +540,7 @@ export function ProctorDashboardPage({ initialTab = 'monitor' }: { initialTab?: 
               onClick={() => setActiveTab('monitor')}
               className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-mono font-medium transition-all cursor-pointer ${
                 activeTab === 'monitor'
-                  ? 'bg-brand text-white shadow-sm'
+                  ? 'bg-brand text-accent-foreground shadow-sm'
                   : 'text-muted-foreground hover:text-foreground hover:bg-muted/40'
               }`}
             >
@@ -553,7 +553,7 @@ export function ProctorDashboardPage({ initialTab = 'monitor' }: { initialTab?: 
               onClick={() => setActiveTab('queue')}
               className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-mono font-medium transition-all cursor-pointer ${
                 activeTab === 'queue'
-                  ? 'bg-brand text-white shadow-sm'
+                  ? 'bg-brand text-accent-foreground shadow-sm'
                   : 'text-muted-foreground hover:text-foreground hover:bg-muted/40'
               }`}
             >

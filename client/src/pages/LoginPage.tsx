@@ -572,7 +572,7 @@ export function LoginPage({ initialTab }: { initialTab?: AuthTab }) {
                             </span>
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                           </div>
-                          <div className="text-[9px] text-muted-foreground truncate font-mono mt-0.5">
+                          <div className="text-[10px] text-foreground/80 dark:text-muted-foreground truncate font-mono mt-0.5">
                             {demo.email.split('@')[0]}
                           </div>
                         </button>

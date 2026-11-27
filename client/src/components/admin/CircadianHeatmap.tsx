@@ -258,7 +258,7 @@ export function CircadianHeatmap({
               }}
               className={`rounded-md px-2.5 py-1 text-xs transition-all cursor-pointer ${
                 timeRange === 'all'
-                  ? 'bg-brand text-white shadow-sm font-semibold'
+                  ? 'bg-brand text-accent-foreground shadow-sm font-semibold'
                   : 'text-muted-foreground hover:text-foreground'
               }`}
             >
@@ -273,7 +273,7 @@ export function CircadianHeatmap({
               }}
               className={`rounded-md px-2.5 py-1 text-xs transition-all cursor-pointer ${
                 timeRange === '7'
-                  ? 'bg-brand text-white shadow-sm font-semibold'
+                  ? 'bg-brand text-accent-foreground shadow-sm font-semibold'
                   : 'text-muted-foreground hover:text-foreground'
               }`}
             >

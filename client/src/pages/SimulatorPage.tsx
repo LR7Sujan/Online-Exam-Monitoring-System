@@ -388,7 +388,7 @@ export const SimulatorPage: React.FC = () => {
               <span>Candidate Swarm Demo Simulator</span>
             </h1>
             {isRunning && (
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-mono border border-emerald/40 bg-emerald/10 text-emerald">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-mono border border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400">
                 <LiveDot color="emerald" size="sm" pulse />
                 {isPaused ? 'PAUSED' : 'BROADCASTING LIVE'}
               </span>
@@ -647,7 +647,7 @@ export const SimulatorPage: React.FC = () => {
           <div className="space-y-2">
             <div className="flex items-center justify-between text-xs font-mono">
               <span className="text-muted-foreground">SPEED MULTIPLIER</span>
-              <span className="text-emerald font-bold px-2 py-0.5 rounded bg-emerald/10 border border-emerald/30">
+              <span className="text-emerald-700 dark:text-emerald-400 font-bold px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/30">
                 {speed.toFixed(1)}x Velocity
               </span>
             </div>
@@ -679,7 +679,7 @@ export const SimulatorPage: React.FC = () => {
                 disabled={isRunning}
                 onClick={() => setChaos('low')}
                 className={`py-2 px-1 rounded-xl border text-xs font-mono font-bold transition-all ${chaos === 'low'
-                  ? 'border-emerald/60 bg-emerald/20 text-emerald shadow-[0_0_15px_rgba(16,185,129,0.2)]'
+                  ? 'border-emerald-500/60 bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.2)]'
                   : 'border-border bg-surface text-muted-foreground hover:text-foreground hover:bg-muted'
                   } disabled:opacity-50`}
               >
@@ -690,7 +690,7 @@ export const SimulatorPage: React.FC = () => {
                 disabled={isRunning}
                 onClick={() => setChaos('medium')}
                 className={`py-2 px-1 rounded-xl border text-xs font-mono font-bold transition-all ${chaos === 'medium'
-                  ? 'border-amber/60 bg-amber/20 text-amber shadow-[0_0_15px_rgba(245,158,11,0.2)]'
+                  ? 'border-amber-500/60 bg-amber-500/20 text-amber-800 dark:text-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.2)]'
                   : 'border-border bg-surface text-muted-foreground hover:text-foreground hover:bg-muted'
                   } disabled:opacity-50`}
               >
@@ -701,7 +701,7 @@ export const SimulatorPage: React.FC = () => {
                 disabled={isRunning}
                 onClick={() => setChaos('high')}
                 className={`py-2 px-1 rounded-xl border text-xs font-mono font-bold transition-all ${chaos === 'high'
-                  ? 'border-rose/60 bg-rose/20 text-rose shadow-[0_0_15px_rgba(244,63,94,0.3)]'
+                  ? 'border-rose-500/60 bg-rose-500/20 text-rose-700 dark:text-rose-400 shadow-[0_0_15px_rgba(244,63,94,0.3)]'
                   : 'border-border bg-surface text-muted-foreground hover:text-foreground hover:bg-muted'
                   } disabled:opacity-50`}
               >
@@ -909,10 +909,10 @@ export const SimulatorPage: React.FC = () => {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-bold tracking-tight text-foreground flex items-center gap-2">
-              <Terminal className="w-4 h-4 text-emerald" />
+              <Terminal className="w-4 h-4 text-emerald-700 dark:text-emerald-400" />
               <span>Real-Time Activity Stream</span>
             </h3>
-            <span className="text-[10px] font-mono text-emerald flex items-center gap-1">
+            <span className="text-[10px] font-mono text-emerald-700 dark:text-emerald-400 flex items-center gap-1 font-semibold">
               <LiveDot color="emerald" size="sm" pulse={isRunning} />
               LIVE SOCKET FEED
             </span>

@@ -206,7 +206,7 @@ export function AdminDashboardPage({
                   onClick={() => setActiveTab(t.id as typeof activeTab)}
                   className={`flex items-center gap-2 rounded-xl px-3.5 py-2 text-xs font-mono font-medium whitespace-nowrap transition-all cursor-pointer ${
                     isActive
-                      ? 'bg-brand text-white shadow-sm'
+                      ? 'bg-brand text-accent-foreground shadow-sm'
                       : 'text-muted-foreground hover:text-foreground hover:bg-muted/40'
                   }`}
                 >

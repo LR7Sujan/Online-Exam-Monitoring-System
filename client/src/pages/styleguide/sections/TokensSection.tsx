@@ -99,19 +99,17 @@ setAccent('emerald'); // updates <html data-accent="emerald">`}
       >
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 w-full">
           {[
-            { name: 'Accent Solid', token: 'var(--accent)', bg: 'bg-accent', border: 'border-accent', text: 'text-accent-foreground' },
-            { name: 'Accent Soft', token: 'var(--accent-soft)', bg: 'bg-accent-soft', border: 'border-accent/40', text: 'text-accent' },
-            { name: 'Accent From', token: 'var(--accent-from)', bg: 'bg-[var(--accent-from)]', border: 'border-transparent', text: 'text-white' },
-            { name: 'Accent Via', token: 'var(--accent-via)', bg: 'bg-[var(--accent-via)]', border: 'border-transparent', text: 'text-white' },
-            { name: 'Accent To', token: 'var(--accent-to)', bg: 'bg-[var(--accent-to)]', border: 'border-transparent', text: 'text-white' },
-            { name: 'Brand Gradient', token: 'var(--accent-from) -> to', bg: 'bg-gradient-to-r from-accent-from via-accent-via to-accent-to', border: 'border-transparent', text: 'text-accent-foreground' },
-            { name: 'Accent Border', token: 'var(--accent-border)', bg: 'bg-surface', border: 'border-accent', text: 'text-foreground' },
-            { name: 'Focus Ring', token: 'var(--ring)', bg: 'bg-surface', border: 'border-[var(--ring)] ring-2 ring-accent', text: 'text-foreground' },
+            { name: 'Accent Solid', token: 'var(--accent)', bg: 'bg-accent', border: 'border-accent' },
+            { name: 'Accent Soft', token: 'var(--accent-soft)', bg: 'bg-accent-soft', border: 'border-accent/40' },
+            { name: 'Accent From', token: 'var(--accent-from)', bg: 'bg-[var(--accent-from)]', border: 'border-transparent' },
+            { name: 'Accent Via', token: 'var(--accent-via)', bg: 'bg-[var(--accent-via)]', border: 'border-transparent' },
+            { name: 'Accent To', token: 'var(--accent-to)', bg: 'bg-[var(--accent-to)]', border: 'border-transparent' },
+            { name: 'Brand Gradient', token: 'var(--accent-from) -> to', bg: 'bg-gradient-to-r from-accent-from via-accent-via to-accent-to', border: 'border-transparent' },
+            { name: 'Accent Border', token: 'var(--accent-border)', bg: 'bg-surface', border: 'border-accent' },
+            { name: 'Focus Ring', token: 'var(--ring)', bg: 'bg-surface', border: 'border-[var(--ring)] ring-2 ring-accent' },
           ].map((item) => (
             <GlassCard key={item.name} className="p-3.5 space-y-2">
-              <div className={`h-12 w-full rounded-xl ${item.bg} border ${item.border} ${item.text} flex items-center justify-center font-bold text-xs shadow-sm`}>
-                Aa
-              </div>
+              <div className={`h-12 w-full rounded-xl ${item.bg} border ${item.border} shadow-sm`} />
               <div>
                 <p className="text-xs font-semibold text-foreground">{item.name}</p>
                 <p className="text-[10px] font-mono text-muted-foreground truncate">{item.token}</p>

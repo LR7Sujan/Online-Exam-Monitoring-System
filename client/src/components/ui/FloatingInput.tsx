@@ -40,7 +40,7 @@ export const FloatingInput = forwardRef<HTMLInputElement, FloatingInputProps>(
             icon ? 'left-10' : 'left-3.5'
           } ${
             isFloated
-              ? 'top-1.5 text-[10px] uppercase tracking-wider text-brand font-semibold'
+              ? 'top-1.5 text-[10px] uppercase tracking-wider text-accent font-semibold dark:text-foreground'
               : 'top-3.5 text-xs text-muted-foreground'
           }`}
         >

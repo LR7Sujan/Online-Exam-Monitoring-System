@@ -965,7 +965,7 @@ export function RecordingPlayer({
                             onClick={() => handleSetSpeed(spd)}
                             className={`px-2.5 py-1 text-xs text-left rounded-lg transition-colors cursor-pointer flex items-center justify-between ${
                               playbackSpeed === spd
-                                ? 'bg-brand text-white font-bold'
+                                ? 'bg-brand text-accent-foreground font-bold'
                                 : 'text-foreground hover:bg-muted'
                             }`}
                           >
@@ -1031,7 +1031,7 @@ export function RecordingPlayer({
                 onClick={() => setActiveTab('events')}
                 className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-1.5 ${
                   activeTab === 'events'
-                    ? 'bg-brand text-white shadow-xs'
+                    ? 'bg-brand text-accent-foreground shadow-xs'
                     : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
@@ -1045,7 +1045,7 @@ export function RecordingPlayer({
                 onClick={() => setActiveTab('notes')}
                 className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-1.5 ${
                   activeTab === 'notes'
-                    ? 'bg-brand text-white shadow-xs'
+                    ? 'bg-brand text-accent-foreground shadow-xs'
                     : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
@@ -1265,7 +1265,7 @@ export function RecordingPlayer({
               href={`${apiBase}/recordings/${recordingId}/download`}
               onClick={() => setDownloadModalOpen(false)}
               download
-              className="px-3.5 py-1.5 rounded-xl text-xs font-bold text-white bg-brand hover:opacity-95 shadow-sm transition-opacity"
+              className="px-3.5 py-1.5 rounded-xl text-xs font-bold text-accent-foreground bg-brand hover:opacity-95 shadow-sm transition-opacity"
             >
               Confirm Download
             </a>
