@@ -160,17 +160,11 @@ npm run test:e2e
 
 ---
 
-## 📄 License
-
-*Add your license here (for example MIT).*
-
----
-
 ## 👤 Author
 
 | Platform | Link |
 | --- | --- |
-| GitHub | *add your profile link* |
-| Contact | *add your email* |
+| GitHub | [@LR7Sujan](https://github.com/LR7Sujan) |
+| Contact | [sujanlr77@gmail.com](mailto:sujanlr77@gmail.com) |
 
 ⭐ **Star the repository if this project helped you.**
