@@ -1,12 +1,32 @@
 # 🛡️ ProctorIQ
 
-## Online Exam Monitoring & Anti-Cheating System
+<div align="center">
 
-A real-time exam proctoring platform with three roles (Admin, Proctor, Student). Penalties, terminations and grading are enforced **inside MySQL** with triggers, stored procedures and transactions, so results stay correct even if violations arrive from several sources at once.
+## 🎓 Online Exam Monitoring & Anti-Cheating System
+
+### Real-Time Exam Proctoring with Database-Enforced Integrity
+
+A modern web platform with three roles (Admin, Proctor, Student) where penalties, terminations and grading are enforced inside MySQL.
+
+![React](https://img.shields.io/badge/React-Frontend-blue?logo=react)
+![Vite](https://img.shields.io/badge/Vite-Build_Tool-purple?logo=vite)
+![TypeScript](https://img.shields.io/badge/TypeScript-Typed-3178C6?logo=typescript)
+![Node.js](https://img.shields.io/badge/Node.js-20.6+-339933?logo=nodedotjs)
+![MySQL](https://img.shields.io/badge/MySQL-8.0+-4479A1?logo=mysql&logoColor=white)
+
+</div>
 
 ---
 
-## 🚀 Capabilities
+## 📖 Overview
+
+ProctorIQ is a real-time exam proctoring platform with three roles: **Admin**, **Proctor** and **Student**.
+
+Penalties, terminations and grading are enforced **inside MySQL** with triggers, stored procedures and transactions, so results stay correct even if violations arrive from several sources at once.
+
+---
+
+## ✨ Features
 
 | Feature | Description |
 | --- | --- |
@@ -51,7 +71,7 @@ If the trust score drops below the exam's minimum, the exam is terminated and th
 
 ---
 
-## 🧱 Tech Stack
+## 🛠️ Tech Stack
 
 | Layer | Technology |
 | --- | --- |
@@ -63,11 +83,39 @@ If the trust score drops below the exam's minimum, the exam is terminated and th
 
 ---
 
+## 📂 Project Structure
+
+```bash
+Online-Exam-Monitoring-System/
+│
+├── api/
+│   └── index.ts              # Vercel serverless adapter
+├── client/                   # React + Vite frontend
+│   └── src/
+│       └── pages/
+│           └── LoginPage.tsx
+├── server/                   # Express + TypeScript backend
+│   └── src/
+│       └── config/
+│           └── env.ts
+├── db/
+│   ├── schema.sql            # Core tables, triggers, stored procedures
+│   ├── seed.sql              # Penalty rules, demo accounts, sample exams
+│   └── migrations/           # Incremental migrations
+│
+├── .env.example
+├── vercel.json
+├── package.json
+└── README.md
+```
+
+---
+
 ## ⚡ Quick Start
 
 ### 1. Prerequisites
 
-Ensure your system meets the following verified runtime and tooling requirements:
+Ensure your system meets the following runtime and tooling requirements:
 
 | Requirement | Supported Version | Verification Command | Notes |
 | --- | --- | --- | --- |
@@ -130,15 +178,13 @@ FLUSH PRIVILEGES;
 
 ### 3. Clone & Install Dependencies
 
-Clone the repository and install the dependencies.
-
 > [!IMPORTANT]
 > This repository is organized as a monorepo with distinct packages for the root runner, backend server, and frontend client. You must install dependencies across all three directories.
 
 ```bash
 # Clone repository
-git clone <https://github.com/LR7Sujan/Online-Exam-Monitoring-System.git>
-cd <project-folder>
+git clone https://github.com/LR7Sujan/Online-Exam-Monitoring-System.git
+cd Online-Exam-Monitoring-System
 
 # Install root, server, and client dependencies
 npm install && npm --prefix server install && npm --prefix client install
@@ -256,7 +302,7 @@ When the servers are ready, you will see output similar to:
 
 ---
 
-### 7. Sign In with Demo Accounts
+## 🔑 Demo Accounts
 
 Open **<http://localhost:5173>** in Google Chrome or Microsoft Edge.
 
@@ -268,17 +314,18 @@ Open **<http://localhost:5173>** in Google Chrome or Microsoft Edge.
 
 > [!NOTE]
 > Demo passwords are encrypted with bcrypt in `db/seed.sql`. For rapid local testing, one-click demo login buttons are provided directly on the Login page (`client/src/pages/LoginPage.tsx`), where the default local seed password is defined.
->
-> ⚠️ **Security Warning**: Always change default demo passwords and configure a unique `JWT_SECRET` prior to deploying to any shared or production environment.
+
+> [!WARNING]
+> Always change default demo passwords and configure a unique `JWT_SECRET` prior to deploying to any shared or production environment.
 
 ---
 
-### 8. Verify the Installation
+## ✅ Verify the Installation
 
 Confirm everything is functioning correctly by checking these three items:
 
 1. **API Health Endpoint**:
-   Visit `<http://localhost:4000/api/health>` in your browser or run:
+   Visit <http://localhost:4000/api/health> in your browser or run:
 
    ```bash
    curl http://localhost:4000/api/health
@@ -291,13 +338,13 @@ Confirm everything is functioning correctly by checking these three items:
    ```
 
 2. **Student Authentication**:
-   Open `<http://localhost:5173>`, click **Student Demo** on the login page, and verify immediate redirect to the `/student` dashboard displaying assigned exams.
+   Open <http://localhost:5173>, click **Student Demo** on the login page, and verify immediate redirect to the `/student` dashboard displaying assigned exams.
 3. **Sidebar Connectivity Indicator**:
    Observe the bottom-left sidebar status indicator. It should show a green dot and **"Connected"**, confirming active heartbeat polling and WebSocket synchronization.
 
 ---
 
-### 9. Run the Test Suites
+## 🧪 Running Tests
 
 ProctorIQ features automated unit, integration, and end-to-end test suites.
 
@@ -312,7 +359,7 @@ npm test
 npm run test:e2e
 ```
 
-#### Test Database Safety Isolation
+### Test Database Safety Isolation
 
 - Automated test runs strictly target `exam_monitoring_test` on test API port `4001` and client port `5174`.
 - The codebase enforces `assertTestDatabaseSafety()` in `server/src/config/env.ts`: any destructive test script or teardown operation is blocked immediately if `NODE_ENV !== 'test'` or the target database name does not end with `_test`.
@@ -320,16 +367,16 @@ npm run test:e2e
 
 ---
 
-### 10. Production Build & Deployment
+## 🚢 Production Build & Deployment
 
-#### Compiling for Production
+### Compiling for Production
 
 ```bash
 # Builds server to /server/dist and client to /client/dist
 npm run build
 ```
 
-#### Running the Production Server
+### Running the Production Server
 
 ```bash
 npm --prefix server start
@@ -337,7 +384,7 @@ npm --prefix server start
 
 The compiled Express production server serves the backend API and can serve the compiled client static assets directly from `client/dist`.
 
-#### Serverless Deployment (Vercel)
+### Serverless Deployment (Vercel)
 
 The project includes root `vercel.json` and `api/index.ts` adapters. When deploying to Vercel:
 
@@ -347,7 +394,7 @@ The project includes root `vercel.json` and `api/index.ts` adapters. When deploy
 
 ---
 
-### 11. Troubleshooting & Common Pitfalls
+## 🩺 Troubleshooting & Common Pitfalls
 
 | Problem | Exact Error / Symptom | Root Cause | Solution |
 | --- | --- | --- | --- |
@@ -382,11 +429,32 @@ The project includes root `vercel.json` and `api/index.ts` adapters. When deploy
 
 ---
 
-## 👤 Author
+## 📸 Screenshots
 
-| Platform | Link |
-| --- | --- |
-| GitHub | [@LR7Sujan](https://github.com/LR7Sujan) |
-| Contact | [sujanlr77@gmail.com](mailto:sujanlr77@gmail.com) |
+### Admin Console
 
-⭐ **Star the repository if this project helped you.**
+> *Add admin dashboard screenshot here.*
+
+### Live Proctor Monitor
+
+> *Add live monitor screenshot here.*
+
+### Student Exam Portal
+
+> *Add student exam screenshot here.*
+
+---
+
+## 👨‍💻 Author
+
+- **Author**: Sujan L R
+- **GitHub**: <https://github.com/LR7Sujan>
+- **Contact**: <sujanlr77@gmail.com>
+
+---
+
+### 🛡️ Fair Exams Through Intelligent Monitoring
+
+Built with React, Node.js, and MySQL 🎓
+
+⭐ Star this repository if you found it useful.
