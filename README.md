@@ -432,15 +432,15 @@ The project includes root `vercel.json` and `api/index.ts` adapters. When deploy
 
 ### Admin Console
 
-> *Add admin dashboard screenshot here.*
+![Admin Console](docs/screenshots/admin-console.png)
 
 ### Live Proctor Monitor
 
-> *Add live monitor screenshot here.*
+![Live Proctor Monitor](docs/screenshots/live-proctor-monitor.png)
 
 ### Student Exam Portal
 
-> *Add student exam screenshot here.*
+![Student Exam Portal](docs/screenshots/student-exam-portal.png)
 
 ---
 
