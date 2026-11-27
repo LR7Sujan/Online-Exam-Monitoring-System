@@ -137,7 +137,7 @@ Clone the repository and install the dependencies.
 
 ```bash
 # Clone repository
-git clone <your-repository-url>
+git clone <https://github.com/LR7Sujan/Online-Exam-Monitoring-System.git>
 cd <project-folder>
 
 # Install root, server, and client dependencies
