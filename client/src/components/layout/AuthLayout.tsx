@@ -7,6 +7,7 @@ import {
   Lock,
 } from 'lucide-react';
 import { ThemeToggle } from '../ui/ThemeToggle';
+import { AccentPicker } from '../ui/AccentPicker';
 import { LiveDot } from '../ui/LiveDot';
 
 export interface AuthLayoutProps {
@@ -24,8 +25,9 @@ export function AuthLayout({ children }: AuthLayoutProps) {
       <div className="absolute -top-32 -left-32 w-96 h-96 rounded-full bg-brand/10 blur-3xl pointer-events-none" />
       <div className="absolute -bottom-32 -right-32 w-96 h-96 rounded-full bg-accent/10 blur-3xl pointer-events-none" />
 
-      {/* Theme Toggle in Top Right */}
-      <div className="absolute top-4 right-4 sm:top-5 sm:right-6 lg:top-6 lg:right-8 z-30">
+      {/* Theme & Accent Toggles in Top Right */}
+      <div className="absolute top-4 right-4 sm:top-5 sm:right-6 lg:top-6 lg:right-8 z-30 flex items-center gap-2">
+        <AccentPicker variant="popover" placement="bottom-end" />
         <ThemeToggle />
       </div>
 

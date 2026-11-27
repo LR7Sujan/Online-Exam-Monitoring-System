@@ -1,10 +1,18 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import {
+  type AccentColor,
+  ACCENT_COLORS,
+  ACCENT_OPTIONS,
+  type AccentOption,
+  useAccent,
+  AccentProvider,
+} from './AccentContext';
+
+export type { AccentColor, AccentOption };
+// eslint-disable-next-line react-refresh/only-export-components
+export { ACCENT_COLORS, ACCENT_OPTIONS, useAccent, AccentProvider };
 
 export type Theme = 'light' | 'dark' | 'system';
-export type AccentColor = 'indigo' | 'cyan' | 'emerald' | 'amber' | 'rose';
-
-// eslint-disable-next-line react-refresh/only-export-components
-export const ACCENT_COLORS: AccentColor[] = ['indigo', 'cyan', 'emerald', 'amber', 'rose'];
 
 export interface ThemeContextValue {
   theme: Theme;

@@ -38,6 +38,7 @@ import {
 import { NotificationPanel } from '../notifications/NotificationPanel';
 import { StudentMessages } from '../notifications/StudentMessages';
 import { ThemeToggle } from '../ui/ThemeToggle';
+import { AccentPicker } from '../ui/AccentPicker';
 import { CommandPalette } from './CommandPalette';
 import { OverlayPanel } from '../ui/OverlayPanel';
 import { RouteErrorBoundary } from '../ui/RouteErrorBoundary';
@@ -718,7 +719,19 @@ export function AppShell() {
         </nav>
 
         {/* Footer Pinned to Bottom (mt-auto) */}
-        <div className="mt-auto p-3 border-t border-border bg-surface dark:bg-[#0c0d14] shrink-0">
+        <div className="mt-auto p-3 border-t border-border bg-surface dark:bg-[#0c0d14] shrink-0 space-y-3">
+          {!isCollapsed ? (
+            <div className="px-1">
+              <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/70 font-semibold select-none mb-2 block">
+                ACCENT
+              </span>
+              <AccentPicker variant="inline" />
+            </div>
+          ) : (
+            <div className="flex justify-center mb-1">
+              <AccentPicker variant="popover" placement="right" />
+            </div>
+          )}
           <SidebarStatusCard isCollapsed={isCollapsed} />
         </div>
       </motion.aside>
@@ -905,6 +918,9 @@ export function AppShell() {
 
           {/* Right: Theme Toggle, Audio Toggle, Bell, Profile Menu */}
           <div className="flex items-center gap-2.5">
+            {/* Accent Picker Popover */}
+            <AccentPicker variant="popover" placement="bottom-end" />
+
             {/* Theme Toggle (Light / Dark / System) with 38px height */}
             <ThemeToggle className="h-[38px] px-2.5" />
 

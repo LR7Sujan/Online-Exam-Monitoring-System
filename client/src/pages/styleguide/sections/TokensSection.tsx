@@ -1,6 +1,7 @@
 import { SectionDocPage } from '../SectionDocPage';
 import { ComponentPreview } from '../ComponentPreview';
 import { GlassCard } from '../../../components/ui';
+import { AccentPicker } from '../../../components/ui/AccentPicker';
 import { useTheme, ACCENT_COLORS, AccentColor } from '../../../context/ThemeContext';
 import { ShieldCheck, AlertTriangle, AlertOctagon, Info, Check } from 'lucide-react';
 
@@ -35,6 +36,14 @@ const { accent, setAccent } = useTheme();
 setAccent('emerald'); // updates <html data-accent="emerald">`}
       >
         <div className="space-y-4 w-full">
+          <div className="p-3.5 rounded-xl border border-border bg-surface-elevated/40 flex items-center justify-between">
+            <div className="space-y-0.5">
+              <span className="text-xs font-semibold text-foreground">Interactive Accent Swatches</span>
+              <p className="text-[11px] text-muted-foreground">Select an accent color with 28px swatches and arrow-key navigation.</p>
+            </div>
+            <AccentPicker variant="inline" />
+          </div>
+
           <div className="flex flex-wrap items-center gap-2.5">
             {ACCENT_COLORS.map((col) => {
               const meta = ACCENT_METADATA[col];
@@ -151,7 +160,7 @@ setAccent('emerald'); // updates <html data-accent="emerald">`}
 <div className="bg-info text-white">Info / Telemetry (Sky)</div>`}
       >
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 w-full">
-          <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 space-y-1">
+          <div data-status-type="safe" className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 space-y-1">
             <div className="flex items-center gap-2 font-mono font-bold text-xs">
               <ShieldCheck className="w-4 h-4 text-emerald-500" />
               <span>SAFE / VERIFIED</span>
@@ -159,7 +168,7 @@ setAccent('emerald'); // updates <html data-accent="emerald">`}
             <p className="text-[11px] text-muted-foreground">Normal telemetry, 100% trust, zero infractions.</p>
           </div>
 
-          <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400 space-y-1">
+          <div data-status-type="caution" className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400 space-y-1">
             <div className="flex items-center gap-2 font-mono font-bold text-xs">
               <AlertTriangle className="w-4 h-4 text-amber-500" />
               <span>CAUTION / WARNING</span>
@@ -167,7 +176,7 @@ setAccent('emerald'); // updates <html data-accent="emerald">`}
             <p className="text-[11px] text-muted-foreground">Minor alerts, grace window active, time requests.</p>
           </div>
 
-          <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-400 space-y-1">
+          <div data-status-type="danger" className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-400 space-y-1">
             <div className="flex items-center gap-2 font-mono font-bold text-xs">
               <AlertOctagon className="w-4 h-4 text-rose-500" />
               <span>DANGER / INFRACTION</span>
@@ -175,7 +184,7 @@ setAccent('emerald'); // updates <html data-accent="emerald">`}
             <p className="text-[11px] text-muted-foreground">Point deductions, multiple faces, lockdown breach.</p>
           </div>
 
-          <div className="p-4 rounded-xl bg-sky-500/10 border border-sky-500/30 text-sky-600 dark:text-sky-400 space-y-1">
+          <div data-status-type="info" className="p-4 rounded-xl bg-sky-500/10 border border-sky-500/30 text-sky-600 dark:text-sky-400 space-y-1">
             <div className="flex items-center gap-2 font-mono font-bold text-xs">
               <Info className="w-4 h-4 text-sky-500" />
               <span>INFO / TELEMETRY</span>

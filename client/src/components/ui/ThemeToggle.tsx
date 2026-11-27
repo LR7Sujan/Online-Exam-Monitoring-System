@@ -18,10 +18,10 @@ export function ThemeToggle({ className = '', showLabel = false }: ThemeTogglePr
 
   const getIcon = () => {
     if (theme === 'system') {
-      return <Laptop className="w-4 h-4 text-brand-indigo" />;
+      return <Laptop className="w-4 h-4 text-accent" />;
     }
     if (resolvedTheme === 'dark') {
-      return <Moon className="w-4 h-4 text-brand-violet" />;
+      return <Moon className="w-4 h-4 text-accent" />;
     }
     return <Sun className="w-4 h-4 text-amber-500" />;
   };

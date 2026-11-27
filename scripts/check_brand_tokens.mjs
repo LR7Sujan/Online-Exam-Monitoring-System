@@ -11,6 +11,7 @@ const clientSrc = path.join(rootDir, 'client', 'src');
 const ALLOWED_FILES = new Set([
   path.normalize(path.join(clientSrc, 'styles', 'accents.css')),
   path.normalize(path.join(clientSrc, 'pages', 'styleguide', 'sections', 'TokensSection.tsx')),
+  path.normalize(path.join(clientSrc, 'components', 'ui', 'AccentPicker.tsx')),
 ]);
 
 const FORBIDDEN_PATTERNS = [

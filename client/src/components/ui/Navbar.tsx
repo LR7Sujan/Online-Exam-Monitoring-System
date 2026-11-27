@@ -4,6 +4,7 @@ import { disconnectSocket } from '../../lib/socket';
 import { useAuthStore } from '../../store/authStore';
 import { StatusBadge } from './StatusBadge';
 import { ThemeToggle } from './ThemeToggle';
+import { AccentPicker } from './AccentPicker';
 
 export function Navbar() {
   const { user, logout } = useAuthStore();
@@ -68,7 +69,8 @@ export function Navbar() {
             );
           })}
 
-          {/* Theme Switcher */}
+          {/* Accent & Theme Switchers */}
+          <AccentPicker variant="popover" placement="bottom-end" />
           <ThemeToggle />
 
           {user ? (

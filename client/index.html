@@ -27,6 +27,14 @@
             root.classList.add('light');
             root.style.colorScheme = 'light';
           }
+
+          var storedAccent = localStorage.getItem('proctoriq-accent');
+          var validAccents = ['indigo', 'cyan', 'emerald', 'amber', 'rose'];
+          if (storedAccent && validAccents.indexOf(storedAccent) !== -1) {
+            root.setAttribute('data-accent', storedAccent);
+          } else {
+            root.setAttribute('data-accent', 'indigo');
+          }
         } catch (e) {}
       })();
     </script>

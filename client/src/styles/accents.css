@@ -219,3 +219,43 @@ html.dark[data-accent="rose"] {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--ring);
 }
+
+/* ----------------------------------------------------------------------------
+ * 5. SWATCH GRADIENT DEFINITIONS (for AccentPicker and previews)
+ * ---------------------------------------------------------------------------- */
+.accent-swatch-indigo {
+  background: linear-gradient(135deg, #6366F1 0%, #8B5CF6 50%, #D946EF 100%);
+}
+
+.accent-swatch-cyan {
+  background: linear-gradient(135deg, #06B6D4 0%, #0EA5E9 50%, #3B82F6 100%);
+}
+
+.accent-swatch-emerald {
+  background: linear-gradient(135deg, #10B981 0%, #14B8A6 50%, #22C55E 100%);
+}
+
+.accent-swatch-amber {
+  background: linear-gradient(135deg, #F59E0B 0%, #F97316 50%, #EAB308 100%);
+}
+
+.accent-swatch-rose {
+  background: linear-gradient(135deg, #F43F5E 0%, #EC4899 50%, #F97316 100%);
+}
+
+/* ----------------------------------------------------------------------------
+ * 6. ACCENT TRANSITION HOOKS (250ms duration, prefers-reduced-motion safe)
+ * ---------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: no-preference) {
+  html.accent-transition,
+  html.accent-transition *,
+  html.accent-transition *::before,
+  html.accent-transition *::after {
+    transition: background-color 250ms ease,
+                border-color 250ms ease,
+                color 250ms ease,
+                box-shadow 250ms ease,
+                outline-color 250ms ease !important;
+  }
+}
+

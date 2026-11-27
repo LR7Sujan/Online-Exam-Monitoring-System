@@ -5,6 +5,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { RealtimeProvider } from './context/RealtimeContext';
 import { ToastProvider } from './components/ui/Toast';
 import { ThemeProvider } from './context/ThemeContext';
+import { AccentProvider } from './context/AccentContext';
 import { AppShell } from './components/layout/AppShell';
 import { LoginPage } from './pages/LoginPage';
 import { PageSkeleton } from './components/ui/Skeleton';
@@ -76,7 +77,8 @@ export function App() {
   const isTest = import.meta.env.MODE === 'test';
   return (
     <ThemeProvider defaultTheme="dark" storageKey="proctoriq-theme">
-      <MotionConfig reducedMotion={isTest ? 'always' : 'user'}>
+      <AccentProvider defaultAccent="indigo" storageKey="proctoriq-accent">
+        <MotionConfig reducedMotion={isTest ? 'always' : 'user'}>
         <QueryClientProvider client={queryClient}>
           <RealtimeProvider>
             <ToastProvider>
@@ -276,6 +278,7 @@ export function App() {
         </RealtimeProvider>
       </QueryClientProvider>
     </MotionConfig>
+      </AccentProvider>
   </ThemeProvider>
   );
 }

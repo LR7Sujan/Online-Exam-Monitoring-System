@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { useTheme } from '../../context/ThemeContext';
+import { useAccent } from '../../context/AccentContext';
 import { isAudioMuted, setAudioMuted } from '../../utils/audioAlert';
 
 export interface CommandPaletteProps {
@@ -35,6 +36,7 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const { theme, setTheme, resolvedTheme } = useTheme();
+  const { accent, setAccent, accents } = useAccent();
   const [audioMuted, setAudioMutedState] = useState<boolean>(isAudioMuted());
 
   // Listen for Escape
@@ -224,6 +226,25 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
                     <Laptop className="w-4 h-4 text-sky-500" />
                     <span>Sync with System Preferences {theme === 'system' && '✓'}</span>
                   </Command.Item>
+                </Command.Group>
+
+                <Command.Group
+                  heading="Accent Color"
+                  className="px-2 py-1.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider font-mono"
+                >
+                  {accents.map((opt) => (
+                    <Command.Item
+                      key={opt.id}
+                      onSelect={() => runCommand(() => setAccent(opt.id))}
+                      className="flex items-center gap-3 px-3 py-2 rounded-xl text-foreground hover:bg-muted cursor-pointer transition-colors"
+                    >
+                      <span className={`w-3.5 h-3.5 rounded-full ${opt.swatchClass} shrink-0 ring-1 ring-border`} />
+                      <span className="flex-1">Accent: {opt.name}</span>
+                      {accent === opt.id && (
+                        <span className="text-xs font-mono text-accent font-semibold">Active ✓</span>
+                      )}
+                    </Command.Item>
+                  ))}
                 </Command.Group>
 
                 <Command.Group
