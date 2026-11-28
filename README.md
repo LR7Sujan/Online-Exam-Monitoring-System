@@ -38,6 +38,7 @@ Penalties, terminations and grading are enforced **inside MySQL** with triggers,
 | 📡 **Live Monitor** | Shows only students currently taking an exam, updated in real time |
 | 🎥 **Exam Recording** | Webcam video stored for staff review in a full player (seek, 2x speed, fullscreen) |
 | 🗂️ **Student Audit** | Each candidate's progress, average trust, scorecards and recordings |
+| 🔐 **OTP Password Reset** | Secure 6-digit email verification with HMAC-SHA256 peppering, 5-try lockout, single-use tokens, and session revocation |
 | 🎨 **Themes** | Dark and cream-light themes with selectable accent colors |
 
 ---
