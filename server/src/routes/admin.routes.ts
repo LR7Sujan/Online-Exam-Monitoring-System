@@ -3,6 +3,7 @@ import type { RowDataPacket } from 'mysql2/promise';
 import { executeSql, queryRows } from '../config/db.js';
 import { env } from '../config/env.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
+import { mailService } from '../services/mailService.js';
 import { simulatorEngine, type ChaosLevel, type ScenarioType } from '../services/simulator.js';
 import { sendSuccess } from '../utils/response.js';
 import { AppError } from '../utils/errors.js';
@@ -334,6 +335,41 @@ adminRouter.post('/simulator/reset', async (_req, res, next) => {
   try {
     const counts = await simulatorEngine.reset();
     sendSuccess(res, counts);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/admin/mail/test
+adminRouter.post('/mail/test', async (req, res, next) => {
+  try {
+    const { to } = req.body as { to?: string };
+    if (!to || typeof to !== 'string' || !to.includes('@')) {
+      res.status(400).json({
+        success: false,
+        data: null,
+        error: { code: 'INVALID_RECIPIENT', message: 'A valid recipient email address is required.' },
+      });
+      return;
+    }
+
+    const result = await mailService.sendTestEmail(to.trim());
+    if (!result.success) {
+      res.status(502).json({
+        success: false,
+        data: null,
+        error: {
+          code: 'MAIL_SEND_FAILED',
+          message: result.error || 'Failed to dispatch test email.',
+        },
+      });
+      return;
+    }
+
+    sendSuccess(res, {
+      message: `Test email successfully dispatched to ${to.trim()}`,
+      provider: env.MAIL_PROVIDER,
+    });
   } catch (err) {
     next(err);
   }

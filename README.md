@@ -293,9 +293,14 @@ ProctorIQ supports three email delivery modes configured via `MAIL_PROVIDER`:
 3. **Mock Mode (`MAIL_PROVIDER=mock`)** *(Automated Testing)*:
    - Used by the automated test suite to capture outgoing messages in memory without network calls.
 
+4. **HTTPS API Providers (`MAIL_PROVIDER=resend` or `MAIL_PROVIDER=brevo`)**:
+   - Useful when cloud hosts (like Railway, DigitalOcean, or AWS EC2) block outbound SMTP ports 25, 465, and 587.
+   - Uses native HTTPS `fetch` with zero additional npm dependencies.
+   - Configure `RESEND_API_KEY=re_...` or `BREVO_API_KEY=xkeysib-...` in `.env`.
+
 | Variable | Description | Default |
 | --- | --- | --- |
-| `MAIL_PROVIDER` | Provider mode: `console`, `smtp`, or `mock` | `console` (`mock` in tests) |
+| `MAIL_PROVIDER` | Provider mode: `console`, `smtp`, `resend`, `brevo`, or `mock` | `console` (`mock` in tests) |
 | `MAIL_FROM` | Sender display name and email address | `"ProctorIQ Security <no-reply@proctoriq.io>"` |
 | `APP_BASE_URL` | Root URL of frontend client for emails | `http://localhost:5173` |
 | `SMTP_HOST` | Hostname of SMTP server (required for `smtp`) | None |
@@ -303,7 +308,21 @@ ProctorIQ supports three email delivery modes configured via `MAIL_PROVIDER`:
 | `SMTP_USER` | SMTP authentication username / email | None |
 | `SMTP_PASS` | SMTP authentication password / app password | None |
 | `SMTP_SECURE` | Set `true` for port 465, `false` for port 587/STARTTLS | `false` |
+| `RESEND_API_KEY` | API Key for Resend HTTPS email delivery | None |
+| `BREVO_API_KEY` | API Key for Brevo HTTPS email delivery | None |
 | `OTP_PEPPER` | Server secret pepper (min 32 chars) for HMAC hashing | Default dev pepper |
+
+#### Email Setup Troubleshooting Guide
+
+| Issue / Symptom | Root Cause | Solution |
+| :--- | :--- | :--- |
+| **Email Never Arrives (Local Dev)** | `MAIL_PROVIDER=console` is active | Look at the **API terminal**. In dev, codes print to stdout: `DEV ONLY - OTP for user@example.com: 123456`. Set `MAIL_PROVIDER=smtp` if you want real emails delivered. |
+| **Email Never Arrives (Personal Email)** | Account does not exist in `Users` table | To prevent account enumeration, the API always returns 200. Only registered accounts receive emails. Register or check email via Admin Console &rarr; User Directory. |
+| **`535 5.7.8 Username and Password not accepted`** | Invalid Gmail credentials | You must use a **Google App Password** (16 characters, 2FA enabled), NOT your standard Gmail account password. |
+| **`ETIMEDOUT` / `ECONNREFUSED` on port 587 or 465** | Hosting provider blocks outbound SMTP | Many cloud providers block outbound SMTP traffic. Switch to `MAIL_PROVIDER=resend` (set `RESEND_API_KEY`) or `MAIL_PROVIDER=brevo` (set `BREVO_API_KEY`), which deliver via HTTPS port 443. |
+| **Port / Secure Mismatch** | `SMTP_SECURE` configuration error | If using port `465`, set `SMTP_SECURE=true`. If using port `587` (STARTTLS), set `SMTP_SECURE=false`. |
+| **Rate Limit / 429 Too Many Requests** | Exceeded 3 emails/hr or 60s cooldown | Wait 60 seconds between resends, or wait 1 hour if the 3/hour account limit or 10/hour IP limit was reached. |
+| **Email in Spam Folder** | Low domain reputation / generic sender | Add your domain SPF and DKIM records, or ensure `MAIL_FROM` matches the authenticated SMTP user address. |
 
 
 ---

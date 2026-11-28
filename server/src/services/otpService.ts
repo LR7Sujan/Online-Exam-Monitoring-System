@@ -224,10 +224,16 @@ export async function requestPasswordReset(email: string, clientIp: string): Pro
     [user.id, otpHash, clientIp || null]
   );
 
-  // 8. Send email in background (never log the code in production)
-  sendOtpEmail(user.email, user.full_name, rawCode).catch((err) => {
-    console.error('[OtpService] Background sendOtpEmail error:', err);
-  });
+  // 8. Dispatch email with await (guaranteed delivery before response, never fails silently)
+  try {
+    const sentOk = await sendOtpEmail(user.email, user.full_name, rawCode);
+    if (!sentOk) {
+      console.warn(`[OtpService] Outbound OTP email delivery failed for user ID ${user.id}`);
+    }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error(`[OtpService] sendOtpEmail exception for user ID ${user.id}: ${msg}`);
+  }
 
   // Lazy cleanup of old expired codes
   lazyCleanup();

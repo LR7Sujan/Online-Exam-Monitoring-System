@@ -67,17 +67,19 @@ export class ConsoleMailProvider implements MailProvider {
     }
 
     const divider = '='.repeat(60);
-    const codeNotice = payload.otpCode
-      ? `DEV ONLY - OTP: ${payload.otpCode}`
-      : `DEV ONLY - EMAIL NOTIFICATION`;
-
     console.log(`\n${divider}`);
-    console.log(`[${codeNotice}]`);
-    console.log(`To: ${payload.to}`);
-    console.log(`Subject: ${payload.subject}`);
     if (payload.otpCode) {
+      console.log(`[DEV ONLY - OTP: ${payload.otpCode}]`);
+      console.log(`DEV ONLY - OTP for ${payload.to}: ${payload.otpCode}`);
+      console.log(`To: ${payload.to}`);
+      console.log(`Subject: ${payload.subject}`);
       console.log(`Code (spaced): ${payload.otpCode.split('').join(' ')}`);
       console.log(`Expires: 10 minutes`);
+    } else {
+      console.log(`[DEV ONLY - EMAIL NOTIFICATION]`);
+      console.log(`DEV ONLY - EMAIL to ${payload.to}: ${payload.subject}`);
+      console.log(`To: ${payload.to}`);
+      console.log(`Subject: ${payload.subject}`);
     }
     console.log(`${divider}\n`);
     return true;
@@ -85,7 +87,7 @@ export class ConsoleMailProvider implements MailProvider {
 }
 
 export class SmtpMailProvider implements MailProvider {
-  private getTransporter(): Transporter {
+  getTransporter(): Transporter {
     if (!globalThis.__proctoriq_mail_transporter) {
       globalThis.__proctoriq_mail_transporter = nodemailer.createTransport({
         host: env.SMTP_HOST,
@@ -104,6 +106,12 @@ export class SmtpMailProvider implements MailProvider {
     return globalThis.__proctoriq_mail_transporter;
   }
 
+  async verifyConnection(): Promise<boolean> {
+    const transporter = this.getTransporter();
+    await transporter.verify();
+    return true;
+  }
+
   async send(payload: EmailPayload): Promise<boolean> {
     const transporter = this.getTransporter();
     await transporter.sendMail({
@@ -113,6 +121,75 @@ export class SmtpMailProvider implements MailProvider {
       text: payload.text,
       html: payload.html,
     });
+    return true;
+  }
+}
+
+export class ResendMailProvider implements MailProvider {
+  async send(payload: EmailPayload): Promise<boolean> {
+    if (!env.RESEND_API_KEY) {
+      throw new Error('[MailService] RESEND_API_KEY is required when MAIL_PROVIDER="resend".');
+    }
+
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${env.RESEND_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: env.MAIL_FROM || 'ProctorIQ Security <onboarding@resend.dev>',
+        to: [payload.to],
+        subject: payload.subject,
+        html: payload.html,
+        text: payload.text,
+      }),
+    });
+
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(`Resend API error (${res.status}): ${errText}`);
+    }
+
+    return true;
+  }
+}
+
+export class BrevoMailProvider implements MailProvider {
+  async send(payload: EmailPayload): Promise<boolean> {
+    if (!env.BREVO_API_KEY) {
+      throw new Error('[MailService] BREVO_API_KEY is required when MAIL_PROVIDER="brevo".');
+    }
+
+    let senderEmail = env.MAIL_FROM;
+    let senderName = 'ProctorIQ Security';
+    const emailMatch = env.MAIL_FROM.match(/<([^>]+)>/);
+    if (emailMatch) {
+      senderEmail = emailMatch[1];
+      const nameMatch = env.MAIL_FROM.split('<')[0].trim().replace(/^["']|["']$/g, '');
+      if (nameMatch) senderName = nameMatch;
+    }
+
+    const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        'api-key': env.BREVO_API_KEY,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        sender: { name: senderName, email: senderEmail },
+        to: [{ email: payload.to, name: payload.name || payload.to }],
+        subject: payload.subject,
+        htmlContent: payload.html,
+        textContent: payload.text,
+      }),
+    });
+
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(`Brevo API error (${res.status}): ${errText}`);
+    }
+
     return true;
   }
 }
@@ -420,13 +497,48 @@ export function renderPasswordChangedEmail(name?: string): {
 }
 
 // ----------------------------------------------------------------------------
-// 3. MailService
+// 3. MailService & Health Status
 // ----------------------------------------------------------------------------
+
+export interface MailHealthStatus {
+  status: 'ok' | 'error';
+  provider: string;
+  reason?: string;
+  checkedAt: string;
+}
+
+let currentMailStatus: MailHealthStatus = {
+  status: 'ok',
+  provider: env.MAIL_PROVIDER,
+  checkedAt: new Date().toISOString(),
+};
+
+export function getMailHealth(): MailHealthStatus {
+  return { ...currentMailStatus, provider: env.MAIL_PROVIDER };
+}
+
+export function setMailHealth(status: 'ok' | 'error', reason?: string): void {
+  currentMailStatus = {
+    status,
+    provider: env.MAIL_PROVIDER,
+    reason: status === 'ok' ? undefined : reason,
+    checkedAt: new Date().toISOString(),
+  };
+}
+
+function maskEmailForLogs(email: string): string {
+  const parts = email.split('@');
+  if (parts.length !== 2) return '***';
+  const name = parts[0];
+  const domain = parts[1];
+  const maskedName = name.length <= 2 ? '*'.repeat(name.length) : `${name[0]}***${name[name.length - 1]}`;
+  return `${maskedName}@${domain}`;
+}
 
 export class MailService {
   private provider: MailProvider;
 
-  constructor(providerType: 'smtp' | 'console' | 'mock' = env.MAIL_PROVIDER) {
+  constructor(providerType: 'smtp' | 'console' | 'mock' | 'resend' | 'brevo' = env.MAIL_PROVIDER) {
     if (providerType === 'mock') {
       this.provider = new MockMailProvider();
     } else if (providerType === 'console') {
@@ -437,6 +549,12 @@ export class MailService {
     } else if (providerType === 'smtp') {
       validateMailConfig(env);
       this.provider = new SmtpMailProvider();
+    } else if (providerType === 'resend') {
+      validateMailConfig(env);
+      this.provider = new ResendMailProvider();
+    } else if (providerType === 'brevo') {
+      validateMailConfig(env);
+      this.provider = new BrevoMailProvider();
     } else {
       this.provider = new ConsoleMailProvider();
     }
@@ -451,8 +569,36 @@ export class MailService {
   }
 
   /**
+   * Runs startup self-check. For SMTP, tests transport.verify().
+   */
+  async verifyOnStartup(): Promise<void> {
+    if (env.MAIL_PROVIDER === 'smtp') {
+      try {
+        if (this.provider instanceof SmtpMailProvider) {
+          await this.provider.verifyConnection();
+          console.log(`\x1b[32m[ProctorIQ Mail] Mail: connected\x1b[0m (${env.SMTP_HOST}:${env.SMTP_PORT ?? 587})`);
+          setMailHealth('ok');
+        }
+      } catch (err: unknown) {
+        const error = err as { code?: string; message?: string };
+        const reason = error.code ? `[${error.code}] ${error.message}` : String(error.message || err);
+        console.error(`\x1b[31m[ProctorIQ Mail] Mail: connection failed\x1b[0m - ${reason}`);
+        setMailHealth('error', reason);
+      }
+    } else if (env.MAIL_PROVIDER === 'console') {
+      console.log(`[ProctorIQ Mail] Mail: console mode active (OTPs printed to API terminal)`);
+      setMailHealth('ok');
+    } else if (env.MAIL_PROVIDER === 'resend' || env.MAIL_PROVIDER === 'brevo') {
+      console.log(`[ProctorIQ Mail] Mail: HTTPS provider active (${env.MAIL_PROVIDER})`);
+      setMailHealth('ok');
+    } else {
+      setMailHealth('ok');
+    }
+  }
+
+  /**
    * Dispatches email in the background with a 10-second timeout guarantee.
-   * Failures are logged without revealing the code and never thrown.
+   * Failures are safely logged without revealing the code and never thrown.
    */
   async sendMail(payload: EmailPayload): Promise<boolean> {
     try {
@@ -465,15 +611,69 @@ export class MailService {
       });
 
       try {
-        return await Promise.race([this.provider.send(payload), timeoutPromise]);
+        await Promise.race([this.provider.send(payload), timeoutPromise]);
+        setMailHealth('ok');
+        return true;
       } finally {
         clearTimeout(timeoutTimer!);
       }
     } catch (err) {
       // Ensure the OTP code is NEVER logged in error outputs
       const message = err instanceof Error ? err.message : String(err);
-      console.error('[MailService] Failed to send email to recipient:', message);
+      const maskedEmail = maskEmailForLogs(payload.to);
+      console.error(`[MailService] Failed to send email to ${maskedEmail}: ${message}`);
+      setMailHealth('error', message);
       return false;
+    }
+  }
+
+  /**
+   * Dispatches an administrative diagnostic test email.
+   */
+  async sendTestEmail(to: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const subject = 'ProctorIQ: Diagnostic Test Email';
+      const text = [
+        'Hello Administrator,',
+        '',
+        'This is a diagnostic test email dispatched from the ProctorIQ Administrator Console to confirm live email delivery.',
+        '',
+        `Provider: ${env.MAIL_PROVIDER}`,
+        `Timestamp: ${new Date().toISOString()}`,
+        '',
+        '— The ProctorIQ Team',
+      ].join('\n');
+
+      const html = `<!DOCTYPE html>
+<html>
+<body style="font-family: -apple-system, sans-serif; background: #0C0D14; color: #FFFFFF; padding: 24px;">
+  <div style="max-width: 500px; margin: 0 auto; background: #161822; border-radius: 12px; padding: 24px; border: 1px solid rgba(255,255,255,0.1);">
+    <h2 style="color: #818CF8; margin-top: 0;">ProctorIQ Email Verification Test</h2>
+    <p style="color: #94A3B8; font-size: 14px;">This is a diagnostic test email dispatched from the ProctorIQ Administrator Console.</p>
+    <div style="background: rgba(255,255,255,0.05); padding: 12px 16px; border-radius: 8px; margin: 16px 0; font-family: monospace; font-size: 12px;">
+      <div><strong>Provider:</strong> ${env.MAIL_PROVIDER}</div>
+      <div><strong>Timestamp:</strong> ${new Date().toISOString()}</div>
+      <div><strong>Status:</strong> Delivered</div>
+    </div>
+    <p style="color: #64748B; font-size: 12px; margin-bottom: 0;">If you received this message, outbound mail delivery is functional.</p>
+  </div>
+</body>
+</html>`;
+
+      const success = await this.sendMail({
+        to,
+        subject,
+        text,
+        html,
+      });
+
+      if (!success) {
+        return { success: false, error: currentMailStatus.reason || 'Failed to dispatch test email.' };
+      }
+      return { success: true };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return { success: false, error: msg };
     }
   }
 

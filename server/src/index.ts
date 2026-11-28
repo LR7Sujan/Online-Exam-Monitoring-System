@@ -4,6 +4,7 @@ import path from 'node:path';
 import { createApp } from './app.js';
 import { waitForDatabase, pool } from './config/db.js';
 import { env, validateMailConfig } from './config/env.js';
+import { mailService } from './services/mailService.js';
 
 export const app = createApp();
 export const httpServer = createServer(app);
@@ -18,6 +19,7 @@ export async function bootstrap(): Promise<void> {
 
   // Validate mail environment settings on startup
   validateMailConfig(env);
+  await mailService.verifyOnStartup();
 
   // Wait for database with exponential backoff up to 60s
   const health = await waitForDatabase({ maxWaitMs: 60000, initialDelayMs: 500 });

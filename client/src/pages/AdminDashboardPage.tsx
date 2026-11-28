@@ -6,9 +6,11 @@ import {
   BarChart3,
   Database,
   GraduationCap,
+  Mail,
   Plus,
   RefreshCw,
   Scale,
+  Send,
   Shield,
   Trash2,
   Users,
@@ -83,6 +85,35 @@ export function AdminDashboardPage({
     queryKey: ['admin-exam-detail', selectedExamId],
     queryFn: () => api.get<ExamDetailResponse>(`/exams/${selectedExamId}`),
     enabled: selectedExamId !== null,
+  });
+
+  const [testMailRecipient, setTestMailRecipient] = useState('');
+  const mailHealthQuery = useQuery({
+    queryKey: ['system-mail-health'],
+    queryFn: () =>
+      api.get<{
+        mail?: 'ok' | 'error';
+        mailProvider?: string;
+        mailReason?: string;
+      }>('/health'),
+    enabled: activeTab === 'db',
+    refetchInterval: 15000,
+  });
+
+  const sendTestMailMutation = useMutation({
+    mutationFn: (to: string) => api.post<{ message: string; provider: string }>('/admin/mail/test', { to }),
+    onSuccess: (data) => {
+      toast.success(data.message || 'Test email dispatched successfully!');
+      queryClient.invalidateQueries({ queryKey: ['system-mail-health'] });
+    },
+    onError: (err: unknown) => {
+      const errorMsg =
+        (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error?.message ||
+        (err as Error).message ||
+        'Failed to send test email';
+      toast.error(errorMsg);
+      queryClient.invalidateQueries({ queryKey: ['system-mail-health'] });
+    },
   });
 
   const dbTelemetryQuery = useQuery({
@@ -574,6 +605,83 @@ export function AdminDashboardPage({
                   </p>
                   <span className="text-[10px] text-muted-foreground">Flagged sessions exempt from prune</span>
                 </div>
+              </div>
+            </div>
+
+            {/* Email Service & Delivery Diagnostics Card */}
+            <div className="rounded-2xl border border-border bg-surface p-5 shadow-sm space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border pb-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 rounded-xl bg-brand/10 text-brand">
+                    <Mail className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+                      <span>Email Service & Delivery Diagnostics</span>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-muted/60 text-muted-foreground uppercase border border-border">
+                        Provider: {mailHealthQuery.data?.mailProvider ?? 'console'}
+                      </span>
+                    </h3>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">
+                      Monitors outbound OTP verification codes and password recovery emails
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <div
+                    className={`px-2.5 py-1 rounded-xl text-xs font-mono font-medium flex items-center gap-1.5 border ${
+                      mailHealthQuery.data?.mail === 'ok'
+                        ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
+                        : 'border-rose-500/30 bg-rose-500/10 text-rose-400'
+                    }`}
+                  >
+                    <span
+                      className={`w-2 h-2 rounded-full ${
+                        mailHealthQuery.data?.mail === 'ok' ? 'bg-emerald-400' : 'bg-rose-400 animate-pulse'
+                      }`}
+                    />
+                    <span>{mailHealthQuery.data?.mail === 'ok' ? 'Mail Delivery OK' : 'Mail Degraded'}</span>
+                  </div>
+                </div>
+              </div>
+
+              {mailHealthQuery.data?.mailReason && (
+                <div className="p-3 rounded-xl border border-rose-500/40 bg-rose-500/10 text-rose-300 text-xs flex items-start gap-2">
+                  <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-rose-400" />
+                  <div className="space-y-0.5">
+                    <p className="font-bold">Outbound Delivery Alert</p>
+                    <p className="text-[11px] text-rose-200/90 font-mono break-all">{mailHealthQuery.data.mailReason}</p>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-1">
+                <div className="flex-1">
+                  <input
+                    type="email"
+                    value={testMailRecipient}
+                    onChange={(e) => setTestMailRecipient(e.target.value)}
+                    placeholder="Enter recipient email (e.g. admin@proctoriq.io)"
+                    className="w-full rounded-xl border border-border bg-background px-3.5 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring font-mono"
+                  />
+                </div>
+                <NeonButton
+                  variant="outline"
+                  size="sm"
+                  leftIcon={<Send className={`w-3.5 h-3.5 ${sendTestMailMutation.isPending ? 'animate-spin' : ''}`} />}
+                  onClick={() => {
+                    if (!testMailRecipient.includes('@')) {
+                      toast.error('Please enter a valid email address.');
+                      return;
+                    }
+                    sendTestMailMutation.mutate(testMailRecipient.trim());
+                  }}
+                  isLoading={sendTestMailMutation.isPending}
+                  disabled={!testMailRecipient.trim()}
+                >
+                  Send Test Email
+                </NeonButton>
               </div>
             </div>
 

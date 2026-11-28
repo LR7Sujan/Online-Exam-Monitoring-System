@@ -11,6 +11,7 @@ import { queryRows, getDbHealth } from './config/db.js';
 import { verifySignedSnapshotUrl } from './services/snapshotSigner.js';
 import { env } from './config/env.js';
 import { openApiSpec } from './docs/openapi.js';
+import { getMailHealth } from './services/mailService.js';
 import { corsMiddleware } from './middleware/cors.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 import { requireAuth, requireRole } from './middleware/auth.js';
@@ -195,9 +196,13 @@ export function createApp() {
 
   app.get('/api/health', async (_req, res) => {
     const dbHealth = await getDbHealth();
+    const mailHealth = getMailHealth();
     const payload = {
       api: 'up' as const,
       db: dbHealth.connected ? ('up' as const) : ('down' as const),
+      mail: mailHealth.status,
+      mailProvider: mailHealth.provider,
+      ...(mailHealth.reason ? { mailReason: mailHealth.reason } : {}),
       pingMs: dbHealth.pingMs ?? 0,
       time: new Date().toISOString(),
       region: process.env.VERCEL_REGION || process.env.AWS_REGION || 'local',
@@ -208,7 +213,7 @@ export function createApp() {
       triggersCount: dbHealth.triggersCount ?? 0,
       proceduresCount: dbHealth.proceduresCount ?? 0,
       service: 'proctoriq-api',
-      status: dbHealth.connected ? 'ok' : 'degraded',
+      status: dbHealth.connected && mailHealth.status === 'ok' ? 'ok' : 'degraded',
       timestamp: new Date().toISOString(),
     };
 

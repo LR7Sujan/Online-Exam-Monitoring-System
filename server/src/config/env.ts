@@ -21,20 +21,25 @@ const candidateEnvPaths = isTestEnv
   ? [
       process.env.ENV_FILE,
       process.env.DOTENV_CONFIG_PATH,
+      path.resolve(process.cwd(), '.env.test'),
       path.resolve(__dirname, '../../.env.test'),
       path.resolve(__dirname, '../../../.env.test'),
     ].filter(Boolean) as string[]
   : [
       process.env.ENV_FILE,
       process.env.DOTENV_CONFIG_PATH,
+      path.resolve(process.cwd(), '.env'),
       path.resolve(__dirname, '../../.env'),
       path.resolve(__dirname, '../../../.env'),
     ].filter(Boolean) as string[];
 
 for (const envPath of candidateEnvPaths) {
   if (existsSync(envPath)) {
-    process.loadEnvFile(envPath);
-    break;
+    try {
+      process.loadEnvFile(envPath);
+    } catch {
+      // Ignore if already loaded or unreadable
+    }
   }
 }
 
@@ -99,7 +104,9 @@ const envSchema = z.object({
     .string()
     .min(16, 'OTP_PEPPER must be at least 16 characters')
     .default('dev-proctoriq-otp-pepper-default-secret-min32chars'),
-  MAIL_PROVIDER: z.enum(['smtp', 'console', 'mock']).default(isTestEnv ? 'mock' : 'console'),
+  MAIL_PROVIDER: z.enum(['smtp', 'console', 'mock', 'resend', 'brevo']).default(isTestEnv ? 'mock' : 'console'),
+  RESEND_API_KEY: z.string().optional(),
+  BREVO_API_KEY: z.string().optional(),
   MAIL_FROM: z.string().default(process.env.SMTP_FROM || 'ProctorIQ Security <no-reply@proctoriq.io>'),
   APP_BASE_URL: z.string().default(isTestEnv ? 'http://localhost:5174' : 'http://localhost:5173'),
   SMTP_HOST: z.string().optional(),
@@ -220,6 +227,18 @@ export function validateMailConfig(targetEnv: Partial<typeof env> = env): void {
         `[MailService] Missing required SMTP configuration variables: ${missing.join(', ')}. Please define these in your environment or .env file.`
       );
     }
+  }
+
+  if (provider === 'resend' && !targetEnv.RESEND_API_KEY) {
+    throw new Error(
+      '[MailService] Missing required configuration: RESEND_API_KEY is required when MAIL_PROVIDER="resend".'
+    );
+  }
+
+  if (provider === 'brevo' && !targetEnv.BREVO_API_KEY) {
+    throw new Error(
+      '[MailService] Missing required configuration: BREVO_API_KEY is required when MAIL_PROVIDER="brevo".'
+    );
   }
 }
 

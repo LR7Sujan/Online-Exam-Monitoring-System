@@ -290,5 +290,70 @@ describe('MailService: Providers, Validation, Templates, and Resilience', () => 
       // Verify failure was logged without exposing the code
       expect(sendMailSpy).toHaveBeenCalled();
     });
+
+    it('surfaces mail error status in /api/health when transport fails', async () => {
+      vi.spyOn(mailService, 'sendMail').mockImplementationOnce(async () => {
+        const { setMailHealth } = await import('../src/services/mailService.js');
+        setMailHealth('error', 'ETIMEDOUT connecting to smtp.example.com:587');
+        return false;
+      });
+
+      await fetch(`${baseUrl}/auth/forgot-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: 'admin@proctoriq.io' }),
+      });
+
+      const healthRes = await fetch(`${baseUrl}/health`);
+      expect(healthRes.status).toBe(200);
+      const healthData = await healthRes.json();
+      expect(healthData.data.mail).toBe('error');
+      expect(healthData.data.mailReason).toMatch(/ETIMEDOUT/);
+
+      // Restore health
+      const { setMailHealth } = await import('../src/services/mailService.js');
+      setMailHealth('ok');
+    });
+
+    it('POST /api/admin/mail/test is protected and admin-only', async () => {
+      // 1. Unauthenticated fails
+      const unauthRes = await fetch(`${baseUrl}/admin/mail/test`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ to: 'recipient@test.com' }),
+      });
+      expect(unauthRes.status).toBe(401);
+
+      // 2. Student fails
+      const studentLoginRes = await fetch(`${baseUrl}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: 'student@proctoriq.io', password: 'ProctorIQ#2026' }),
+      });
+      const studentToken = (await studentLoginRes.json()).data.token;
+      const studentRes = await fetch(`${baseUrl}/admin/mail/test`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${studentToken}` },
+        body: JSON.stringify({ to: 'recipient@test.com' }),
+      });
+      expect(studentRes.status).toBe(403);
+
+      // 3. Admin succeeds
+      const adminLoginRes = await fetch(`${baseUrl}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: 'admin@proctoriq.io', password: 'ProctorIQ#2026' }),
+      });
+      const adminToken = (await adminLoginRes.json()).data.token;
+      const adminRes = await fetch(`${baseUrl}/admin/mail/test`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${adminToken}` },
+        body: JSON.stringify({ to: 'diagnostic@test.com' }),
+      });
+      expect(adminRes.status).toBe(200);
+      const adminData = await adminRes.json();
+      expect(adminData.success).toBe(true);
+      expect(adminData.data.message).toMatch(/Test email successfully dispatched/);
+    });
   });
 });
