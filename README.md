@@ -92,6 +92,7 @@ Online-Exam-Monitoring-System/
 ├── api/
 │   └── index.ts              # Vercel serverless adapter
 ├── client/                   # React + Vite frontend
+│   ├── vercel.json           # Client Vercel SPA configuration
 │   └── src/
 │       └── pages/
 │           └── LoginPage.tsx
@@ -105,7 +106,6 @@ Online-Exam-Monitoring-System/
 │   └── migrations/           # Incremental migrations
 │
 ├── .env.example
-├── vercel.json
 ├── package.json
 └── README.md
 ```
@@ -425,30 +425,116 @@ npm run test:e2e
 
 ---
 
-## 🚢 Production Build & Deployment
+## 🚢 Production Deployment
 
-### Compiling for Production
+ProctorIQ is designed for decoupled cloud deployment: the **Node.js API + MySQL database** run on **Railway** (or Render/AWS), and the **React Vite frontend** deploys to **Vercel** with global edge CDN distribution.
 
-```bash
-# Builds server to /server/dist and client to /client/dist
-npm run build
+---
+
+### 1. Backend & MySQL on Railway
+
+#### A. Provision Database & API Services
+1. Go to [Railway](https://railway.app/) and create a **New Project**.
+2. Click **+ New > Database > Add MySQL**. Railway provisions MySQL 8.0+ and generates connection variables.
+3. In Railway MySQL > **Variables**, ensure binary logging grants procedure creation:
+   - If required by your user permissions, run: `SET GLOBAL log_bin_trust_function_creators = 1;`
+4. Click **+ New > GitHub Repo** and select your `Online-Exam-Monitoring-System` repository.
+5. In the Service settings:
+   - **Root Directory**: `/`
+   - **Build Command**: `npm --prefix server install && npm --prefix server run build`
+   - **Start Command**: `npm --prefix server start`
+   - **Healthcheck Path**: `/api/health`
+
+#### B. Configure Railway Environment Variables
+Add the following variables in the Railway service **Variables** tab (placeholders only; never commit real credentials):
+
+```env
+# Server Runtime
+PORT=4000
+NODE_ENV=production
+CLIENT_ORIGIN=https://your-proctoriq-client.vercel.app
+
+# MySQL Database (reference Railway MySQL variables directly)
+DB_HOST=${{MySQL.MYSQLHOST}}
+DB_PORT=${{MySQL.MYSQLPORT}}
+DB_USER=${{MySQL.MYSQLUSER}}
+DB_PASSWORD=${{MySQL.MYSQLPASSWORD}}
+DB_NAME=${{MySQL.MYSQLDATABASE}}
+DB_CONNECTION_LIMIT=10
+DB_SSL=false
+
+# Security & Authentication
+JWT_SECRET=replace_with_a_64_character_cryptographically_secure_random_string
+JWT_EXPIRES_IN=8h
+BCRYPT_ROUNDS=10
+OTP_PEPPER=replace_with_a_32_character_cryptographically_secure_random_pepper
+CRON_SECRET=replace_with_a_secure_token_for_cron_housekeeping
+
+# Email Service (SMTP / Gmail App Password / Brevo)
+MAIL_PROVIDER=smtp
+MAIL_FROM="ProctorIQ Security <no-reply@yourdomain.com>"
+APP_BASE_URL=https://your-proctoriq-client.vercel.app
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your_email@gmail.com
+SMTP_PASS=your_16_character_app_password
+SMTP_SECURE=false
+
+# Realtime & Storage
+REALTIME_PROVIDER=polling
+STORAGE_PROVIDER=local
+UPLOADS_DIR=./server/uploads
+RECORDING_RETENTION_DAYS=30
+RECORDING_MAX_STORAGE_GB=5
 ```
 
-### Running the Production Server
+#### C. Run Remote Database Migrations & Seeds
+From your local terminal, point `.env` temporarily to the Railway MySQL connection parameters (or use `DATABASE_URL`) and execute:
 
 ```bash
-npm --prefix server start
+# Apply schema, triggers, procedures, views, and incremental migrations
+npm run db:migrate
+
+# Seed penalty types, demo accounts, and sample exams
+npm run db:seed
 ```
 
-The compiled Express production server serves the backend API and can serve the compiled client static assets directly from `client/dist`.
+---
 
-### Serverless Deployment (Vercel)
+### 2. Frontend on Vercel
 
-The project includes root `vercel.json` and `api/index.ts` adapters. When deploying to Vercel:
+The frontend is an SPA optimized for deployment as its own Vercel project rooted in `client`.
 
-- Backend Express routes are mapped serverlessly via `@vercel/node`.
-- Static frontend assets from `client/dist` are deployed to the Edge CDN.
-- Configure all required variables from `.env.example` in your Vercel Project Settings.
+#### A. Configure Vercel Project Settings
+1. Go to [Vercel](https://vercel.com/) and click **Add New... > Project**.
+2. Select your repository and configure the **Project Settings**:
+   - **Root Directory**: Click **Edit** and select **`client`** *(Mandatory)*.
+   - **Framework Preset**: **Vite**
+   - **Build Command**: `npm run build` (or leave default `tsc -b && vite build`)
+   - **Output Directory**: `dist` (default)
+   - **Install Command**: `npm install` (default)
+
+#### B. Configure Vercel Environment Variables
+Add the following public client variables in your Vercel Project Settings:
+
+```env
+# Backend API Base URL (point to your deployed Railway API service)
+VITE_API_URL=https://your-railway-api.up.railway.app/api
+
+# Realtime mode (use 'polling' for zero external dependencies)
+VITE_REALTIME_PROVIDER=polling
+
+# Optional Pusher parameters (only needed if VITE_REALTIME_PROVIDER=pusher)
+# VITE_PUSHER_KEY=your_public_pusher_key
+# VITE_PUSHER_CLUSTER=mt1
+```
+
+#### C. SPA Routing & Security Headers
+The repository provides [`client/vercel.json`](file:///d:/schema.sql/client/vercel.json), which automatically configures:
+- SPA client-side route rewrites (`/(.*) -> /index.html`) so paths like `/verify-otp`, `/admin`, and `/forgot-password` reload cleanly.
+- Strict security headers including `Permissions-Policy: camera=(self), microphone=(self), display-capture=(self)` ensuring webcam and microphone proctoring operates without browser permission blocks.
+
+Click **Deploy**. Your frontend is live with full CI/CD previews on every push.
 
 ---
 

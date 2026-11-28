@@ -32,8 +32,8 @@ export async function bootstrap(): Promise<void> {
   }
 
   return new Promise<void>((resolve, reject) => {
-    httpServer.listen(env.PORT, () => {
-      console.log(`[ProctorIQ] API server listening on http://localhost:${env.PORT}`);
+    httpServer.listen(env.PORT, '0.0.0.0', () => {
+      console.log(`[ProctorIQ] API server listening on http://0.0.0.0:${env.PORT}`);
       console.log(`[ProctorIQ] Swagger docs available at http://localhost:${env.PORT}/api/docs`);
       resolve();
     });

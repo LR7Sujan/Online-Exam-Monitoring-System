@@ -12,7 +12,7 @@ declare global {
   var __proctoriq_pool: Pool | undefined;
 }
 
-function resolveSslConfig(): SslOptions | undefined {
+export function resolveSslConfig(): SslOptions | undefined {
   if (!env.DB_SSL) {
     return undefined;
   }

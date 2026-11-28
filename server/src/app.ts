@@ -48,7 +48,7 @@ export const serverUploadsDir = env.UPLOADS_DIR
 export function createApp() {
   const app = express();
 
-  // Trust first proxy hop (Vercel Edge, Cloudflare, ALB) for accurate client IP detection via X-Forwarded-For
+  // Trust reverse proxy (Railway, Render, Vercel Edge, AWS ALB) for accurate client IP detection via X-Forwarded-For
   app.set('trust proxy', 1);
 
   app.use(compression());
@@ -228,6 +228,11 @@ export function createApp() {
     }
 
     sendSuccess(res, payload);
+  });
+
+  // Health check alias for cloud platforms (Railway, Render, AWS ALB)
+  app.get('/health', (_req, res) => {
+    res.redirect(307, '/api/health');
   });
 
   // Auto-generated OpenAPI JSON & Swagger UI at /api/docs

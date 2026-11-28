@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import type { Connection, RowDataPacket } from 'mysql2/promise';
 import mysql from 'mysql2/promise';
 import { env } from '../config/env.js';
+import { resolveSslConfig } from '../config/db.js';
 import { getStorageAdapter } from '../storage/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -53,12 +54,7 @@ export function parseSqlScript(sqlText: string): string[] {
  * Creates a raw MySQL connection for migrations.
  */
 async function createMigrationConnection(): Promise<Connection> {
-  const ssl = env.DB_SSL
-    ? {
-        rejectUnauthorized: true,
-        ...(env.DB_SSL_CA ? { ca: readFileSync(env.DB_SSL_CA, 'utf8') } : {}),
-      }
-    : undefined;
+  const ssl = resolveSslConfig();
 
   return mysql.createConnection({
     host: env.DB_HOST,
