@@ -259,6 +259,7 @@ ProctorIQ supports three email delivery modes configured via `MAIL_PROVIDER`:
 1. **Console Mode (`MAIL_PROVIDER=console`)** *(Default in Development)*:
    - Does not send real emails or require external credentials.
    - Prints the 6-digit verification code directly to the API server terminal:
+
      ```text
      ============================================================
      [DEV ONLY - OTP: 482917]
@@ -268,6 +269,7 @@ ProctorIQ supports three email delivery modes configured via `MAIL_PROVIDER`:
      Expires: 10 minutes
      ============================================================
      ```
+
    - *Security Guard*: Automatically forbidden if `NODE_ENV=production`.
 
 2. **SMTP Mode (`MAIL_PROVIDER=smtp`)** *(Production & Live Email)*:
@@ -280,6 +282,7 @@ ProctorIQ supports three email delivery modes configured via `MAIL_PROVIDER`:
      4. Create a new app password named `ProctorIQ`.
      5. Copy the 16-character passcode and paste it into `.env` as `SMTP_PASS`.
      6. Configure `.env`:
+
         ```env
         MAIL_PROVIDER=smtp
         MAIL_FROM="ProctorIQ Security <your_email@gmail.com>"
@@ -323,7 +326,6 @@ ProctorIQ supports three email delivery modes configured via `MAIL_PROVIDER`:
 | **Port / Secure Mismatch** | `SMTP_SECURE` configuration error | If using port `465`, set `SMTP_SECURE=true`. If using port `587` (STARTTLS), set `SMTP_SECURE=false`. |
 | **Rate Limit / 429 Too Many Requests** | Exceeded 3 emails/hr or 60s cooldown | Wait 60 seconds between resends, or wait 1 hour if the 3/hour account limit or 10/hour IP limit was reached. |
 | **Email in Spam Folder** | Low domain reputation / generic sender | Add your domain SPF and DKIM records, or ensure `MAIL_FROM` matches the authenticated SMTP user address. |
-
 
 ---
 
@@ -453,6 +455,7 @@ ProctorIQ is designed for decoupled cloud deployment: the **Node.js API + MySQL 
 ### 1. Backend & MySQL on Railway
 
 #### A. Provision Database & API Services
+
 1. Go to [Railway](https://railway.app/) and create a **New Project**.
 2. Click **+ New > Database > Add MySQL**. Railway provisions MySQL 8.0+ and generates connection variables.
 3. In Railway MySQL > **Variables**, ensure binary logging grants procedure creation:
@@ -465,6 +468,7 @@ ProctorIQ is designed for decoupled cloud deployment: the **Node.js API + MySQL 
    - **Healthcheck Path**: `/api/health`
 
 #### B. Configure Railway Environment Variables
+
 Add the following variables in the Railway service **Variables** tab (placeholders only; never commit real credentials):
 
 ```env
@@ -508,6 +512,7 @@ RECORDING_MAX_STORAGE_GB=5
 ```
 
 #### C. Run Remote Database Migrations & Seeds
+
 From your local terminal, point `.env` temporarily to the Railway MySQL connection parameters (or use `DATABASE_URL`) and execute:
 
 ```bash
@@ -525,6 +530,7 @@ npm run db:seed
 The frontend is an SPA optimized for deployment as its own Vercel project rooted in `client`.
 
 #### A. Configure Vercel Project Settings
+
 1. Go to [Vercel](https://vercel.com/) and click **Add New... > Project**.
 2. Select your repository and configure the **Project Settings**:
    - **Root Directory**: Click **Edit** and select **`client`** *(Mandatory)*.
@@ -534,6 +540,7 @@ The frontend is an SPA optimized for deployment as its own Vercel project rooted
    - **Install Command**: `npm install` (default)
 
 #### B. Configure Vercel Environment Variables
+
 Add the following public client variables in your Vercel Project Settings:
 
 ```env
@@ -549,7 +556,9 @@ VITE_REALTIME_PROVIDER=polling
 ```
 
 #### C. SPA Routing & Security Headers
+
 The repository provides [`client/vercel.json`](file:///d:/schema.sql/client/vercel.json), which automatically configures:
+
 - SPA client-side route rewrites (`/(.*) -> /index.html`) so paths like `/verify-otp`, `/admin`, and `/forgot-password` reload cleanly.
 - Strict security headers including `Permissions-Policy: camera=(self), microphone=(self), display-capture=(self)` ensuring webcam and microphone proctoring operates without browser permission blocks.
 
