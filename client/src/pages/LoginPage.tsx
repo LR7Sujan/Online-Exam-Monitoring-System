@@ -16,7 +16,7 @@ import {
   CheckCircle,
   RefreshCw,
 } from 'lucide-react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { AuthLayout } from '../components/layout/AuthLayout';
 import { FloatingInput } from '../components/ui/FloatingInput';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
@@ -487,7 +487,7 @@ export function LoginPage({ initialTab }: { initialTab?: AuthTab }) {
                 )}
               </div>
 
-              {/* Remember me & Active session */}
+              {/* Remember me & Forgot password link */}
               <div className="flex items-center justify-between text-xs pt-0.5">
                 <label className="flex items-center gap-1.5 cursor-pointer select-none text-muted-foreground hover:text-foreground">
                   <input
@@ -499,9 +499,12 @@ export function LoginPage({ initialTab }: { initialTab?: AuthTab }) {
                   <span className="text-[11px]">Remember me</span>
                 </label>
 
-                <span className="text-muted-foreground font-mono text-[10px]">
-                  Active Session
-                </span>
+                <Link
+                  to="/forgot-password"
+                  className="text-[11px] font-medium text-brand hover:underline focus:outline-none focus:ring-2 focus:ring-brand/40 focus:ring-offset-1 rounded transition-colors"
+                >
+                  Forgot password?
+                </Link>
               </div>
 
               {/* Submit Button */}

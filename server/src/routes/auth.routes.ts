@@ -15,6 +15,11 @@ import {
   resetPassword,
   verifyOtpCode,
 } from '../services/otpService.js';
+import {
+  getLastSentOtpCode,
+  getSentTestEmails,
+  clearSentTestEmails,
+} from '../services/mailService.js';
 
 export const authRouter = Router();
 
@@ -285,4 +290,21 @@ authRouter.post('/reset-password', validate({ body: resetPasswordSchema }), asyn
     next(err);
   }
 });
+
+// Test-only endpoints to retrieve mock OTP codes and reset state in automated tests
+if (env.NODE_ENV === 'test') {
+  authRouter.get('/test/last-otp', (req, res) => {
+    const email = (req.query.email as string) || '';
+    const code = getLastSentOtpCode(email);
+    res.json({ success: true, code, emails: getSentTestEmails() });
+  });
+
+  authRouter.post('/test/reset-otp-state', async (_req, res) => {
+    await executeSql('DELETE FROM Password_Reset_Tokens');
+    await executeSql('DELETE FROM Password_Reset_Otps');
+    await executeSql('DELETE FROM Rate_Limits');
+    clearSentTestEmails();
+    res.json({ success: true });
+  });
+}
 

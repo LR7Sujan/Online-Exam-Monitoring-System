@@ -14,6 +14,9 @@ import type { UserRole } from './types/domain';
 // Lazy-loaded routes for code splitting
 const LoginPage = lazy(() => import('./pages/LoginPage').then((m) => ({ default: m.LoginPage })));
 const LandingPage = lazy(() => import('./pages/LandingPage').then((m) => ({ default: m.LandingPage })));
+const ForgotPasswordPage = lazy(() => import('./pages/auth/ForgotPasswordPage').then((m) => ({ default: m.ForgotPasswordPage })));
+const VerifyOtpPage = lazy(() => import('./pages/auth/VerifyOtpPage').then((m) => ({ default: m.VerifyOtpPage })));
+const ResetPasswordPage = lazy(() => import('./pages/auth/ResetPasswordPage').then((m) => ({ default: m.ResetPasswordPage })));
 
 // Lazy-loaded Styleguide documentation routes
 const StyleguideLayout = lazy(() => import('./pages/styleguide/StyleguideLayout').then((m) => ({ default: m.StyleguideLayout })));
@@ -98,6 +101,9 @@ export function App() {
                   <Route path="/" element={<LoginPage />} />
                   <Route path="/login" element={<Navigate to="/?tab=signin" replace />} />
                   <Route path="/register" element={<Navigate to="/?tab=register" replace />} />
+                  <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                  <Route path="/verify-otp" element={<VerifyOtpPage />} />
+                  <Route path="/reset-password" element={<ResetPasswordPage />} />
 
                   {/* Exam session room standalone for fullscreen distraction-free kiosk */}
                   <Route
