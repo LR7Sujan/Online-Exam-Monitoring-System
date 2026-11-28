@@ -22,6 +22,7 @@ export default defineConfig({
       'tests/storageAdapter.test.ts',
       'tests/lazyTimeoutsAndCron.test.ts',
       'tests/dbUnavailableAndHealth.test.ts',
+      'tests/otpPasswordReset.integration.test.ts',
       '../client/tests/**/*.unit.test.ts',
     ],
     testTimeout: 45000,

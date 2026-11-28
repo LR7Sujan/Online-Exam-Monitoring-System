@@ -95,6 +95,23 @@ const envSchema = z.object({
     .default('dev-proctoriq-jwt-secret-change-in-production'),
   JWT_EXPIRES_IN: z.string().default('8h'),
   BCRYPT_ROUNDS: z.coerce.number().int().min(8).max(14).default(10),
+  OTP_PEPPER: z
+    .string()
+    .min(16, 'OTP_PEPPER must be at least 16 characters')
+    .default('dev-proctoriq-otp-pepper-default-secret-min32chars'),
+  SMTP_HOST: z.string().optional(),
+  SMTP_PORT: z.coerce.number().int().optional(),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASS: z.string().optional(),
+  SMTP_SECURE: z
+    .union([z.boolean(), z.string()])
+    .transform((val) => {
+      if (typeof val === 'boolean') return val;
+      const lower = String(val).toLowerCase().trim();
+      return lower === 'true' || lower === '1' || lower === 'yes';
+    })
+    .default(false),
+  SMTP_FROM: z.string().default('ProctorIQ Security <no-reply@proctoriq.io>'),
   // Configurable paths relative to project root
   DB_SCHEMA_PATH: z.string().default('./db/schema.sql'),
   DB_MIGRATIONS_DIR: z.string().default('./db/migrations'),

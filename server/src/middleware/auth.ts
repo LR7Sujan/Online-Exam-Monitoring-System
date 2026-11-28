@@ -1,5 +1,7 @@
 import type { NextFunction, Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
+import type { RowDataPacket } from 'mysql2/promise';
+import { queryRows } from '../config/db.js';
 import { env } from '../config/env.js';
 import type { JwtUserPayload, UserRole } from '../types/api.js';
 import { AppError } from '../utils/errors.js';
@@ -8,12 +10,17 @@ export interface AuthenticatedRequest extends Request {
   user?: JwtUserPayload;
 }
 
+interface UserAuthRow extends RowDataPacket {
+  password_changed_at_ts: number | null;
+  is_active: number;
+}
+
 export function verifyJwtToken(token: string): JwtUserPayload {
   const decoded = jwt.verify(token, env.JWT_SECRET);
   if (typeof decoded !== 'object' || decoded === null || !('sub' in decoded)) {
     throw new AppError(401, 'INVALID_TOKEN', 'Malformed authentication token.');
   }
-  const payload = decoded as unknown as JwtUserPayload;
+  const payload = decoded as unknown as JwtUserPayload & { iat?: number };
   return {
     sub: Number(payload.sub),
     email: String(payload.email),
@@ -22,7 +29,7 @@ export function verifyJwtToken(token: string): JwtUserPayload {
   };
 }
 
-export function requireAuth(req: AuthenticatedRequest, _res: Response, next: NextFunction): void {
+export async function requireAuth(req: AuthenticatedRequest, _res: Response, next: NextFunction): Promise<void> {
   let token: string | undefined;
   const authHeader = req.headers.authorization;
   if (authHeader && authHeader.startsWith('Bearer ')) {
@@ -37,9 +44,41 @@ export function requireAuth(req: AuthenticatedRequest, _res: Response, next: Nex
   }
 
   try {
-    req.user = verifyJwtToken(token);
+    const decoded = jwt.verify(token, env.JWT_SECRET);
+    if (typeof decoded !== 'object' || decoded === null || !('sub' in decoded)) {
+      throw new AppError(401, 'INVALID_TOKEN', 'Malformed authentication token.');
+    }
+    const payload = decoded as unknown as JwtUserPayload & { iat?: number };
+
+    // Query user state and password_changed_at (as epoch seconds) to reject revoked tokens
+    const userRows = await queryRows<UserAuthRow[]>(
+      'SELECT UNIX_TIMESTAMP(password_changed_at) AS password_changed_at_ts, is_active FROM Users WHERE id = ? LIMIT 1',
+      [payload.sub]
+    );
+    const user = userRows[0];
+
+    if (!user || !user.is_active) {
+      throw new AppError(401, 'UNAUTHORIZED', 'User not found or account is deactivated.');
+    }
+
+    if (user.password_changed_at_ts && payload.iat) {
+      if (payload.iat < user.password_changed_at_ts) {
+        throw new AppError(401, 'TOKEN_REVOKED', 'Session expired due to a recent password reset. Please sign in again.');
+      }
+    }
+
+    req.user = {
+      sub: Number(payload.sub),
+      email: String(payload.email),
+      fullName: String(payload.fullName),
+      role: payload.role,
+    };
     next();
-  } catch {
+  } catch (err: unknown) {
+    if (err instanceof AppError) {
+      next(err);
+      return;
+    }
     next(new AppError(401, 'INVALID_TOKEN', 'Session token is expired or invalid.'));
   }
 }
@@ -63,4 +102,3 @@ export function requireRole(...roles: UserRole[]) {
     next();
   };
 }
-

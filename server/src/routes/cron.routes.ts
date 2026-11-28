@@ -3,6 +3,7 @@ import { env } from '../config/env.js';
 import { runAutoTimeoutSweep } from '../services/timeoutService.js';
 import { cleanupExpiredRecordings } from '../services/recordingService.js';
 import { purgeOldEvents } from '../realtime/adapter.js';
+import { cleanupExpiredOtpsAndTokens } from '../services/otpService.js';
 import { sendError, sendSuccess } from '../utils/response.js';
 
 export const cronRouter = Router();
@@ -87,3 +88,22 @@ const handleEventsCleanup = async (_req: Request, res: Response, next: NextFunct
 };
 cronRouter.get('/events-cleanup', handleEventsCleanup);
 cronRouter.post('/events-cleanup', handleEventsCleanup);
+
+/**
+ * GET/POST /api/cron/otp-cleanup
+ * Housekeeping OTPs: purges expired OTPs, reset tokens, and old rate limits.
+ */
+const handleOtpCleanup = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const stats = await cleanupExpiredOtpsAndTokens();
+    sendSuccess(res, {
+      message: 'OTP and reset token cleanup completed.',
+      ...stats,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+cronRouter.get('/otp-cleanup', handleOtpCleanup);
+cronRouter.post('/otp-cleanup', handleOtpCleanup);

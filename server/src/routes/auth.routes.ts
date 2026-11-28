@@ -10,6 +10,11 @@ import { validate } from '../middleware/validate.js';
 import type { JwtUserPayload, UserRow } from '../types/api.js';
 import { AppError } from '../utils/errors.js';
 import { sendSuccess } from '../utils/response.js';
+import {
+  requestPasswordReset,
+  resetPassword,
+  verifyOtpCode,
+} from '../services/otpService.js';
 
 export const authRouter = Router();
 
@@ -42,6 +47,26 @@ const loginSchema = z.object({
 const refreshSchema = z.object({
   refreshToken: z.string().trim().min(10),
 });
+
+const forgotPasswordSchema = z.object({
+  email: z.string().trim().email('Invalid email address.').max(190).toLowerCase(),
+});
+
+const verifyOtpSchema = z.object({
+  email: z.string().trim().email('Invalid email address.').max(190).toLowerCase(),
+  code: z.string().trim().regex(/^\d{6}$/, 'Verification code must be a 6-digit number.'),
+});
+
+const resetPasswordSchema = z
+  .object({
+    resetToken: z.string().trim().min(32, 'Invalid reset token format.').max(128),
+    password: z.string().min(8, 'Password must be at least 8 characters long.').max(128),
+    confirmPassword: z.string().min(8).max(128),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: 'Passwords do not match.',
+    path: ['confirmPassword'],
+  });
 
 function signToken(payload: JwtUserPayload): string {
   const options: SignOptions = {
@@ -219,6 +244,42 @@ authRouter.get('/me', requireAuth, async (req: AuthenticatedRequest, res, next) 
       role: user.role,
       isActive: Boolean(user.is_active),
       createdAt: user.created_at,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/auth/forgot-password — Request 6-digit OTP code
+authRouter.post('/forgot-password', validate({ body: forgotPasswordSchema }), async (req, res, next) => {
+  try {
+    const { email } = req.body as z.infer<typeof forgotPasswordSchema>;
+    const clientIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || '127.0.0.1';
+    const message = await requestPasswordReset(email, clientIp);
+    sendSuccess(res, { message });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/auth/verify-otp — Verify OTP code and obtain single-use reset token
+authRouter.post('/verify-otp', validate({ body: verifyOtpSchema }), async (req, res, next) => {
+  try {
+    const { email, code } = req.body as z.infer<typeof verifyOtpSchema>;
+    const result = await verifyOtpCode(email, code);
+    sendSuccess(res, { resetToken: result.resetToken });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/auth/reset-password — Reset password with single-use verified reset token
+authRouter.post('/reset-password', validate({ body: resetPasswordSchema }), async (req, res, next) => {
+  try {
+    const { resetToken, password } = req.body as z.infer<typeof resetPasswordSchema>;
+    await resetPassword(resetToken, password);
+    sendSuccess(res, {
+      message: 'Password has been reset successfully. Please sign in with your new password.',
     });
   } catch (err) {
     next(err);

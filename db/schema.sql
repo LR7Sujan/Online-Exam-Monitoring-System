@@ -51,6 +51,7 @@ CREATE TABLE Users (
   password_hash VARCHAR(255) NOT NULL,
   role ENUM('ADMIN', 'PROCTOR', 'STUDENT') NOT NULL DEFAULT 'STUDENT',
   is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  password_changed_at DATETIME NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
@@ -215,6 +216,55 @@ CREATE TABLE Results (
   CONSTRAINT fk_results_session FOREIGN KEY (session_id)
     REFERENCES Exam_Sessions(id) ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT chk_results_trust CHECK (final_trust_score BETWEEN 0 AND 100)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ----------------------------------------------------------------------------
+-- 9. Password_Reset_Otps
+-- ----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS Password_Reset_Otps (
+  otp_id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  user_id INT UNSIGNED NOT NULL,
+  otp_hash CHAR(64) NOT NULL,
+  expires_at DATETIME NOT NULL,
+  attempts INT NOT NULL DEFAULT 0,
+  max_attempts INT NOT NULL DEFAULT 5,
+  verified_at DATETIME NULL,
+  consumed_at DATETIME NULL,
+  requested_ip VARCHAR(45) NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (otp_id),
+  CONSTRAINT fk_reset_otps_user FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE,
+  INDEX idx_reset_otps_user_created (user_id, created_at),
+  INDEX idx_reset_otps_expires (expires_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ----------------------------------------------------------------------------
+-- 10. Password_Reset_Tokens
+-- ----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS Password_Reset_Tokens (
+  token_id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  token_hash CHAR(64) NOT NULL,
+  user_id INT UNSIGNED NOT NULL,
+  otp_id INT UNSIGNED NOT NULL,
+  expires_at DATETIME NOT NULL,
+  used_at DATETIME NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (token_id),
+  UNIQUE KEY uq_reset_tokens_hash (token_hash),
+  CONSTRAINT fk_reset_tokens_user FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE,
+  CONSTRAINT fk_reset_tokens_otp FOREIGN KEY (otp_id) REFERENCES Password_Reset_Otps(otp_id) ON DELETE CASCADE,
+  INDEX idx_reset_tokens_expires (expires_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ----------------------------------------------------------------------------
+-- 11. Rate_Limits
+-- ----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS Rate_Limits (
+  `key` VARCHAR(191) NOT NULL,
+  `window_start` DATETIME NOT NULL,
+  `count` INT NOT NULL DEFAULT 1,
+  PRIMARY KEY (`key`),
+  INDEX idx_rate_limits_window (`window_start`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================================
