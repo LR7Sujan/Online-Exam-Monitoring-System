@@ -23,6 +23,7 @@ export default defineConfig({
       'tests/lazyTimeoutsAndCron.test.ts',
       'tests/dbUnavailableAndHealth.test.ts',
       'tests/otpPasswordReset.integration.test.ts',
+      'tests/mailService.test.ts',
       '../client/tests/**/*.unit.test.ts',
     ],
     testTimeout: 45000,

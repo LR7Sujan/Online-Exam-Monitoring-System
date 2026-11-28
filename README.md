@@ -239,13 +239,71 @@ Variables prefixed with `VITE_` are bundled into the client browser application:
 - `VITE_API_URL=/api`: Base path for API requests (proxied to `http://localhost:4000` by Vite in dev mode).
 - `VITE_BACKEND_ORIGIN=http://localhost:4000`: Backend origin used to load static recordings and media assets.
 
-#### Generate a Secure `JWT_SECRET`
+#### Generate a Secure `JWT_SECRET` and `OTP_PEPPER`
 
-You can generate a cryptographically secure 256-bit random key using Node.js:
+You can generate cryptographically secure 256-bit random keys using Node.js:
 
 ```bash
+# JWT Secret
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+
+# OTP Pepper
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
+
+#### Email Setup (OTP Password Reset)
+
+ProctorIQ supports three email delivery modes configured via `MAIL_PROVIDER`:
+
+1. **Console Mode (`MAIL_PROVIDER=console`)** *(Default in Development)*:
+   - Does not send real emails or require external credentials.
+   - Prints the 6-digit verification code directly to the API server terminal:
+     ```text
+     ============================================================
+     [DEV ONLY - OTP: 482917]
+     To: student@proctoriq.io
+     Subject: ProctorIQ: Your Verification Code
+     Code (spaced): 4 8 2 9 1 7
+     Expires: 10 minutes
+     ============================================================
+     ```
+   - *Security Guard*: Automatically forbidden if `NODE_ENV=production`.
+
+2. **SMTP Mode (`MAIL_PROVIDER=smtp`)** *(Production & Live Email)*:
+   - Dispatches responsive HTML and plaintext emails using `nodemailer`.
+   - Compatible with Google Workspace / Gmail, Brevo, SendGrid, Amazon SES, or custom SMTP servers.
+   - **Gmail App Password Setup Steps**:
+     1. Go to your Google Account Security settings (`myaccount.google.com/security`).
+     2. Ensure **2-Step Verification** is enabled.
+     3. Search for or navigate to **App passwords**.
+     4. Create a new app password named `ProctorIQ`.
+     5. Copy the 16-character passcode and paste it into `.env` as `SMTP_PASS`.
+     6. Configure `.env`:
+        ```env
+        MAIL_PROVIDER=smtp
+        MAIL_FROM="ProctorIQ Security <your_email@gmail.com>"
+        SMTP_HOST=smtp.gmail.com
+        SMTP_PORT=587
+        SMTP_SECURE=false
+        SMTP_USER=your_email@gmail.com
+        SMTP_PASS=your_16_character_app_password
+        ```
+
+3. **Mock Mode (`MAIL_PROVIDER=mock`)** *(Automated Testing)*:
+   - Used by the automated test suite to capture outgoing messages in memory without network calls.
+
+| Variable | Description | Default |
+| --- | --- | --- |
+| `MAIL_PROVIDER` | Provider mode: `console`, `smtp`, or `mock` | `console` (`mock` in tests) |
+| `MAIL_FROM` | Sender display name and email address | `"ProctorIQ Security <no-reply@proctoriq.io>"` |
+| `APP_BASE_URL` | Root URL of frontend client for emails | `http://localhost:5173` |
+| `SMTP_HOST` | Hostname of SMTP server (required for `smtp`) | None |
+| `SMTP_PORT` | Port of SMTP server (`587` for TLS, `465` for SSL) | `587` |
+| `SMTP_USER` | SMTP authentication username / email | None |
+| `SMTP_PASS` | SMTP authentication password / app password | None |
+| `SMTP_SECURE` | Set `true` for port 465, `false` for port 587/STARTTLS | `false` |
+| `OTP_PEPPER` | Server secret pepper (min 32 chars) for HMAC hashing | Default dev pepper |
+
 
 ---
 

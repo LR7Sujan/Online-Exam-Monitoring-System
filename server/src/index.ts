@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { createApp } from './app.js';
 import { waitForDatabase, pool } from './config/db.js';
-import { env } from './config/env.js';
+import { env, validateMailConfig } from './config/env.js';
 
 export const app = createApp();
 export const httpServer = createServer(app);
@@ -15,6 +15,9 @@ export async function bootstrap(): Promise<void> {
     return;
   }
   isBootstrapped = true;
+
+  // Validate mail environment settings on startup
+  validateMailConfig(env);
 
   // Wait for database with exponential backoff up to 60s
   const health = await waitForDatabase({ maxWaitMs: 60000, initialDelayMs: 500 });

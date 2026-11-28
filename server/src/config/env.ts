@@ -99,6 +99,9 @@ const envSchema = z.object({
     .string()
     .min(16, 'OTP_PEPPER must be at least 16 characters')
     .default('dev-proctoriq-otp-pepper-default-secret-min32chars'),
+  MAIL_PROVIDER: z.enum(['smtp', 'console', 'mock']).default(isTestEnv ? 'mock' : 'console'),
+  MAIL_FROM: z.string().default(process.env.SMTP_FROM || 'ProctorIQ Security <no-reply@proctoriq.io>'),
+  APP_BASE_URL: z.string().default(isTestEnv ? 'http://localhost:5174' : 'http://localhost:5173'),
   SMTP_HOST: z.string().optional(),
   SMTP_PORT: z.coerce.number().int().optional(),
   SMTP_USER: z.string().optional(),
@@ -189,4 +192,35 @@ if (env.NODE_ENV === 'test' && !env.DB_NAME.endsWith('_test')) {
     `[SAFETY GUARD TRIGGERED] Test environment requires DB_NAME ending in '_test'. Found '${env.DB_NAME}'.`
   );
 }
+
+/**
+ * Validates mail configuration based on selected provider.
+ * Throws actionable errors listing missing variables or illegal production combinations.
+ */
+export function validateMailConfig(targetEnv: Partial<typeof env> = env): void {
+  const provider = targetEnv.MAIL_PROVIDER;
+  const nodeEnv = targetEnv.NODE_ENV;
+
+  if (nodeEnv === 'production' && provider === 'console') {
+    throw new Error(
+      `[MailService] MAIL_PROVIDER="console" is forbidden in production environments. Please configure MAIL_PROVIDER="smtp" with valid SMTP credentials.`
+    );
+  }
+
+  if (provider === 'smtp') {
+    const missing: string[] = [];
+    if (!targetEnv.SMTP_HOST) missing.push('SMTP_HOST');
+    if (!targetEnv.SMTP_PORT) missing.push('SMTP_PORT');
+    if (!targetEnv.SMTP_USER) missing.push('SMTP_USER');
+    if (!targetEnv.SMTP_PASS) missing.push('SMTP_PASS');
+    if (!targetEnv.MAIL_FROM && !targetEnv.SMTP_FROM) missing.push('MAIL_FROM');
+
+    if (missing.length > 0) {
+      throw new Error(
+        `[MailService] Missing required SMTP configuration variables: ${missing.join(', ')}. Please define these in your environment or .env file.`
+      );
+    }
+  }
+}
+
 

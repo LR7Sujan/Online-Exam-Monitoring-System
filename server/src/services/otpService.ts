@@ -28,6 +28,7 @@ export interface ResetTokenRecord extends RowDataPacket {
   used_at: Date | null;
   created_at: Date;
   email: string;
+  full_name?: string;
 }
 
 interface RateLimitRow extends RowDataPacket {
@@ -43,6 +44,7 @@ interface ElapsedRow extends RowDataPacket {
 interface UserLookupRow extends RowDataPacket {
   id: number;
   email: string;
+  full_name: string;
   is_active: number;
 }
 
@@ -164,7 +166,7 @@ export async function requestPasswordReset(email: string, clientIp: string): Pro
 
   // 1. Lookup user first so we can check user cooldown before consuming quota
   const userRows = await queryRows<UserLookupRow[]>(
-    'SELECT id, email, is_active FROM Users WHERE email = ? LIMIT 1',
+    'SELECT id, email, full_name, is_active FROM Users WHERE email = ? LIMIT 1',
     [normalizedEmail]
   );
   const user = userRows[0];
@@ -223,7 +225,7 @@ export async function requestPasswordReset(email: string, clientIp: string): Pro
   );
 
   // 8. Send email in background (never log the code in production)
-  sendOtpEmail(user.email, rawCode).catch((err) => {
+  sendOtpEmail(user.email, user.full_name, rawCode).catch((err) => {
     console.error('[OtpService] Background sendOtpEmail error:', err);
   });
 
@@ -348,7 +350,7 @@ export async function resetPassword(resetToken: string, newPassword: string): Pr
 
     // 1. Lock and validate reset token
     const [tokenRows] = await conn.query<ResetTokenRecord[]>(
-      `SELECT t.*, u.email
+      `SELECT t.*, u.email, u.full_name
          FROM Password_Reset_Tokens t
          JOIN Users u ON u.id = t.user_id
         WHERE t.token_hash = ?
@@ -414,7 +416,7 @@ export async function resetPassword(resetToken: string, newPassword: string): Pr
     await conn.commit();
 
     // 7. Send confirmation email in background
-    sendPasswordChangedEmail(tokenRecord.email).catch((err) => {
+    sendPasswordChangedEmail(tokenRecord.email, tokenRecord.full_name).catch((err) => {
       console.error('[OtpService] Background sendPasswordChangedEmail error:', err);
     });
   } catch (err) {
